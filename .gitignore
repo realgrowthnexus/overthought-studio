@@ -16,3 +16,4 @@ output/
 .vercel
 playwright-report/
 test-results/
+.claude/worktrees/
