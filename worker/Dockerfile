@@ -1,5 +1,5 @@
 # Overthought Studio worker — build from repo root:  docker build -f worker/Dockerfile .
-FROM python:3.13-slim
+FROM public.ecr.aws/docker/library/python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     STUDIO_ASSETS=/app/assets STUDIO_WORK=/data/work
