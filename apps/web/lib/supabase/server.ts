@@ -7,6 +7,7 @@ import { publicEnv } from "@/lib/env";
 export async function createClient() {
   const cookieStore = await cookies();
   return createServerClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
+    cookieOptions: { secure: (process.env.APP_URL ?? "").startsWith("https://"), sameSite: "lax", path: "/" },
     cookies: {
       getAll() {
         return cookieStore.getAll();

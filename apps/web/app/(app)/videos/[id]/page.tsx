@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { getChannels, getEvents, getLatestStats, getVideo } from "@/lib/data";
 import { serviceClient } from "@/lib/supabase/service";
+import { requireAdmin } from "@/lib/auth";
 import { Badge, KV, PageHeader, Panel, PanelHeader, Progress } from "@/components/ui/primitives";
 import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 async function signed(path: string | null) {
   if (!path) return null;
+  await requireAdmin();
   const { data } = await serviceClient().storage.from("videos").createSignedUrl(path, 60 * 60);
   return data?.signedUrl ?? null;
 }

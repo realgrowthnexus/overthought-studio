@@ -10,6 +10,8 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Secure auth cookies whenever the app is served over https (production behind the reverse proxy).
+      cookieOptions: { secure: (process.env.APP_URL ?? "").startsWith("https://"), sameSite: "lax", path: "/" },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -34,7 +36,8 @@ export async function middleware(request: NextRequest) {
     url.search = path !== "/" ? `?next=${encodeURIComponent(path)}` : "";
     return NextResponse.redirect(url);
   }
-  if (data.user && path === "/login") {
+  // ?error=not_admin: signed in but not an owner — let /login explain instead of bouncing back to / (redirect loop).
+  if (data.user && path === "/login" && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
