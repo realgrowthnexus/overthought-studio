@@ -226,6 +226,7 @@ body::before {
 /* markdown (reports, legal) */
 .prose-studio {
   max-width: 72ch;
+  font-size: 14px;
   line-height: 1.65;
   color: var(--ink-2);
 }

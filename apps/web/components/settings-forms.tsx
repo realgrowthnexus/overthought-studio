@@ -101,7 +101,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         }));
       }}
     >
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
         <Field label="Claude model" htmlFor="model" hint="Used for research, scripts and reviews.">
           <Select id="model" value={s.model} onChange={(e) => set("model", e.target.value)}>
             <option value="claude-opus-5-5">Claude Opus 5.5 (best writing)</option>

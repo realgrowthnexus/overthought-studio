@@ -85,7 +85,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <div className="h-4" />
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 items-start [&>*]:min-w-0 gap-6 xl:grid-cols-[1fr_340px]">
         <Panel className="overflow-hidden">
           <PanelHeader title="Video performance" description="Compared with each channel's median for this period. The weekly review doubles down on what beats it." />
           {ranked.length === 0 ? (
@@ -94,7 +94,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-[13px]">
                 <thead>
-                  <tr className="border-b border-line text-left text-[12px] text-ink-3">
+                  <tr className="border-b border-line text-left text-[12px] whitespace-nowrap text-ink-3">
                     <th className="px-5 py-2.5 font-medium">Video</th>
                     <th className="px-3 py-2.5 text-right font-medium">Views</th>
                     <th className="px-3 py-2.5 text-right font-medium">vs median</th>

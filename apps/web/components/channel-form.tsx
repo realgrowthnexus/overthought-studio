@@ -82,7 +82,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
 
   const sections = {
     basics: (
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
         <Field label="Channel name" htmlFor="name">
           <Input id="name" value={v.name} placeholder="Overthought" onChange={(e) => {
             set("name", e.target.value);
@@ -110,7 +110,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
       <div className="flex flex-col gap-6">
         <div>
           <p className="mb-2 text-[13px] font-medium text-ink-2">Video look</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 [&>*]:min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {STYLE_PRESETS.map((p) => {
               const selected = v.style?.preset === p.id;
               return (
@@ -142,7 +142,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
             })}
           </div>
         </div>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-3">
           <Field label="Background" htmlFor="bg"><Input id="bg" className="font-mono" value={v.style?.bg ?? ""} onChange={(e) => setNested("style", { bg: e.target.value })} /></Field>
           <Field label="Line & text" htmlFor="ink"><Input id="ink" className="font-mono" value={v.style?.ink ?? ""} onChange={(e) => setNested("style", { ink: e.target.value })} /></Field>
           <Field label="Accent (glitch element only)" htmlFor="accent"><Input id="accent" className="font-mono" value={v.style?.accent ?? ""} onChange={(e) => setNested("style", { accent: e.target.value })} /></Field>
@@ -156,7 +156,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
         <Field label="Figure prompt" htmlFor="fig" hint="Sent to the image model before every scene. Don't ask for colour or text here — accents and words are added in code.">
           <Textarea id="fig" rows={3} value={v.style?.figure_prompt ?? ""} onChange={(e) => setNested("style", { figure_prompt: e.target.value })} />
         </Field>
-        <div className="grid gap-5 border-t border-line pt-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 border-t border-line pt-5 sm:grid-cols-3">
           <Field label="ElevenLabs voice ID" htmlFor="voice" className="sm:col-span-2" hint="Find it in ElevenLabs → Voices → ⋯ → Copy voice ID. One voice per channel, never changed.">
             <Input id="voice" className="font-mono" value={v.voice?.voice_id ?? ""} placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" onChange={(e) => setNested("voice", { voice_id: e.target.value.trim() })} />
           </Field>
@@ -181,7 +181,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
     ),
     content: (
       <div className="flex flex-col gap-6">
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
           <Field label="Audience" htmlFor="aud"><Input id="aud" value={v.content?.audience ?? ""} onChange={(e) => setNested("content", { audience: e.target.value })} /></Field>
           <Field label="Tone of voice" htmlFor="tone"><Input id="tone" value={v.content?.tone ?? ""} onChange={(e) => setNested("content", { tone: e.target.value })} /></Field>
         </div>
@@ -227,7 +227,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
     ),
     schedule: (
       <div className="flex flex-col gap-6">
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-3">
           <Field label="Posts per day" htmlFor="ppd">
             <Select id="ppd" value={String(v.posts_per_day)} onChange={(e) => set("posts_per_day", Number(e.target.value))}>
               {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n === 0 ? "None (paused schedule)" : `${n} a day`}</option>)}
@@ -245,7 +245,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
           </Field>
         </div>
         <TimesEditor times={v.post_times as string[]} onChange={(t) => set("post_times", t)} />
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
           <Field label="Shortest video (seconds)" htmlFor="min" hint="Creator Rewards only counts videos over one minute. 65s leaves a safety margin.">
             <Input id="min" type="number" min={61} value={Number(v.min_seconds)} onChange={(e) => set("min_seconds", Number(e.target.value))} />
           </Field>
@@ -255,7 +255,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
         </div>
         <div>
           <p className="mb-2 text-[13px] font-medium text-ink-2">How videos reach TikTok</p>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 [&>*]:min-w-0 gap-3 sm:grid-cols-3">
             {([
               ["draft", "TikTok drafts", "Lands in the app's inbox. You tap Post. Works before TikTok approves your developer app."],
               ["private", "Private post", "Posts as 'Only me'. Good for testing the full flow."],
@@ -306,7 +306,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
 
   const canNext = step === 0 ? v.name.length > 1 && v.slug.length > 1 && v.niche.length > 1 : true;
   return (
-    <div className="grid gap-8 lg:grid-cols-[200px_1fr]">
+    <div className="grid grid-cols-1 [&>*]:min-w-0 gap-8 lg:grid-cols-[200px_1fr]">
       <ol className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1" aria-label="Steps">
         {STEPS.map((s, i) => (
           <li key={s.id}>

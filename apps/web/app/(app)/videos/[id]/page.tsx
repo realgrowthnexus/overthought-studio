@@ -90,7 +90,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
+      <div className="grid grid-cols-1 [&>*]:min-w-0 gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
         <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
           <div className="relative mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-[18px] border border-line bg-[#111111] shadow-[var(--shadow)]">
             {videoUrl ? (
@@ -168,7 +168,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             )}
           </Panel>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid grid-cols-1 [&>*]:min-w-0 gap-6 xl:grid-cols-2">
             <Panel>
               <PanelHeader title="Sources" description="Shown on screen as a margin note." />
               {sources.length ? (
@@ -209,7 +209,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             </Panel>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid grid-cols-1 [&>*]:min-w-0 gap-6 xl:grid-cols-2">
             <Panel>
               <PanelHeader title="Script score" description="Graded before production. Below the bar, the script is rewritten." />
               {Object.keys(scorecard).length ? (

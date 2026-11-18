@@ -17,7 +17,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Keys, budgets and switches for the whole studio." actions={<JobButton type="health_check" payload={{}}>Run health check</JobButton>} />
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
+      <div className="grid grid-cols-1 items-start [&>*]:min-w-0 gap-6 xl:grid-cols-[1.25fr_1fr]">
         <div className="flex flex-col gap-6">
           <Panel id="keys" className="scroll-mt-24">
             <PanelHeader

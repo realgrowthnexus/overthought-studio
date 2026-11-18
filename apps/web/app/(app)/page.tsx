@@ -128,7 +128,7 @@ export default async function OverviewPage() {
         <PipelineBoard videos={inProgress} channels={channels} />
       </Panel>
 
-      <div className="mb-6 grid items-start gap-6 lg:grid-cols-[1.25fr_1fr]">
+      <div className="mb-6 grid grid-cols-1 [&>*]:min-w-0 items-start gap-6 lg:grid-cols-[1.25fr_1fr]">
         <Panel>
           <PanelHeader title="Up next" description="Ready, approved and scheduled posts in the order they'll go out." />
           {upcoming.length === 0 ? (

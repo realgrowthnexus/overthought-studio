@@ -3,7 +3,7 @@ import { StickFigure, Wordmark } from "@/components/brand";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1.1fr_1fr]">
+    <main className="grid grid-cols-1 [&>*]:min-w-0 min-h-dvh lg:grid-cols-[1.1fr_1fr]">
       <section className="relative hidden overflow-hidden border-r border-line bg-[#111111] text-[#f6f1e6] lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
           className="pointer-events-none absolute inset-0"

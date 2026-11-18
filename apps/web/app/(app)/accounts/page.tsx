@@ -50,7 +50,7 @@ export default async function AccountsPage() {
               <>Copy the <strong className="text-ink">Client key</strong> and <strong className="text-ink">Client secret</strong> into <Link href="/settings#keys" className="text-ink underline decoration-accent decoration-2 underline-offset-4">Settings → API keys</Link>.</>,
               <>Come back here and press <strong className="text-ink">Connect account</strong> while logged in to the TikTok account in your browser.</>,
             ].map((step, i) => (
-              <li key={i} className="grid grid-cols-[1.75rem_1fr] gap-3">
+              <li key={i} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3">
                 <span className="flex size-7 items-center justify-center rounded-full border border-line-strong text-[12px] text-ink-2 tabular">{i + 1}</span>
                 <div className="pt-0.5 leading-relaxed">{step}</div>
               </li>

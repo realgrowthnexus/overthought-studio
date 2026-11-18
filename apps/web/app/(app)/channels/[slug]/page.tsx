@@ -35,7 +35,7 @@ export default async function ChannelOverview({ params }: { params: Promise<{ sl
   return (
     <>
       <LiveRefresh tables={["videos", "events"]} filter={`channel_id=eq.${channel.id}`} />
-      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div className="grid grid-cols-1 items-start [&>*]:min-w-0 gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Panel>
           <PanelHeader title="Last 30 days" description="Totals across every posted video on this channel." />
           <TrendChart data={data} />
@@ -57,7 +57,7 @@ export default async function ChannelOverview({ params }: { params: Promise<{ sl
           </dl>
         </Panel>
       </div>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 items-start [&>*]:min-w-0 gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Panel className="overflow-hidden">
           <PanelHeader title="Latest videos" />
           <VideoList videos={videos} channels={channels} stats={stats} showChannel={false} emptyText="Switch the channel on, or press “Make a video now”." />

@@ -37,7 +37,8 @@ export default async function ChannelLayout({ children, params }: { children: Re
             <JobButton type="plan_channel" channelId={channel.id} payload={{ channel_id: channel.id, force: true }} variant="primary"><Sparkles className="size-4" aria-hidden />Make a video now</JobButton>
             <JobButton type="research_ideas" channelId={channel.id} payload={{ channel_id: channel.id }}><Lightbulb className="size-4" aria-hidden />Research ideas</JobButton>
             <JobButton type="weekly_review" channelId={channel.id} payload={{ channel_id: channel.id }} variant="ghost"><LineChart className="size-4" aria-hidden />Run review</JobButton>
-            <span className="ml-1 inline-flex items-center gap-2 text-[13px] text-ink-3">
+            <span className="ml-1 inline-flex h-10 items-center gap-2.5 rounded-[10px] border border-line bg-elev pr-2 pl-3 text-[13px] text-ink-2">
+              {channel.status === "active" ? "On" : "Off"}
               <ChannelToggle id={channel.id} status={channel.status} />
             </span>
           </>

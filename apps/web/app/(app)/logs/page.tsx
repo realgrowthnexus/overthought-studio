@@ -43,7 +43,7 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
     <>
       <LiveRefresh tables={["events", "jobs"]} />
       <PageHeader title="Activity" description="What the worker and you did, and the queue of work it's doing next." />
-      <div className="grid gap-6 xl:grid-cols-[1fr_1.15fr]">
+      <div className="grid grid-cols-1 items-start [&>*]:min-w-0 gap-6 xl:grid-cols-[1fr_1.15fr]">
         <Panel>
           <PanelHeader title="Events" />
           <div className="flex flex-wrap gap-1 px-5 pb-3">
@@ -78,7 +78,7 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
             <div className="overflow-x-auto">
               <table className="w-full min-w-[620px] text-[13px]">
                 <thead>
-                  <tr className="border-y border-line text-left text-[12px] text-ink-3">
+                  <tr className="border-y border-line text-left text-[12px] whitespace-nowrap text-ink-3">
                     <th className="px-5 py-2 font-medium">Job</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 text-right font-medium">Tries</th>

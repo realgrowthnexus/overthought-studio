@@ -15,7 +15,7 @@ export function VideoList({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-[13px]">
         <thead>
-          <tr className="border-b border-line text-left text-[12px] text-ink-3">
+          <tr className="border-b border-line text-left text-[12px] whitespace-nowrap text-ink-3">
             <th className="px-5 py-2.5 font-medium">Video</th>
             {showChannel && <th className="px-3 py-2.5 font-medium">Channel</th>}
             <th className="px-3 py-2.5 font-medium">Status</th>

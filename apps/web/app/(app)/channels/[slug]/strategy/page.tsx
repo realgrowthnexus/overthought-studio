@@ -41,7 +41,7 @@ export default async function ChannelStrategy({ params }: { params: Promise<{ sl
   const hookLabels = Object.fromEntries(HOOK_STYLES.map((h) => [h.id, h.label]));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+    <div className="grid grid-cols-1 [&>*]:min-w-0 gap-6 lg:grid-cols-[1fr_1.3fr]">
       <Panel>
         <PanelHeader
           title="Current strategy"
