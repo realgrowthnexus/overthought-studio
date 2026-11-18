@@ -145,6 +145,11 @@ Overthought has 37 seed ideas.
 - Run worker code with `cd worker && . .venv/bin/activate && python -m studio.cli …`. Create the venv from
   `worker/requirements.txt` if it's missing.
 
+### Deploy status (2026-11-18)
+- Both production images build from GitHub main and run (verified in Docker): web 360 MB standalone, worker 1.2 GB.
+- Waiting on the owner: DNS A record, Supabase auth settings (SETUP.md step 2), run the installer on the VPS,
+  /setup, API keys in Settings, TikTok developer app. Owner-facing paste command is in SETUP.md / final report.
+
 ## 6. Next steps (in order)
 1. Merge the dashboard branch; run the design audit (contrast, button sizes, type, motion, scroll, dark/light),
    the code/security audit, and the performance pass; fix everything.
