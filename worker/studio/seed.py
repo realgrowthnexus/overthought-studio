@@ -9,7 +9,7 @@ from . import db
 
 BASE_FIGURE = ("classic stick figure made of single thin white lines: circle head, one straight line body, two line arms, "
                "two line legs, on pure black background, flat minimal hand-drawn vector, monochrome white lines only, "
-               "no shading, no text, no letters, no numbers, no logos, ")
+               "no shading, no text, no letters, no numbers, no logos, no signature, no watermark, ")
 COMMON_RULES = [
     "Every claim cites a real, findable study or reputable source, shown as → Researcher · Institution · Year.",
     "Flag effects that failed to replicate (e.g. ego depletion, power posing) instead of presenting them as fact.",

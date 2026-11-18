@@ -123,8 +123,11 @@ class Plan:
         out, i = [], 0
         while i < len(words):
             j = i
-            while j < len(words) - 1 and j - i < 3 and not words[j][0].endswith((".", ",", "?", "!", ":", ";", "—")):
+            chars = len(words[i][0])
+            while (j < len(words) - 1 and j - i < 3 and chars + 1 + len(words[j + 1][0]) <= 21
+                   and not words[j][0].endswith((".", ",", "?", "!", ":", ";", "—"))):
                 j += 1
+                chars += 1 + len(words[j][0])
             out.append((i, j, words[i][1], words[j][2]))
             i = j + 1
         return out
@@ -346,7 +349,7 @@ def render_video(spec: Spec, procs: int | None = None) -> dict:
         vol = float(spec.style.get("music_volume", 0.16))
         filt = (f"[2:a]volume={vol}[m];[1:a]apad=whole_dur={spec.duration:.3f},asplit=2[v1][v2];"
                 f"[m][v2]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[md];"
-                f"[v1][md]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]")
+                f"[v1][md]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-13:TP=-1.5:LRA=11[a]")
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(silent), "-i", spec.voice_path, "-i", str(bed),
                         "-filter_complex", filt, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac",
                         "-b:a", "192k", "-ar", "44100", "-t", f"{spec.duration:.3f}", "-movflags", "+faststart",

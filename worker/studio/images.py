@@ -20,7 +20,7 @@ ENDPOINT = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/runsync"
 STATUS = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/status/"
 DEFAULT_FIGURE = ("classic stick figure made of single thin white lines: circle head, one straight line body, "
                   "two line arms, two line legs, on pure black background, flat minimal hand-drawn vector, "
-                  "monochrome white lines only, no shading, no text, no letters, no numbers, no logos, ")
+                  "monochrome white lines only, no shading, no text, no letters, no numbers, no logos, no signature, no watermark, ")
 COST_FALLBACK = 0.012
 
 
@@ -78,10 +78,19 @@ def hex_rgb(h: str) -> tuple[int, int, int]:
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
 
 
+def _norm_lum(img: Image.Image) -> np.ndarray:
+    """Luminance normalised so the image's own background → 0 and its lines → 1.
+    Flux sometimes returns dark-grey instead of black backgrounds; this removes the visible square."""
+    a = np.asarray(img.convert("L"), dtype=np.float32) / 255.0
+    bg = float(np.percentile(a, 50))                      # most pixels are background
+    hi = float(np.percentile(a, 99.7))
+    span = max(0.2, hi - bg)
+    return np.clip((a - bg - 0.06) / (span - 0.06), 0, 1)
+
+
 def to_palette(img: Image.Image, bg: str, ink: str, gamma: float = 1.0) -> Image.Image:
     """Map luminance onto bg→ink. Also cleans faint grey noise so backgrounds are perfectly flat."""
-    a = np.asarray(img.convert("L"), dtype=np.float32) / 255.0
-    a = np.clip((a - 0.08) / 0.92, 0, 1) ** gamma                # crush near-black noise
+    a = _norm_lum(img) ** gamma
     b = np.array(hex_rgb(bg), dtype=np.float32)
     k = np.array(hex_rgb(ink), dtype=np.float32)
     out = b[None, None, :] + (k - b)[None, None, :] * a[..., None]
@@ -90,8 +99,7 @@ def to_palette(img: Image.Image, bg: str, ink: str, gamma: float = 1.0) -> Image
 
 def line_mask(img: Image.Image) -> np.ndarray:
     """Float mask 0..1 of the drawn lines (for draw-on animation)."""
-    a = np.asarray(img.convert("L"), dtype=np.float32) / 255.0
-    return np.clip((a - 0.08) / 0.92, 0, 1)
+    return _norm_lum(img)
 
 
 def figure_bbox(img: Image.Image) -> tuple[int, int, int, int]:

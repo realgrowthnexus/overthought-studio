@@ -56,7 +56,13 @@ def text_layer(parts: list[tuple[str, str]], size: int, *, ink: RGB, key: RGB, b
     """parts: [(text, 'ink'|'key')]. Returns RGBA image, centered lines, tilted, soft shadow."""
     fonts = {"ink": font(body_font, size), "key": font(key_font, int(size * 1.22))}
     cols = {"ink": ink, "key": key}
-    lines = _wrap(parts, fonts, max_w)
+    # balanced wrapping: avoid a lonely last word
+    space0 = _measure(" ", fonts["ink"])
+    total = sum(_measure(w, fonts[k]) + space0 for t, k in parts for w in t.split())
+    n_lines = max(1, math.ceil(total / max_w))
+    lines = _wrap(parts, fonts, min(max_w, total / n_lines * 1.12) if n_lines > 1 else max_w)
+    if len(lines) > n_lines:
+        lines = _wrap(parts, fonts, max_w)
     lh = int(size * 1.32)
     space = _measure(" ", fonts["ink"])
     widths = [sum(_measure(w, fonts[k]) for w, k in ln) + space * (len(ln) - 1) for ln in lines]

@@ -153,7 +153,6 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
             base = f"{ch['slug']}/{video_id}"
             db.upload("videos", f"{base}/final.mp4", Path(out["path"]).read_bytes(), "video/mp4")
             db.upload("videos", f"{base}/thumb.jpg", Path(out["thumb"]).read_bytes(), "image/jpeg")
-            db.upload("videos", f"{base}/voice.mp3", (work / "voice.mp3").read_bytes(), "audio/mpeg")
             script = content.Script.model_validate(video["script"])
             video.update(_upd(video_id, video_path=f"{base}/final.mp4", thumb_path=f"{base}/thumb.jpg",
                               audio_path=f"{base}/voice.mp3", duration_s=round(out["probe"]["duration"], 2),
@@ -197,6 +196,10 @@ def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> No
         raise RuntimeError(f"Voiceover is only {dur:.1f}s; Creator Rewards needs > 60s")
     (work / "voice.mp3").write_bytes(audio)
     (work / "words.json").write_text(json.dumps([[w.text, w.start, w.end] for w in words]))
+    base = f"{ch['slug']}/{video['id']}"
+    db.upload("videos", f"{base}/voice.mp3", audio, "audio/mpeg")
+    db.upload("videos", f"{base}/words.json", (work / "words.json").read_bytes(), "application/json")
+    _upd(video["id"], audio_path=f"{base}/voice.mp3")
 
 
 def _beat_times(script: content.Script, words: list[list]) -> list[tuple[float, float]]:
@@ -224,8 +227,13 @@ def _render(video: dict, ch: dict, work: Path) -> dict:
         for s in script.scenes:     # resumed on a fresh machine: pull scenes from storage
             sdir.mkdir(exist_ok=True)
             (sdir / f"{s.id}.png").write_bytes(db.download("videos", f"{ch['slug']}/{video['id']}/scenes/{s.id}.png"))
-    if not (work / "voice.mp3").exists():
-        raise RuntimeError("voice missing; regenerate from the voice stage")
+    if not (work / "voice.mp3").exists() or not (work / "words.json").exists():
+        base = f"{ch['slug']}/{video['id']}"
+        try:
+            (work / "voice.mp3").write_bytes(db.download("videos", f"{base}/voice.mp3"))
+            (work / "words.json").write_bytes(db.download("videos", f"{base}/words.json"))
+        except db.DBError as e:
+            raise RuntimeError("Voiceover files are missing; regenerate from the voice stage") from e
     words = json.loads((work / "words.json").read_text())
     times = _beat_times(script, words)
     beats = []
