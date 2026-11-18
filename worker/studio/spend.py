@@ -11,11 +11,8 @@ def record(service: str, amount_usd: float, *, units=None, unit=None, detail=Non
 
 
 def total_since(dt: datetime, service: str | None = None) -> float:
-    where = {"created_at": ("gte", dt.isoformat())}
-    if service:
-        where["service"] = service
-    rows = db.select("spend", where, columns="amount_usd")
-    return round(sum(float(r["amount_usd"]) for r in rows), 4)
+    v = db.rpc("spend_total", {"p_since": dt.isoformat(), "p_service": service}, idempotent=True)
+    return round(float(v or 0), 4)
 
 
 def budget_state() -> dict:

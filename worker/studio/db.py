@@ -29,7 +29,12 @@ class DBError(RuntimeError):
     pass
 
 
-def _req(method: str, path: str, *, retries: int = 4, **kw) -> httpx.Response:
+def _req(method: str, path: str, *, retries: int = 4, idempotent: bool | None = None, **kw) -> httpx.Response:
+    """Retries transient failures. POSTs are retried only when marked idempotent (upserts, RPCs that are safe)."""
+    if idempotent is None:
+        idempotent = method != "POST"
+    if not idempotent:
+        retries = 1
     last = ""
     for i in range(retries):
         try:
@@ -86,7 +91,8 @@ def insert(table: str, rows: dict | list[dict], *, upsert: bool = False, on_conf
     if upsert:
         prefer.append("resolution=ignore-duplicates" if ignore_duplicates else "resolution=merge-duplicates")
     params = {"on_conflict": on_conflict} if on_conflict else None
-    r = _req("POST", f"/rest/v1/{table}", json=rows, params=params, headers={"Prefer": ",".join(prefer)})
+    r = _req("POST", f"/rest/v1/{table}", json=rows, params=params, headers={"Prefer": ",".join(prefer)},
+             idempotent=upsert)
     return r.json() if r.content else []
 
 
@@ -100,15 +106,15 @@ def delete(table: str, where: dict) -> None:
     _req("DELETE", f"/rest/v1/{table}", params=_filters(where))
 
 
-def rpc(fn: str, args: dict | None = None) -> Any:
-    r = _req("POST", f"/rest/v1/rpc/{fn}", json=args or {})
+def rpc(fn: str, args: dict | None = None, *, idempotent: bool = False) -> Any:
+    r = _req("POST", f"/rest/v1/rpc/{fn}", json=args or {}, idempotent=idempotent)
     return r.json() if r.content else None
 
 
 # ---------------- storage ----------------
 def upload(bucket: str, path: str, data: bytes, content_type: str) -> str:
     _req("POST", f"/storage/v1/object/{bucket}/{path}", content=data,
-         headers={"Content-Type": content_type, "x-upsert": "true"}, timeout=600)
+         headers={"Content-Type": content_type, "x-upsert": "true"}, timeout=600, idempotent=True)
     return path
 
 
@@ -123,11 +129,11 @@ def remove(bucket: str, paths: Iterable[str]) -> None:
 
 
 def list_objects(bucket: str, prefix: str = "", limit: int = 1000) -> list[dict]:
-    r = _req("POST", f"/storage/v1/object/list/{bucket}", json={"prefix": prefix, "limit": limit,
+    r = _req("POST", f"/storage/v1/object/list/{bucket}", idempotent=True, json={"prefix": prefix, "limit": limit,
                                                                  "sortBy": {"column": "name", "order": "asc"}})
     return r.json()
 
 
 def signed_url(bucket: str, path: str, expires: int = 3600) -> str:
-    r = _req("POST", f"/storage/v1/object/sign/{bucket}/{path}", json={"expiresIn": expires})
+    r = _req("POST", f"/storage/v1/object/sign/{bucket}/{path}", json={"expiresIn": expires}, idempotent=True)
     return config.SUPABASE_URL + "/storage/v1" + r.json()["signedURL"]

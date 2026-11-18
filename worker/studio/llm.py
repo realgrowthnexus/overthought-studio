@@ -67,6 +67,8 @@ def _map_error(e: Exception) -> Exception:
         return ServiceDown("anthropic", "Rate limited by Anthropic (will retry)")
     if isinstance(e, anthropic.APIStatusError) and e.status_code >= 500:
         return ServiceDown("anthropic", f"Anthropic API error {e.status_code} (will retry)")
+    if isinstance(e, anthropic.APITimeoutError):
+        return RuntimeError("Anthropic request timed out (will retry)")
     if isinstance(e, anthropic.APIConnectionError):
         return ServiceDown("anthropic", "Cannot reach Anthropic API (will retry)")
     return e

@@ -18,6 +18,7 @@ from .services import NotConfigured, OutOfCredits, ServiceDown, set_status
 
 ENDPOINT = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/runsync"
 STATUS = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/status/"
+CANCEL = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/cancel/"
 DEFAULT_FIGURE = ("classic stick figure made of single thin white lines: circle head, one straight line body, "
                   "two line arms, two line legs, on pure black background, flat minimal hand-drawn vector, "
                   "monochrome white lines only, no shading, no text, no letters, no numbers, no logos, no signature, no watermark, ")
@@ -62,8 +63,14 @@ def generate(description: str, *, seed: int = 7, figure_prompt: str | None = Non
             if r.status_code >= 400:
                 raise _fail(r)
             d = r.json()
+        if d.get("status") in ("IN_QUEUE", "IN_PROGRESS"):
+            try:   # stop paying for a job we no longer wait for
+                c.post(CANCEL + d["id"], headers=_headers())
+            except httpx.HTTPError:
+                pass
+            raise RuntimeError("RunPod image took longer than 5 minutes (cold start?) — will retry")
         if d.get("status") != "COMPLETED":
-            raise ServiceDown("runpod", f"Image job ended with status {d.get('status')}: {str(d.get('error'))[:200]}")
+            raise RuntimeError(f"RunPod image job ended with status {d.get('status')}: {str(d.get('error'))[:200]}")
         out = d["output"]
         url = out.get("result") or out.get("image_url") or (out.get("images") or [None])[0]
         img = Image.open(io.BytesIO(c.get(url).content)).convert("RGB")

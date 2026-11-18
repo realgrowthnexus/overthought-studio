@@ -53,12 +53,32 @@ def _channel(ch: dict, t: datetime) -> None:
         db.update("videos", {"id": v["id"]}, {"status": "scheduled", "scheduled_for": s.isoformat(),
                                               "stage_detail": f"Scheduled for {s.astimezone(ZoneInfo(ch['timezone'])):%a %b %d, %I:%M %p} ET"})
         taken.add(s.isoformat()[:16])
-    # 2) publish anything whose time has come
-    for v in scheduled:
-        if datetime.fromisoformat(v["scheduled_for"]) <= t:
-            enqueue("publish_video", {"video_id": v["id"]}, dedupe=f"publish:{v['id']}", priority=2,
-                    channel_id=ch["id"], video_id=v["id"])
-    # 3) keep the production buffer full (one new video per tick at most; dedupe keeps it sequential)
+    # 2) publish whose time has come — at most ONE per channel per tick (no burst after downtime)
+    due = [v for v in scheduled if datetime.fromisoformat(v["scheduled_for"]) <= t]
+    if due:
+        v = due[0]
+        enqueue("publish_video", {"video_id": v["id"]}, dedupe=f"publish:{v['id']}", priority=2,
+                channel_id=ch["id"], video_id=v["id"])
+        later = [s for s in upcoming if s.isoformat()[:16] not in taken]
+        for v2, slot in zip(due[1:], later):          # overdue extras move to the next free slots
+            db.update("videos", {"id": v2["id"]}, {"scheduled_for": slot.isoformat()})
+            taken.add(slot.isoformat()[:16])
+    # 3) circuit breaker: 3 production failures in 24h → stop planning for this channel
+    since_dt = t - timedelta(hours=24)
+    if not ch.get("blocked_reason") and ch.get("updated_at"):
+        # pressing Start/Resume (which clears blocked_reason) forgives earlier failures
+        since_dt = max(since_dt, datetime.fromisoformat(ch["updated_at"]))
+    since = since_dt.isoformat()
+    fails = db.select("videos", {"channel_id": ch["id"], "status": "failed", "updated_at": ("gte", since)},
+                      columns="id,error", limit=10)
+    if len(fails) >= 3:
+        msg = (f"Stopped making new videos: {len(fails)} failed in the last 24h (last error: "
+               f"{(fails[0].get('error') or '')[:160]}). Fix the cause, then press Start/Resume.")
+        if ch.get("blocked_reason") != msg and not (ch.get("blocked_reason") or "").startswith("Stopped making new videos"):
+            db.update("channels", {"id": ch["id"]}, {"blocked_reason": msg})
+            event(msg, "error", "planner", channel_id=ch["id"])
+        return
+    # 4) keep the production buffer full (one new video per tick at most; dedupe keeps it sequential)
     in_prod = [v for v in vids if v["status"] in IN_PRODUCTION]
     waiting_approval = [v for v in vids if v["status"] == "ready"]
     have = len(scheduled) + len(approved) + len(in_prod) + len(waiting_approval)
@@ -68,14 +88,14 @@ def _channel(ch: dict, t: datetime) -> None:
 
 
 def _periodic(t: datetime) -> None:
+    # once-keys are unique across ALL job statuses → each runs exactly once per period
     k10 = t.strftime("%Y%m%d%H") + str(t.minute // 10)
-    enqueue("health_check", {}, dedupe=f"health:{k10}", priority=3)
-    enqueue("refresh_tokens", {}, dedupe=f"tokens:{t:%Y%m%d%H}", priority=3)
-    if t.hour % 6 == 0:
-        enqueue("sync_stats", {}, dedupe=f"stats:{t:%Y%m%d%H}", priority=6)
-    if t.hour == 4:
-        enqueue("backup_db", {}, dedupe=f"backup:{t:%Y%m%d}", priority=7)
-    if t.hour == 5:
-        enqueue("cleanup_storage", {}, dedupe=f"cleanup:{t:%Y%m%d}", priority=8)
-    if t.weekday() == 0 and t.hour == 14:          # Monday ~9-10am ET
-        enqueue("weekly_review", {}, dedupe=f"review:{t:%Y%W}", priority=6)
+    enqueue("health_check", {}, once=f"health:{k10}", priority=3)
+    enqueue("refresh_tokens", {}, once=f"tokens:{t:%Y%m%d%H}", priority=3)
+    enqueue("sync_stats", {}, once=f"stats:{t:%Y%m%d}:{t.hour // 6}", priority=6)
+    if t.hour >= 4:
+        enqueue("backup_db", {}, once=f"backup:{t:%Y%m%d}", priority=7)
+    if t.hour >= 5:
+        enqueue("cleanup_storage", {}, once=f"cleanup:{t:%Y%m%d}", priority=8)
+    if t.weekday() == 0 and t.hour >= 14:          # Monday from ~9-10am ET
+        enqueue("weekly_review", {}, once=f"review:{t:%G%V}", priority=6)

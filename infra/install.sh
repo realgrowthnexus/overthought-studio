@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # One-time VPS setup for Overthought Studio (Ubuntu 22/24). Safe to re-run: updates config, keeps data.
-# Paste into the VPS terminal (Hostinger → VPS → Browser terminal) with these variables set first:
-#   export SUPABASE_SERVICE_ROLE_KEY=...  MASTER_KEY=...  GITHUB_TOKEN=...   (read-only token for the repo)
+# Paste into the VPS terminal (Hostinger → VPS → Browser terminal). It asks for the three secrets (input hidden),
+# so nothing sensitive lands in shell history.
 set -euo pipefail
+ask() { local v="$1" p="$2"; if [ -z "${!v:-}" ]; then read -r -s -p "$p: " "$v" </dev/tty; echo; export "$v"; fi; }
+ask SUPABASE_SERVICE_ROLE_KEY "Supabase secret key (sb_secret_...)"
+ask MASTER_KEY "MASTER_KEY (from your setup message)"
+ask GITHUB_TOKEN "GitHub read-only token (github_pat_...)"
 
 DIR=/opt/overthought-studio
 REPO=realgrowthnexus/overthought-studio
@@ -58,7 +62,7 @@ if [ "$old" != "$new" ] || [ "${1:-}" = "--force" ]; then
 fi
 UPD
 chmod 700 update.sh
-( crontab -l 2>/dev/null | grep -v overthought-studio/update.sh; echo "*/10 * * * * /opt/overthought-studio/update.sh >/dev/null 2>&1" ) | crontab -
+{ crontab -l 2>/dev/null | grep -v 'overthought-studio/update.sh' || true; echo "*/10 * * * * /opt/overthought-studio/update.sh >/dev/null 2>&1"; } | crontab -
 
 echo "==> Building and starting (first build takes 3-6 minutes)"
 docker compose build

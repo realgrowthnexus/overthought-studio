@@ -37,6 +37,10 @@ class NotConfigured(ServiceProblem):
     status = "unconfigured"
 
 
+class PermanentError(RuntimeError):
+    """A failure that retrying cannot fix (e.g. fact-check failed). The job fails immediately."""
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 

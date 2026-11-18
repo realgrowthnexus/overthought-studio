@@ -103,3 +103,19 @@ def test_render_short_video(tmp_path):
     assert info["vcodec"] == "h264" and info["acodec"] == "aac" and info["pix_fmt"] == "yuv420p"
     assert 2.3 < info["duration"] < 2.7
     assert os.path.exists(tmp_path / "t.jpg")
+
+
+def test_tiktok_chunks_follow_rules():
+    from studio.tiktok import _chunks
+    MB = 1024 * 1024
+    for size in (3 * MB, 7 * MB, 40 * MB, 64 * MB):
+        assert _chunks(size) == (size, 1)
+    chunk, count = _chunks(95 * MB)
+    assert chunk == 10 * MB and count == 9
+    last = 95 * MB - chunk * (count - 1)
+    assert 5 * MB <= chunk <= 64 * MB and last <= 128 * MB
+
+
+def test_scrub_hides_keys():
+    from studio.ops import _scrub
+    assert "abc123" not in _scrub("https://api.runpod.io/graphql?api_key=abc123&x=1")

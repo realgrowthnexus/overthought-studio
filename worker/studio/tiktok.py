@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import threading
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -48,27 +49,52 @@ def _check(r: httpx.Response) -> dict:
 
 
 # ------------------------------------------------------------------ tokens
+_refresh_lock = threading.Lock()
+_DEAD = ("invalid_grant", "invalid_token", "invalid_request", "access_denied")
+
+
 def refresh(account: dict) -> dict:
-    ck, cs = _app()
-    full = db.select("tiktok_accounts", {"id": account["id"]}, single=True)
-    rt = crypto.decrypt(full["refresh_token_enc"])
-    r = httpx.post(f"{API}/v2/oauth/token/", data={"client_key": ck, "client_secret": cs,
-                                                  "grant_type": "refresh_token", "refresh_token": rt},
-                   headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
-    d = r.json()
-    if "access_token" not in d:
-        db.update("tiktok_accounts", {"id": account["id"]},
-                  {"status": "expired", "status_message": d.get("error_description") or str(d)[:200]})
-        event(f"TikTok account @{account.get('username')} needs reconnecting: {d.get('error_description')}", "error",
-              "tiktok")
-        raise TikTokError(d.get("error", "refresh_failed"), d.get("error_description", ""))
-    vals = {"access_token_enc": crypto.encrypt(d["access_token"]),
-            "refresh_token_enc": crypto.encrypt(d["refresh_token"]),    # refresh tokens rotate
-            "access_expires_at": (_now() + timedelta(seconds=int(d["expires_in"]))).isoformat(),
-            "refresh_expires_at": (_now() + timedelta(seconds=int(d.get("refresh_expires_in", 0)))).isoformat(),
-            "scopes": [s for s in d.get("scope", "").split(",") if s], "status": "connected", "status_message": None}
-    db.update("tiktok_accounts", {"id": account["id"]}, vals)
-    return d
+    """Refresh tokens. Refresh tokens ROTATE, so this is serialized in-process and compare-and-swap in the DB."""
+    with _refresh_lock:
+        ck, cs = _app()
+        full = db.select("tiktok_accounts", {"id": account["id"]}, single=True)
+        old_enc = full["refresh_token_enc"]
+        exp = full.get("access_expires_at")
+        if exp and datetime.fromisoformat(exp) > _now() + timedelta(minutes=30) and account.get("_force") is not True:
+            return {"skipped": "fresh"}          # another caller already refreshed
+        try:
+            r = httpx.post(f"{API}/v2/oauth/token/", data={"client_key": ck, "client_secret": cs,
+                                                          "grant_type": "refresh_token",
+                                                          "refresh_token": crypto.decrypt(old_enc)},
+                           headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
+        except httpx.TransportError as e:
+            raise ServiceDown("tiktok", f"Cannot reach TikTok: {e}") from e
+        if r.status_code >= 500 or r.status_code == 429:
+            raise ServiceDown("tiktok", f"TikTok token endpoint {r.status_code} (will retry)")
+        try:
+            d = r.json()
+        except Exception:
+            raise ServiceDown("tiktok", f"TikTok token endpoint returned non-JSON ({r.status_code})")
+        if "access_token" not in d:
+            now_row = db.select("tiktok_accounts", {"id": account["id"]}, single=True, columns="refresh_token_enc")
+            if now_row and now_row["refresh_token_enc"] != old_enc:
+                return {"skipped": "rotated elsewhere"}
+            err = d.get("error") or "refresh_failed"
+            if isinstance(err, dict):
+                err = err.get("code", "refresh_failed")
+            if err in _DEAD:
+                db.update("tiktok_accounts", {"id": account["id"]},
+                          {"status": "expired", "status_message": d.get("error_description") or str(d)[:200]})
+                event(f"TikTok account @{full.get('username')} needs reconnecting: {d.get('error_description')}",
+                      "error", "tiktok")
+            raise TikTokError(str(err), d.get("error_description", ""))
+        vals = {"access_token_enc": crypto.encrypt(d["access_token"]),
+                "refresh_token_enc": crypto.encrypt(d["refresh_token"]),
+                "access_expires_at": (_now() + timedelta(seconds=int(d["expires_in"]))).isoformat(),
+                "refresh_expires_at": (_now() + timedelta(seconds=int(d.get("refresh_expires_in", 0)))).isoformat(),
+                "scopes": [x for x in d.get("scope", "").split(",") if x], "status": "connected", "status_message": None}
+        db.update("tiktok_accounts", {"id": account["id"], "refresh_token_enc": old_enc}, vals)
+        return d
 
 
 def token(account_id: str) -> str:
@@ -126,11 +152,12 @@ def list_videos(account_id: str, max_pages: int = 5) -> list[dict]:
 
 # ------------------------------------------------------------------ posting
 def _chunks(size: int) -> tuple[int, int]:
+    """TikTok: chunks 5–64 MB (last up to 128 MB); files ≤ 64 MB may go as a single chunk."""
     MB = 1024 * 1024
-    if size < 5 * MB:
+    if size <= 64 * MB:
         return size, 1
     chunk = 10 * MB
-    return chunk, max(1, math.floor(size / chunk))
+    return chunk, size // chunk
 
 
 def _put_file(upload_url: str, data: bytes, chunk: int, count: int) -> None:

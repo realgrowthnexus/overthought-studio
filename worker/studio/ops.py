@@ -13,16 +13,17 @@ from pydantic import BaseModel, Field
 
 from . import config, content, db, llm, secrets, settings, spend, tiktok, voice
 from .log import event, log
-from .services import NotConfigured, OutOfCredits, ServiceDown, ServiceProblem, set_status
+from .services import NotConfigured, OutOfCredits, PermanentError, ServiceDown, ServiceProblem, set_status
 
 
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def enqueue(type_: str, payload: dict | None = None, *, dedupe: str | None = None, priority: int = 5,
-            channel_id=None, video_id=None, run_after: datetime | None = None) -> bool:
-    row = {"type": type_, "payload": payload or {}, "priority": priority, "dedupe_key": dedupe,
+def enqueue(type_: str, payload: dict | None = None, *, dedupe: str | None = None, once: str | None = None,
+            priority: int = 5, channel_id=None, video_id=None, run_after: datetime | None = None) -> bool:
+    """dedupe: at most one *active* job with this key. once: at most one job with this key EVER (periodic jobs)."""
+    row = {"type": type_, "payload": payload or {}, "priority": priority, "dedupe_key": dedupe, "once_key": once,
            "channel_id": channel_id, "video_id": video_id}
     if run_after:
         row["run_after"] = run_after.isoformat()
@@ -39,27 +40,32 @@ def enqueue(type_: str, payload: dict | None = None, *, dedupe: str | None = Non
 def plan_channel(channel_id: str, force: bool = False) -> dict:
     ch = db.select("channels", {"id": channel_id}, single=True)
     if not ch:
-        raise RuntimeError("channel not found")
+        raise PermanentError("channel not found")
     if ch["status"] != "active" and not force:
         return {"skipped": "channel paused"}
     ideas = db.select("ideas", {"channel_id": channel_id, "status": "new"}, order="score.desc", limit=50)
     if len(ideas) < 10:
-        enqueue("research_ideas", {"channel_id": channel_id}, dedupe=f"research:{channel_id}", channel_id=channel_id,
-                priority=6)
+        # at most one idea-research run per channel per 6 hours
+        enqueue("research_ideas", {"channel_id": channel_id}, once=f"research:{channel_id}:{now():%Y%m%d}:{now().hour // 6}",
+                channel_id=channel_id, priority=6)
     if not ideas:
-        research_ideas(channel_id, count=12)
-        ideas = db.select("ideas", {"channel_id": channel_id, "status": "new"}, order="score.desc", limit=50)
-    if not ideas:
-        raise RuntimeError("No ideas available for this channel")
+        raise PermanentError("The idea bank is empty — new ideas are being researched; planning resumes automatically")
     pw = (ch.get("strategy") or {}).get("pillar_weights") or {}
-    best = max(ideas, key=lambda i: float(i["score"]) * (0.7 + 0.3 * float(pw.get(i.get("pillar") or "", 1.0))))
-    db.update("ideas", {"id": best["id"]}, {"status": "queued"})
-    v = db.insert("videos", {"channel_id": channel_id, "idea_id": best["id"], "title": best["title"],
-                             "status": "queued", "stage_detail": "Waiting for the production line"})[0]
-    enqueue("produce_video", {"video_id": v["id"]}, dedupe=f"produce:{v['id']}", channel_id=channel_id,
-            video_id=v["id"], priority=4)
-    event(f"Planned a new video: {best['title']}", "info", "planner", channel_id=channel_id, video_id=v["id"])
-    return {"video_id": v["id"], "idea": best["title"]}
+    for best in sorted(ideas, key=lambda i: -float(i["score"]) * (0.7 + 0.3 * float(pw.get(i.get("pillar") or "", 1.0)))):
+        try:   # unique index (one active video per idea) makes this idempotent on retries
+            v = db.insert("videos", {"channel_id": channel_id, "idea_id": best["id"], "title": best["title"],
+                                     "status": "queued", "stage_detail": "Waiting for the production line"})[0]
+        except db.DBError as e:
+            if "23505" in str(e) or "duplicate key" in str(e):
+                db.update("ideas", {"id": best["id"]}, {"status": "queued"})
+                continue
+            raise
+        db.update("ideas", {"id": best["id"]}, {"status": "queued"})
+        enqueue("produce_video", {"video_id": v["id"]}, dedupe=f"produce:{v['id']}", channel_id=channel_id,
+                video_id=v["id"], priority=4)
+        event(f"Planned a new video: {best['title']}", "info", "planner", channel_id=channel_id, video_id=v["id"])
+        return {"video_id": v["id"], "idea": best["title"]}
+    raise PermanentError("Every available idea already has a video in progress")
 
 
 def research_ideas(channel_id: str, count: int = 12) -> dict:
@@ -79,15 +85,28 @@ def research_ideas(channel_id: str, count: int = 12) -> dict:
 
 
 # ------------------------------------------------------------------ publishing
+PUBLISHABLE = ["approved", "scheduled", "ready"]
+
+
 def publish_video(video_id: str) -> dict:
     v = db.select("videos", {"id": video_id}, single=True)
     ch = db.select("channels", {"id": v["channel_id"]}, single=True)
-    if v["status"] in ("posted", "sent_to_drafts", "uploading"):
+    if v["status"] in ("posted", "sent_to_drafts"):
         return {"skipped": v["status"]}
-    if v["status"] not in ("approved", "scheduled", "ready"):
-        raise RuntimeError(f"Video is '{v['status']}', not ready to publish")
-    if v["status"] == "ready" and ch.get("require_approval", True):
-        raise RuntimeError("Video needs approval before publishing")
+    if v["status"] == "uploading":
+        if v.get("tiktok_publish_id"):            # upload finished earlier; just keep polling
+            enqueue("check_publish", {"video_id": video_id}, dedupe=f"check:{video_id}", channel_id=ch["id"],
+                    video_id=video_id)
+            return {"resumed_check": True}
+        stale = datetime.fromisoformat(v["updated_at"]) < now() - timedelta(minutes=30)
+        if not stale:
+            return {"skipped": "upload in progress"}
+        db.update("videos", {"id": video_id, "status": "uploading"}, {"status": "approved"})   # stale, never reached TikTok
+        v["status"] = "approved"
+    if v["status"] not in PUBLISHABLE:
+        raise PermanentError(f"Video is '{v['status']}', not ready to publish")
+    if v["status"] == "ready" and ch.get("require_approval", True) and v.get("approval") != "approved":
+        raise PermanentError("Video needs approval before publishing")
     if not ch.get("tiktok_account_id"):
         raise NotConfigured("tiktok", f"Channel '{ch['name']}' has no TikTok account connected")
     g = settings.get()
@@ -97,23 +116,33 @@ def publish_video(video_id: str) -> dict:
     caption = (v.get("caption") or v["title"]).strip()
     tags = " ".join(v.get("hashtags") or [])
     title = f"{caption}\n\n{tags}".strip()
-    db.update("videos", {"id": video_id}, {"status": "uploading", "stage_detail": f"Uploading to TikTok ({mode})"})
-    data = db.download("videos", v["video_path"])
+    prev = v["status"]
+    # atomic claim: only one lane can move this video into 'uploading'
+    claimed = db.update("videos", {"id": video_id, "status": ("in", PUBLISHABLE)},
+                        {"status": "uploading", "stage_detail": f"Uploading to TikTok ({mode})", "error": None})
+    if not claimed:
+        return {"skipped": "already claimed"}
+    pid = None
     try:
+        data = db.download("videos", v["video_path"])
         pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True)
+        db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
+                                               "publish_status": {"mode": mode}})
     except tiktok.TikTokError as e:
-        db.update("videos", {"id": video_id}, {"status": "approved", "error": str(e)})
-        if e.code in ("access_token_invalid", "scope_not_authorized"):
-            raise NotConfigured("tiktok", f"TikTok rejected the token ({e.code}) — reconnect the account")
+        db.update("videos", {"id": video_id}, {"status": prev, "error": str(e), "stage_detail": None})
+        if e.code in ("access_token_invalid", "scope_not_authorized", "invalid_grant", "invalid_token", "refresh_failed"):
+            raise NotConfigured("tiktok", f"TikTok rejected the account token ({e.code}) — reconnect it in Accounts")
         if e.code in ("spam_risk_too_many_posts", "spam_risk_too_many_pending_share", "reached_active_user_cap",
                       "rate_limit_exceeded"):
-            enqueue("publish_video", {"video_id": video_id}, dedupe=f"publish:{video_id}:retry",
+            enqueue("publish_video", {"video_id": video_id}, dedupe=f"publish:{video_id}",
                     run_after=now() + timedelta(hours=3), channel_id=ch["id"], video_id=video_id)
             event(f"TikTok limit hit ({e.code}); retrying in 3h", "warn", "publish", channel_id=ch["id"], video_id=video_id)
             return {"retry": e.code}
         raise
-    db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
-                                           "publish_status": {"mode": mode}})
+    except BaseException:
+        if pid is None:          # nothing reached TikTok → safe to try again later
+            db.update("videos", {"id": video_id}, {"status": prev, "stage_detail": None})
+        raise
     enqueue("check_publish", {"video_id": video_id}, dedupe=f"check:{video_id}", run_after=now() + timedelta(seconds=45),
             channel_id=ch["id"], video_id=video_id)
     event(f"Uploaded to TikTok as {mode}: {v['title']}", "success", "publish", channel_id=ch["id"], video_id=video_id)
@@ -146,6 +175,10 @@ def check_publish(video_id: str, attempt: int = 0) -> dict:
             enqueue("check_publish", {"video_id": video_id, "attempt": attempt + 1}, dedupe=f"check:{video_id}:{attempt + 1}",
                     run_after=now() + timedelta(seconds=min(600, 30 * (attempt + 1))), channel_id=ch["id"],
                     video_id=video_id)
+        else:
+            vals.update(status="failed", error=f"TikTok still processing after many checks (last status {s}). "
+                                               "Check the TikTok app; it may have posted.")
+            event("Gave up waiting for TikTok processing status", "error", "publish", channel_id=ch["id"], video_id=video_id)
     if s == "PUBLISH_COMPLETE" and mode == "public" and not vals.get("tiktok_video_id") and attempt < 40:
         enqueue("check_publish", {"video_id": video_id, "attempt": attempt + 1}, dedupe=f"check:{video_id}:{attempt + 1}",
                 run_after=now() + timedelta(minutes=5), channel_id=ch["id"], video_id=video_id)
@@ -334,84 +367,116 @@ def _email_report(ch: dict, md: str) -> None:
 
 
 # ------------------------------------------------------------------ health & credits
-def health_check() -> dict:
-    out = {}
-    # Anthropic
+def _section(name: str, fn, out: dict) -> None:
+    """Run one health section; never let it break the others or the resume step."""
     try:
-        llm.ping()
-        credit = settings.get("anthropic_credit")
-        bal, set_at = credit.get("balance_usd"), credit.get("set_at")
-        if bal is not None and set_at:
-            used = spend.total_since(datetime.fromisoformat(set_at), "anthropic")
-            left = float(bal) - used
-            st = "ok" if left > 5 else ("warning" if left > 0.5 else "out_of_credits")
-            set_status("anthropic", st, None if st == "ok" else f"Estimated ${left:.2f} left. Top up at console.anthropic.com",
-                       balance=round(left, 2), unit="usd", limit=float(bal))
-        else:
-            set_status("anthropic", "ok", "Key works. Enter your credit balance in Settings to track it.")
-        out["anthropic"] = "ok"
+        out[name] = fn()
     except ServiceProblem as p:
         _keep_or_report(p)
-        out["anthropic"] = p.status
-    # ElevenLabs
+        out[name] = p.status
+    except Exception as e:
+        log.warning(f"health {name}: {e}")
+        set_status(name, "warning", f"Health check could not complete: {_scrub(str(e))[:140]}")
+        out[name] = "warning"
+
+
+def _scrub(text: str) -> str:
+    import re
+    return re.sub(r"(api_key|key|token|secret)=[^&\s]+", r"\1=***", text)
+
+
+def _health_anthropic() -> str:
+    llm.ping()
+    credit = settings.get("anthropic_credit")
+    bal, set_at = credit.get("balance_usd"), credit.get("set_at")
+    if bal is not None and set_at:
+        used = spend.total_since(datetime.fromisoformat(set_at), "anthropic")
+        left = float(bal) - used
+        st = "ok" if left > 5 else ("warning" if left > 0.5 else "out_of_credits")
+        set_status("anthropic", st, None if st == "ok" else f"Estimated ${left:.2f} left. Top up at console.anthropic.com",
+                   balance=round(left, 2), unit="usd", limit=float(bal))
+        return st
+    set_status("anthropic", "ok", "Key works. Enter your credit balance in Settings to track it.")
+    return "ok"
+
+
+def _health_elevenlabs() -> str:
     try:
         sub = voice.subscription()
-        used, lim = int(sub.get("character_count", 0)), int(sub.get("character_limit", 0))
-        left = lim - used
-        st = "ok" if left > 6000 else ("warning" if left > 1500 else "out_of_credits")
-        reset = sub.get("next_character_count_reset_unix")
-        msg = None if st == "ok" else f"{left:,} characters left (~{left // 1400} videos)." + (
-            f" Resets {datetime.fromtimestamp(reset, timezone.utc):%b %d}." if reset else "")
-        set_status("elevenlabs", st, msg, balance=left, unit="chars", limit=lim, details={"tier": sub.get("tier")})
-        out["elevenlabs"] = st
-    except ServiceProblem as p:
-        if isinstance(p, NotConfigured) and "permission" in p.message and secrets.get("elevenlabs_api_key"):
+    except NotConfigured as p:
+        if "permission" in p.message and secrets.get("elevenlabs_api_key"):
             set_status("elevenlabs", "warning", "Key works for voice but cannot read your balance — enable the "
                        "'User: Read' permission on the ElevenLabs API key.")
-            out["elevenlabs"] = "warning"
-        else:
-            _keep_or_report(p)
-            out["elevenlabs"] = p.status
-    # RunPod
+            return "warning"
+        raise
+    used, lim = int(sub.get("character_count") or 0), int(sub.get("character_limit") or 0)
+    left = lim - used
+    st = "ok" if left > 6000 else ("warning" if left > 1500 else "out_of_credits")
+    reset = sub.get("next_character_count_reset_unix")
+    msg = None if st == "ok" else f"{left:,} characters left (~{left // 1400} videos)." + (
+        f" Resets {datetime.fromtimestamp(reset, timezone.utc):%b %d}." if reset else "")
+    set_status("elevenlabs", st, msg, balance=left, unit="chars", limit=lim, details={"tier": sub.get("tier")})
+    return st
+
+
+def _health_runpod() -> str:
     key = secrets.get("runpod_api_key")
-    if key:
-        try:
-            r = httpx.post("https://api.runpod.io/graphql", params={"api_key": key}, timeout=30,
-                           json={"query": "query { myself { clientBalance currentSpendPerHr } }"})
-            me = (r.json().get("data") or {}).get("myself") or {}
-            bal = float(me.get("clientBalance") or 0)
-            st = "ok" if bal > 2 else ("warning" if bal > 0.3 else "out_of_credits")
-            set_status("runpod", st, None if st == "ok" else f"${bal:.2f} left (~{int(bal / 0.1)} videos). Add funds at runpod.io",
-                       balance=round(bal, 2), unit="usd")
-            out["runpod"] = st
-        except Exception as e:
-            set_status("runpod", "warning", f"Could not read RunPod balance: {str(e)[:120]}")
-    else:
+    if not key:
         set_status("runpod", "unconfigured", "Add your RunPod API key in Settings")
-    # TikTok
+        return "unconfigured"
+    r = httpx.post("https://api.runpod.io/graphql", headers={"Authorization": f"Bearer {key}"}, timeout=30,
+                   json={"query": "query { myself { clientBalance currentSpendPerHr } }"})
+    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    me = (body.get("data") or {}).get("myself")
+    if r.status_code in (401, 403) or (body.get("errors") and not me):
+        set_status("runpod", "unconfigured", "RunPod rejected the API key — check it in Settings")
+        return "unconfigured"
+    if me is None:
+        raise RuntimeError(f"RunPod balance unavailable (HTTP {r.status_code})")
+    bal = float(me.get("clientBalance") or 0)
+    st = "ok" if bal > 2 else ("warning" if bal > 0.3 else "out_of_credits")
+    set_status("runpod", st, None if st == "ok" else f"${bal:.2f} left (~{int(bal / 0.1)} videos). Add funds at runpod.io",
+               balance=round(bal, 2), unit="usd")
+    return st
+
+
+def _health_tiktok() -> str:
     if not (secrets.get("tiktok_client_key") and secrets.get("tiktok_client_secret")):
         set_status("tiktok", "unconfigured", "Add the TikTok app client key/secret in Settings, then connect accounts")
-    else:
-        accs = db.select("tiktok_accounts")
-        bad = [a for a in accs if a["status"] != "connected"]
-        if not accs:
-            set_status("tiktok", "warning", "App keys saved — connect your first TikTok account in Accounts")
-        elif bad:
-            set_status("tiktok", "warning", f"{len(bad)} account(s) need reconnecting: " +
-                       ", ".join("@" + (a.get("username") or "?") for a in bad))
-        else:
-            set_status("tiktok", "ok", None, balance=len(accs), unit="accounts")
-    # Storage
+        return "unconfigured"
+    accs = db.select("tiktok_accounts", columns="id,username,status")
+    bad = [a for a in accs if a["status"] != "connected"]
+    if not accs:
+        set_status("tiktok", "warning", "App keys saved — connect your first TikTok account in Accounts")
+        return "warning"
+    if bad:
+        set_status("tiktok", "warning", f"{len(bad)} account(s) need reconnecting: " +
+                   ", ".join("@" + (a.get("username") or "?") for a in bad))
+        return "warning"
+    set_status("tiktok", "ok", None, balance=len(accs), unit="accounts")
+    return "ok"
+
+
+def _health_storage() -> str:
+    gb = _bucket_bytes("videos") / 1e9
+    limit = float(settings.get().get("storage_limit_gb", 1.0))
+    st = "ok" if gb < limit * 0.8 else ("warning" if gb < limit else "down")
+    set_status("storage", st, None if st == "ok" else f"Using {gb:.2f} GB of ~{limit:.0f} GB. Lower retention days in Settings.",
+               balance=round(gb, 3), unit="GB", limit=limit)
+    return st
+
+
+def health_check() -> dict:
+    out: dict = {}
     try:
-        total = _bucket_bytes("videos")
-        gb = total / 1e9
-        limit = float(settings.get().get("storage_limit_gb", 1.0))
-        st = "ok" if gb < limit * 0.8 else ("warning" if gb < limit else "down")
-        set_status("storage", st, None if st == "ok" else f"Using {gb:.2f} GB of ~{limit:.0f} GB. Lower retention days in Settings.",
-                   balance=round(gb, 3), unit="GB", limit=limit)
-    except Exception as e:
-        set_status("storage", "warning", f"Could not measure storage: {str(e)[:120]}")
-    _resume_waiting()
+        for name, fn in (("anthropic", _health_anthropic), ("elevenlabs", _health_elevenlabs),
+                         ("runpod", _health_runpod), ("tiktok", _health_tiktok), ("storage", _health_storage)):
+            _section(name, fn, out)
+    finally:
+        try:
+            _resume_waiting()
+        except Exception as e:
+            log.warning(f"resume waiting: {e}")
     return out
 
 
@@ -440,13 +505,20 @@ def _resume_waiting() -> None:
             from .spend import over_budget
             if over_budget():
                 continue
-        elif st.get(svc) not in ("ok", "warning"):
-            continue
+        else:
+            cur = st.get(svc)
+            # out-of-credits needs a real recovery ('ok'); a 'warning' would just fail again
+            healthy = cur == "ok" or (cur == "warning" and j.get("parked_status") != "out_of_credits")
+            if not healthy:
+                continue
         db.update("jobs", {"id": j["id"]}, {"status": "queued", "waiting_on": None, "run_after": now().isoformat()})
         if j.get("video_id"):
-            db.update("videos", {"id": j["video_id"], "status": "blocked"}, {"status": "queued", "error": None,
+            restore = j.get("prev_video_status") or "queued"
+            db.update("videos", {"id": j["video_id"], "status": "blocked"}, {"status": restore, "error": None,
                                                                               "stage_detail": "Resuming"})
     for ch in db.select("channels", {"blocked_reason": ("not.is", "null")}):
+        if ch["blocked_reason"].startswith("Stopped making new videos"):
+            continue                                 # circuit breaker: only the owner's Start clears it
         still = db.select("jobs", {"channel_id": ch["id"], "status": "waiting"}, limit=1)
         if not still:
             db.update("channels", {"id": ch["id"]}, {"blocked_reason": None})
@@ -470,28 +542,58 @@ BACKUP_TABLES = ["channels", "ideas", "videos", "video_stats", "account_stats", 
                  "secrets", "reports", "spend", "events", "services"]
 
 
+_PK = {"settings": "key", "secrets": "key", "services": "name"}
+
+
 def backup_db() -> dict:
-    dump = {"created_at": now().isoformat(), "tables": {}}
-    for t in BACKUP_TABLES:
-        rows, off = [], 0
-        while True:
-            r = db.client().get(f"/rest/v1/{t}", params={"select": "*", "limit": "1000", "offset": str(off)})
-            r.raise_for_status()
-            batch = r.json()
-            rows += batch
-            if len(batch) < 1000:
-                break
-            off += 1000
-        dump["tables"][t] = rows
-    data = gzip.compress(json.dumps(dump, default=str).encode())
+    """Streams every table (ordered by primary key, keyset-paginated) into a gzip JSON file in the `backups` bucket."""
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        gz.write(json.dumps({"created_at": now().isoformat()})[:-1].encode() + b', "tables": {')
+        for ti, t in enumerate(BACKUP_TABLES):
+            pk = _PK.get(t, "id")
+            gz.write((("," if ti else "") + json.dumps(t) + ": [").encode())
+            last, first = None, True
+            while True:
+                params = {"select": "*", "limit": "1000", "order": f"{pk}.asc"}
+                if last is not None:
+                    params[pk] = f"gt.{last}"
+                if t == "events":
+                    params["created_at"] = f"gte.{(now() - timedelta(days=7)).isoformat()}"
+                r = db.client().get(f"/rest/v1/{t}", params=params)
+                r.raise_for_status()
+                batch = r.json()
+                for row in batch:
+                    gz.write((("" if first else ",") + json.dumps(row, default=str)).encode())
+                    first = False
+                if len(batch) < 1000:
+                    break
+                last = batch[-1][pk]
+            gz.write(b"]")
+        gz.write(b"}}")
+    data = buf.getvalue()
     path = f"db/{date.today().isoformat()}.json.gz"
     db.upload("backups", path, data, "application/gzip")
-    # keep 30 days
     objs = sorted(o["name"] for o in db.list_objects("backups", "db/") if o.get("id"))
-    if len(objs) > 30:
+    if len(objs) > 30:                                   # keep 30 days
         db.remove("backups", [f"db/{n}" for n in objs[:-30]])
     event(f"Backup saved ({len(data) / 1e6:.1f} MB)", "success", "backup")
     return {"path": path, "bytes": len(data)}
+
+
+def _sweep_local(days: int = 3) -> int:
+    """Remove leftover local work dirs (failed videos, killed renders)."""
+    import shutil
+    import time as _t
+    cutoff, n = _t.time() - days * 86400, 0
+    for d in list((config.WORK / "videos").glob("*")) + list(config.WORK.glob("render_*")):
+        try:
+            if d.is_dir() and d.stat().st_mtime < cutoff:
+                shutil.rmtree(d, ignore_errors=True)
+                n += 1
+        except OSError:
+            pass
+    return n
 
 
 def cleanup_storage() -> dict:
@@ -513,4 +615,4 @@ def cleanup_storage() -> dict:
     db.delete("events", {"created_at": ("lt", (now() - timedelta(days=60)).isoformat())})
     db.delete("jobs", {"status": ("in", ["done", "cancelled"]), "finished_at": ("lt", (now() - timedelta(days=14)).isoformat())})
     db.delete("oauth_states", {"created_at": ("lt", (now() - timedelta(hours=1)).isoformat())})
-    return {"videos_cleaned": n}
+    return {"videos_cleaned": n, "local_dirs_removed": _sweep_local()}

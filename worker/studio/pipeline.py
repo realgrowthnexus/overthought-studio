@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
+import signal
 import shutil
 import subprocess
 import sys
@@ -12,7 +14,7 @@ from pathlib import Path
 from . import config, content, db, images, spend, voice
 from .log import event, log
 from .render import compose
-from .services import ServiceProblem
+from .services import PermanentError, ServiceProblem
 
 STAGES = ["research", "script", "factcheck", "visuals", "voice", "render"]
 STATUS_OF = {"research": "researching", "script": "scripting", "factcheck": "fact_checking", "visuals": "visuals",
@@ -101,7 +103,7 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                               caption=script.caption, hashtags=script.hashtags,
                               experiment={"hook_style": hook_style}))
 
-        elif name == "factcheck" and not video.get("factcheck"):
+        elif name == "factcheck" and not (video.get("factcheck") or {}).get("passes"):
             _stage(video, name, "Fact-checking every claim and source")
             script = content.Script.model_validate(video["script"])
             fc = None
@@ -124,7 +126,7 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
             assert fc is not None
             video.update(_upd(video_id, factcheck=fc.model_dump()))
             if not (fc.passes and fc.citations_valid):
-                raise RuntimeError("Fact-check failed after 2 rewrites: " + "; ".join(fc.required_changes)[:500])
+                raise PermanentError("Fact-check failed after 2 rewrites: " + "; ".join(fc.required_changes)[:500])
 
         elif name == "visuals":
             script = content.Script.model_validate(video["script"])
@@ -191,10 +193,24 @@ def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> No
         script, usd = content.write_script(
             ch, idea, video["research"], hook_style=(video.get("experiment") or {}).get("hook_style", "you-callout"),
             feedback=[f"{verb} the narration to about {target} words total (currently {wc}). Keep every fact identical, "
-                      f"keep the hook and loop line. Add depth (an extra example or detail from the research), never filler."],
+                      f"keep the hook and loop line. Add depth (an extra example or detail from the research), never filler. "
+                      f"Keep the scenes list EXACTLY as it is and only use existing scene ids."],
             previous=script.model_dump(), video_id=video["id"])
         _add_cost(video, "script", usd)
-        video.update(_upd(video["id"], script=script.model_dump()))
+        # the drawings already exist: keep the original scenes, clamp beats to them
+        old_scenes = content.Script.model_validate(video["script"]).scenes
+        ids = {sc.id for sc in old_scenes}
+        script.scenes = old_scenes
+        for b in script.beats:
+            if b.scene_id not in ids:
+                b.scene_id = old_scenes[0].id
+        # any rewrite must pass the fact-check again before it can be voiced
+        _upd(video["id"], stage_detail="Re-checking facts after the length edit")
+        fc, usd = content.fact_check(ch, script, video_id=video["id"])
+        _add_cost(video, "factcheck", usd)
+        if not (fc.passes and fc.citations_valid):
+            raise PermanentError("Length-adjusted script failed the fact-check: " + "; ".join(fc.required_changes)[:400])
+        video.update(_upd(video["id"], script=script.model_dump(), factcheck=fc.model_dump()))
     if dur < HARD_MIN_SECONDS:
         raise RuntimeError(f"Voiceover is only {dur:.1f}s; Creator Rewards needs > 60s")
     (work / "voice.mp3").write_bytes(audio)
@@ -262,11 +278,17 @@ def _render(video: dict, ch: dict, work: Path) -> dict:
                         out_path=out, thumb_path=thumb)
     spec_path = work / "spec.json"
     spec_path.write_text(json.dumps(dataclasses.asdict(spec)))
-    proc = subprocess.run([sys.executable, "-m", "studio.render.run", str(spec_path)], cwd=str(config.ROOT),
-                          capture_output=True, text=True, timeout=3600)
+    proc = subprocess.Popen([sys.executable, "-m", "studio.render.run", str(spec_path)], cwd=str(config.ROOT),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        stdout, stderr = proc.communicate(timeout=3600)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)          # kill the pool workers and ffmpeg children too
+        proc.communicate()
+        raise RuntimeError("Render took longer than 60 minutes and was stopped")
     if proc.returncode != 0:
-        raise RuntimeError("Render failed: " + (proc.stderr or proc.stdout)[-800:])
-    pr = json.loads(proc.stdout.strip().splitlines()[-1])
+        raise RuntimeError("Render failed: " + (stderr or stdout)[-800:])
+    pr = json.loads(stdout.strip().splitlines()[-1])
     if pr["duration"] < HARD_MIN_SECONDS:
         raise RuntimeError(f"Rendered video is {pr['duration']:.1f}s (< 61s)")
     return {"path": out, "thumb": thumb, "probe": pr}

@@ -10,6 +10,7 @@ services:
     image: overthought-studio-worker:local
     container_name: ots-worker
     restart: unless-stopped
+    stop_grace_period: 15m        # let a running render/upload finish before restarts
     env_file: .env
     volumes:
       - work:/data/work
