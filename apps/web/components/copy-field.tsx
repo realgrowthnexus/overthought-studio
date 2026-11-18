@@ -15,10 +15,11 @@ export function CopyField({ label, value }: { label: string; value: string }) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1400);
         }}
-        className="flex size-8 shrink-0 items-center justify-center rounded-[8px] text-ink-3 hover:bg-elev-2 hover:text-ink"
+        className="tap relative flex size-9 shrink-0 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink"
         aria-label={`Copy ${label}`}
       >
-        {copied ? <Check className="size-4 text-good" /> : <Copy className="size-4" />}
+        {copied ? <Check className="size-4 text-good" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        <span className="sr-only" aria-live="polite">{copied ? "Copied" : ""}</span>
       </button>
     </div>
   );

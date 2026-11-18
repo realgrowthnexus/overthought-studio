@@ -55,7 +55,7 @@ const toneClass: Record<Tone, string> = {
   info: "bg-info-soft text-info",
 };
 const dotClass: Record<Tone, string> = {
-  neutral: "bg-ink-3", good: "bg-good", warn: "bg-warn", bad: "bg-bad", accent: "bg-accent", info: "bg-info",
+  neutral: "bg-ink-3", good: "bg-good", warn: "bg-warn", bad: "bg-bad", accent: "bg-accent-mark", info: "bg-info",
 };
 
 export function Badge({
@@ -80,9 +80,10 @@ export function Lamp({ tone, live, className }: { tone: Tone; live?: boolean; cl
 
 /* ---------- Form ---------- */
 export const inputClass =
-  "w-full rounded-[10px] border border-line bg-bg px-3 text-[14px] text-ink placeholder:text-ink-3 " +
-  "transition-[border-color,box-shadow] duration-150 hover:border-line-strong " +
-  "focus:border-ink-3 focus:outline-none focus:ring-4 focus:ring-[var(--accent-soft)] disabled:opacity-60";
+  "w-full rounded-[10px] border border-line-input bg-bg px-3 text-[14px] text-ink placeholder:text-ink-3 " +
+  "transition-[border-color,box-shadow] duration-150 hover:border-ink-3 " +
+  "focus:border-ink focus:outline-none focus:ring-4 focus:ring-[var(--accent-soft)] " +
+  "aria-invalid:border-bad disabled:cursor-not-allowed disabled:opacity-60";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {
@@ -118,7 +119,7 @@ export function Field({
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={htmlFor} className="text-[13px] font-medium text-ink-2">{label}</label>
       {children}
-      {error ? <p className="text-[12px] text-bad">{error}</p> : hint ? <p className="text-[12px] leading-snug text-ink-3">{hint}</p> : null}
+      {error ? <p className="text-[12px] text-bad" role="alert">{error}</p> : hint ? <p className="text-[12px] leading-snug text-ink-3">{hint}</p> : null}
     </div>
   );
 }
@@ -130,7 +131,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 /* ---------- Progress ---------- */
 export function Progress({ value, live, tone = "accent", className }: { value: number; live?: boolean; tone?: "accent" | "good" | "bad"; className?: string }) {
-  const fill = tone === "good" ? "bg-good" : tone === "bad" ? "bg-bad" : "bg-accent";
+  const fill = tone === "good" ? "bg-good" : tone === "bad" ? "bg-bad" : "bg-accent-mark";
   return (
     <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-elev-2", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)}>
       <div

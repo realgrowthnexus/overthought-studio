@@ -47,7 +47,7 @@ export function PipelineBoard({ videos, channels }: { videos: Video[]; channels:
                       <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-ink">{v.title || "Untitled idea"}</p>
                       {live ? (
                         <div className="mt-2 h-1 overflow-hidden rounded-full bg-elev-2">
-                          <div className="progress-live h-full rounded-full bg-accent" style={{ width: `${Math.max(8, v.progress)}%` }} />
+                          <div className="progress-live h-full rounded-full bg-accent-mark" style={{ width: `${Math.max(8, v.progress)}%` }} />
                         </div>
                       ) : (
                         <p className="mt-1.5 text-[11px] text-ink-3">{v.status === "ready" ? "Waiting for your review" : `Queued ${relTime(v.created_at)}`}</p>

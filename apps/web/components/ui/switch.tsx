@@ -26,10 +26,10 @@ export function Switch({
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative inline-flex shrink-0 items-center rounded-full border p-[2px] transition-colors duration-200",
+        "tap relative inline-flex shrink-0 cursor-pointer items-center rounded-full border p-[2px] transition-colors duration-200",
         w,
-        checked ? "border-transparent bg-accent" : "border-line-strong bg-elev-2",
-        "disabled:opacity-50",
+        checked ? "border-transparent bg-accent" : "border-line-input bg-elev-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
       )}
     >
       <motion.span

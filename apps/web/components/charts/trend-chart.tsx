@@ -31,12 +31,13 @@ export function TrendChart({ data, height = 240, initial = "views" }: { data: Da
         </div>
         <div className="flex items-center gap-2">
           <SegmentedControl
-            label={`metric-${id}`}
+            label="Metric"
+            layoutKey={`metric-${id}`}
             value={metric}
             onChange={setMetric}
             options={(Object.keys(LABEL) as Metric[]).map((m) => ({ value: m, label: LABEL[m] }))}
           />
-          <button onClick={() => setShowTable((s) => !s)} className="h-9 rounded-[8px] px-2.5 text-[12px] text-ink-3 hover:bg-elev-2 hover:text-ink">
+          <button type="button" aria-pressed={showTable} onClick={() => setShowTable((s) => !s)} className="tap relative h-9 rounded-[8px] px-2.5 text-[12px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink">
             {showTable ? "Chart" : "Table"}
           </button>
         </div>

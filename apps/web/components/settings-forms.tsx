@@ -67,7 +67,7 @@ function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { h
               placeholder="Paste the key"
               className="pr-10 font-mono"
             />
-            <button type="button" onClick={() => setShow((s) => !s)} className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-ink-3 hover:text-ink" aria-label={show ? "Hide key" : "Show key"}>
+            <button type="button" onClick={() => setShow((s) => !s)} className="tap absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink" aria-label={show ? "Hide key" : "Show key"}>
               {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>

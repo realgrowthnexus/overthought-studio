@@ -27,7 +27,7 @@ export function StatTile({
       {pct !== null && (
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-elev-2" aria-hidden>
           <div
-            className={cn("h-full rounded-full", pct > 0.9 ? "bg-bad" : pct > 0.75 ? "bg-warn" : "bg-accent")}
+            className={cn("h-full rounded-full", pct > 0.9 ? "bg-bad" : pct > 0.75 ? "bg-warn" : "bg-accent-mark")}
             style={{ width: `${Math.max(2, pct * 100)}%` }}
           />
         </div>

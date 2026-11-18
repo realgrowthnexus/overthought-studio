@@ -16,12 +16,30 @@ export function Dialog({
   wide?: boolean;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const titleId = React.useId();
+  const descId = React.useId();
 
   React.useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      // keep Tab inside the dialog while it is open
+      if (e.key === "Tab" && ref.current) {
+        const items = ref.current.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        );
+        if (!items.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -50,7 +68,8 @@ export function Dialog({
             ref={ref}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-labelledby={titleId}
+            aria-describedby={description ? descId : undefined}
             className={cn(
               "relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-[20px] border border-line bg-elev shadow-[var(--shadow)] sm:rounded-[18px]",
               wide ? "sm:max-w-2xl" : "sm:max-w-md",
@@ -63,11 +82,16 @@ export function Dialog({
           >
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-elev px-5 py-4">
               <div>
-                <h2 className="text-[16px] font-semibold text-ink">{title}</h2>
-                {description && <p className="mt-0.5 text-[13px] text-ink-3">{description}</p>}
+                <h2 id={titleId} className="text-[16px] font-semibold text-ink">{title}</h2>
+                {description && <p id={descId} className="mt-0.5 text-[13px] leading-relaxed text-ink-3">{description}</p>}
               </div>
-              <button onClick={onClose} className="rounded-md p-1 text-ink-3 hover:bg-elev-2 hover:text-ink" aria-label="Close">
-                <X className="size-4" />
+              <button
+                type="button"
+                onClick={onClose}
+                className="tap relative -mt-1 -mr-2 flex size-9 shrink-0 items-center justify-center rounded-[9px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink"
+                aria-label="Close"
+              >
+                <X className="size-4" aria-hidden />
               </button>
             </div>
             <div className="px-5 py-4">{children}</div>

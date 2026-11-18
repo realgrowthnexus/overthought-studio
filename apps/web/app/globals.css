@@ -15,6 +15,8 @@
   --bg-inset: #e3ddcf;
   --line: #d9d2c3;
   --line-strong: #bfb7a6;
+  /* form-control and toggle outlines: >= 3:1 against bg and elev (WCAG 1.4.11) */
+  --line-input: #857d6e;
   --ink: #1a1916;
   --ink-2: #45423c;
   --ink-3: #66615a;
@@ -23,6 +25,8 @@
   --accent-ink: #1a1916;
   --accent-text: #7a5c00;
   --accent-soft: rgb(255 214 10 / 0.22);
+  /* yellow as a small mark (dots, ticks, underlines, thin bars). #FFD60A is 1.2:1 on paper, so marks go ochre */
+  --accent-mark: #9a7400;
   --good: #176b33;
   --good-soft: rgb(23 107 51 / 0.12);
   --warn: #8f5400;
@@ -32,6 +36,7 @@
   --info: #2457a8;
   --info-soft: rgb(36 87 168 / 0.1);
   --focus: #1a1916;
+  --shimmer: rgb(255 255 255 / 0.55);
   --shadow: 0 1px 0 rgb(26 25 22 / 0.04), 0 8px 24px -12px rgb(26 25 22 / 0.18);
   --grain-opacity: 0.35;
 
@@ -51,6 +56,7 @@
   --bg-inset: #0c0c0c;
   --line: #2b2926;
   --line-strong: #3e3a35;
+  --line-input: #6e685f;
   --ink: #f6f1e6;
   --ink-2: #d0c9bb;
   --ink-3: #a19a8d;
@@ -59,6 +65,7 @@
   --accent-ink: #141210;
   --accent-text: #ffd60a;
   --accent-soft: rgb(255 214 10 / 0.12);
+  --accent-mark: #ffd60a;
   --good: #5fcf7f;
   --good-soft: rgb(95 207 127 / 0.12);
   --warn: #f5b847;
@@ -68,6 +75,7 @@
   --info: #8db8ff;
   --info-soft: rgb(141 184 255 / 0.12);
   --focus: #ffd60a;
+  --shimmer: rgb(255 255 255 / 0.05);
   --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 32px -16px rgb(0 0 0 / 0.7);
   --grain-opacity: 0.5;
 
@@ -86,6 +94,7 @@
   --color-inset: var(--bg-inset);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-line-input: var(--line-input);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
@@ -94,6 +103,7 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-mark: var(--accent-mark);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
@@ -119,11 +129,23 @@
 
 html {
   color-scheme: light;
+  /* anchors (/settings#keys) land below the sticky mobile header */
+  scroll-padding-top: 72px;
   -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
 }
 html.dark {
   color-scheme: dark;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (min-width: 1024px) {
+  html {
+    scroll-padding-top: 24px;
+  }
 }
 
 body {
@@ -162,6 +184,34 @@ body::before {
   border-radius: 6px;
 }
 
+/* Touch: grow the hit area of compact controls to 44px without changing how they look.
+   The element needs position: relative (or absolute). */
+@media (pointer: coarse) {
+  .tap::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* soft fade on the trailing edge of horizontally scrolling rows (tabs, filters) on phones */
+.scroll-fade-x {
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+.scroll-fade-x::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 640px) {
+  .scroll-fade-x {
+    mask-image: none;
+  }
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }
@@ -189,7 +239,7 @@ body::before {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  background: linear-gradient(90deg, transparent, var(--shimmer), transparent);
   animation: shimmer 1.4s infinite;
 }
 
@@ -244,10 +294,10 @@ body::before {
 .prose-studio ul { list-style: disc; padding-left: 1.3em; }
 .prose-studio ol { list-style: decimal; padding-left: 1.3em; }
 .prose-studio li { margin: 0.25em 0; }
-.prose-studio a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.prose-studio a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent-mark); text-underline-offset: 3px; text-decoration-thickness: 2px; }
 .prose-studio strong { color: var(--ink); }
 .prose-studio code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-elev-2); padding: 0.1em 0.35em; border-radius: 4px; }
 .prose-studio table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
 .prose-studio th, .prose-studio td { border-bottom: 1px solid var(--line); padding: 0.45em 0.6em; text-align: left; }
 .prose-studio th { color: var(--ink); font-weight: 600; }
-.prose-studio blockquote { border-left: 3px solid var(--accent); padding-left: 1em; color: var(--ink-2); }
+.prose-studio blockquote { border-left: 3px solid var(--accent-mark); padding-left: 1em; color: var(--ink-2); }

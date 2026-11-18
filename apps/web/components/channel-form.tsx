@@ -363,7 +363,7 @@ function PillarsEditor({ pillars, onChange }: { pillars: Pillar[]; onChange: (p:
             <Input aria-label="Pillar name" value={p.name} onChange={(e) => onChange(pillars.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
             <input aria-label="Pillar weight" type="range" min={0} max={1} step={0.05} value={p.weight} onChange={(e) => onChange(pillars.map((x, j) => (j === i ? { ...x, weight: Number(e.target.value) } : x)))} className="accent-[var(--accent)]" />
             <span className="text-right text-[13px] text-ink-2 tabular">{Math.round((p.weight / total) * 100)}%</span>
-            <button type="button" onClick={() => onChange(pillars.filter((_, j) => j !== i))} className="flex size-9 items-center justify-center rounded-[8px] text-ink-3 hover:bg-elev-2 hover:text-bad" aria-label={`Remove ${p.name}`}>
+            <button type="button" onClick={() => onChange(pillars.filter((_, j) => j !== i))} className="tap relative flex size-9 shrink-0 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-bad" aria-label={`Remove ${p.name}`}>
               <Trash2 className="size-4" />
             </button>
           </div>
@@ -386,7 +386,7 @@ function TimesEditor({ times, onChange }: { times: string[]; onChange: (t: strin
         {[...times].sort().map((t) => (
           <span key={t} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-bg pr-1.5 pl-3.5 text-[13px] text-ink tabular">
             {t}
-            <button type="button" onClick={() => onChange(times.filter((x) => x !== t))} className="rounded-full p-1 text-ink-3 hover:bg-elev-2 hover:text-ink" aria-label={`Remove ${t}`}>
+            <button type="button" onClick={() => onChange(times.filter((x) => x !== t))} className="tap relative flex size-6 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink" aria-label={`Remove ${t}`}>
               <X className="size-3.5" />
             </button>
           </span>

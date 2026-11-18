@@ -92,7 +92,7 @@ export function IdeaBank({ channelId, ideas, pillars }: { channelId: string; ide
 
 function IconBtn({ label, children, ...rest }: { label: string; children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...rest} aria-label={label} title={label} className="flex size-8 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink disabled:opacity-40">
+    <button {...rest} aria-label={label} title={label} className="tap relative flex size-8 items-center justify-center rounded-[8px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40">
       {children}
     </button>
   );

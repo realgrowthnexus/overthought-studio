@@ -29,7 +29,7 @@ export function ReportCard({ report, channelName, defaultOpen }: { report: Repor
               <ul className="flex flex-col gap-1.5 text-[13px] text-ink-2">
                 {changes.map((c, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                    <span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-accent-mark" aria-hidden />
                     <span>{typeof c === "string" ? c : <>{c.what}{c.why ? <span className="text-ink-3"> — {c.why}</span> : null}</>}</span>
                   </li>
                 ))}
