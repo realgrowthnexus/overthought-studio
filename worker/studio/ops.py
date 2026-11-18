@@ -1,0 +1,516 @@
+"""Operational jobs: planning, publishing, stats, health/credits, weekly review, backups, cleanup."""
+from __future__ import annotations
+
+import csv
+import gzip
+import io
+import json
+import statistics
+from datetime import date, datetime, timedelta, timezone
+
+import httpx
+from pydantic import BaseModel, Field
+
+from . import config, content, db, llm, secrets, settings, spend, tiktok, voice
+from .log import event, log
+from .services import NotConfigured, OutOfCredits, ServiceDown, ServiceProblem, set_status
+
+
+def now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def enqueue(type_: str, payload: dict | None = None, *, dedupe: str | None = None, priority: int = 5,
+            channel_id=None, video_id=None, run_after: datetime | None = None) -> bool:
+    row = {"type": type_, "payload": payload or {}, "priority": priority, "dedupe_key": dedupe,
+           "channel_id": channel_id, "video_id": video_id}
+    if run_after:
+        row["run_after"] = run_after.isoformat()
+    try:
+        db.insert("jobs", row)
+        return True
+    except db.DBError as e:
+        if "duplicate key" in str(e) or "23505" in str(e):
+            return False
+        raise
+
+
+# ------------------------------------------------------------------ planning
+def plan_channel(channel_id: str, force: bool = False) -> dict:
+    ch = db.select("channels", {"id": channel_id}, single=True)
+    if not ch:
+        raise RuntimeError("channel not found")
+    if ch["status"] != "active" and not force:
+        return {"skipped": "channel paused"}
+    ideas = db.select("ideas", {"channel_id": channel_id, "status": "new"}, order="score.desc", limit=50)
+    if len(ideas) < 10:
+        enqueue("research_ideas", {"channel_id": channel_id}, dedupe=f"research:{channel_id}", channel_id=channel_id,
+                priority=6)
+    if not ideas:
+        research_ideas(channel_id, count=12)
+        ideas = db.select("ideas", {"channel_id": channel_id, "status": "new"}, order="score.desc", limit=50)
+    if not ideas:
+        raise RuntimeError("No ideas available for this channel")
+    pw = (ch.get("strategy") or {}).get("pillar_weights") or {}
+    best = max(ideas, key=lambda i: float(i["score"]) * (0.7 + 0.3 * float(pw.get(i.get("pillar") or "", 1.0))))
+    db.update("ideas", {"id": best["id"]}, {"status": "queued"})
+    v = db.insert("videos", {"channel_id": channel_id, "idea_id": best["id"], "title": best["title"],
+                             "status": "queued", "stage_detail": "Waiting for the production line"})[0]
+    enqueue("produce_video", {"video_id": v["id"]}, dedupe=f"produce:{v['id']}", channel_id=channel_id,
+            video_id=v["id"], priority=4)
+    event(f"Planned a new video: {best['title']}", "info", "planner", channel_id=channel_id, video_id=v["id"])
+    return {"video_id": v["id"], "idea": best["title"]}
+
+
+def research_ideas(channel_id: str, count: int = 12) -> dict:
+    ch = db.select("channels", {"id": channel_id}, single=True)
+    existing = [r["title"] for r in db.select("ideas", {"channel_id": channel_id}, columns="title", limit=1000)]
+    ideas, usd = content.generate_ideas(ch, existing, count)
+    pw = (ch.get("strategy") or {}).get("pillar_weights") or {}
+    rows = [{"channel_id": channel_id, "title": i.title, "pillar": i.pillar, "angle": i.angle, "hook": i.hook,
+             "summary": i.summary, "keywords": i.keywords, "sources": [{"study": i.key_study}],
+             "scores": {"interest": i.interest, "search_demand": i.search_demand, "novelty": i.novelty,
+                        "evidence": i.evidence_strength}, "score": content.idea_score(i, pw), "origin": "research"}
+            for i in ideas if i.title.lower() not in {e.lower() for e in existing}]
+    if rows:
+        db.insert("ideas", rows)
+    event(f"Added {len(rows)} researched ideas (${usd:.2f})", "success", "research", channel_id=channel_id)
+    return {"added": len(rows)}
+
+
+# ------------------------------------------------------------------ publishing
+def publish_video(video_id: str) -> dict:
+    v = db.select("videos", {"id": video_id}, single=True)
+    ch = db.select("channels", {"id": v["channel_id"]}, single=True)
+    if v["status"] in ("posted", "sent_to_drafts", "uploading"):
+        return {"skipped": v["status"]}
+    if v["status"] not in ("approved", "scheduled", "ready"):
+        raise RuntimeError(f"Video is '{v['status']}', not ready to publish")
+    if v["status"] == "ready" and ch.get("require_approval", True):
+        raise RuntimeError("Video needs approval before publishing")
+    if not ch.get("tiktok_account_id"):
+        raise NotConfigured("tiktok", f"Channel '{ch['name']}' has no TikTok account connected")
+    g = settings.get()
+    mode = ch.get("posting_mode", "draft")
+    if mode == "public" and not g.get("auto_publish"):
+        mode = "private"            # master switch off → never public
+    caption = (v.get("caption") or v["title"]).strip()
+    tags = " ".join(v.get("hashtags") or [])
+    title = f"{caption}\n\n{tags}".strip()
+    db.update("videos", {"id": video_id}, {"status": "uploading", "stage_detail": f"Uploading to TikTok ({mode})"})
+    data = db.download("videos", v["video_path"])
+    try:
+        pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True)
+    except tiktok.TikTokError as e:
+        db.update("videos", {"id": video_id}, {"status": "approved", "error": str(e)})
+        if e.code in ("access_token_invalid", "scope_not_authorized"):
+            raise NotConfigured("tiktok", f"TikTok rejected the token ({e.code}) — reconnect the account")
+        if e.code in ("spam_risk_too_many_posts", "spam_risk_too_many_pending_share", "reached_active_user_cap",
+                      "rate_limit_exceeded"):
+            enqueue("publish_video", {"video_id": video_id}, dedupe=f"publish:{video_id}:retry",
+                    run_after=now() + timedelta(hours=3), channel_id=ch["id"], video_id=video_id)
+            event(f"TikTok limit hit ({e.code}); retrying in 3h", "warn", "publish", channel_id=ch["id"], video_id=video_id)
+            return {"retry": e.code}
+        raise
+    db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
+                                           "publish_status": {"mode": mode}})
+    enqueue("check_publish", {"video_id": video_id}, dedupe=f"check:{video_id}", run_after=now() + timedelta(seconds=45),
+            channel_id=ch["id"], video_id=video_id)
+    event(f"Uploaded to TikTok as {mode}: {v['title']}", "success", "publish", channel_id=ch["id"], video_id=video_id)
+    return {"publish_id": pid, "mode": mode}
+
+
+def check_publish(video_id: str, attempt: int = 0) -> dict:
+    v = db.select("videos", {"id": video_id}, single=True)
+    ch = db.select("channels", {"id": v["channel_id"]}, single=True)
+    if config.DRY_RUN or v.get("tiktok_publish_id") == "dry-run":
+        db.update("videos", {"id": video_id}, {"status": "posted", "posted_at": now().isoformat(), "stage_detail": None})
+        return {"dry_run": True}
+    st = tiktok.publish_status(ch["tiktok_account_id"], v["tiktok_publish_id"])
+    s = st.get("status")
+    mode = (v.get("publish_status") or {}).get("mode", "draft")
+    vals = {"publish_status": {**st, "mode": mode}}
+    if s == "SEND_TO_USER_INBOX":
+        vals.update(status="sent_to_drafts", stage_detail="In your TikTok inbox — open TikTok and tap Post",
+                    posted_at=now().isoformat())
+    elif s == "PUBLISH_COMPLETE":
+        ids = st.get("publicaly_available_post_id") or []
+        vals.update(status="posted", posted_at=now().isoformat(), stage_detail=None)
+        if ids:
+            vals["tiktok_video_id"] = str(ids[0])
+    elif s == "FAILED":
+        vals.update(status="failed", error=f"TikTok: {st.get('fail_reason')}")
+        event(f"TikTok publish failed: {st.get('fail_reason')}", "error", "publish", channel_id=ch["id"], video_id=video_id)
+    else:
+        if attempt < 40:
+            enqueue("check_publish", {"video_id": video_id, "attempt": attempt + 1}, dedupe=f"check:{video_id}:{attempt + 1}",
+                    run_after=now() + timedelta(seconds=min(600, 30 * (attempt + 1))), channel_id=ch["id"],
+                    video_id=video_id)
+    if s == "PUBLISH_COMPLETE" and mode == "public" and not vals.get("tiktok_video_id") and attempt < 40:
+        enqueue("check_publish", {"video_id": video_id, "attempt": attempt + 1}, dedupe=f"check:{video_id}:{attempt + 1}",
+                run_after=now() + timedelta(minutes=5), channel_id=ch["id"], video_id=video_id)
+    db.update("videos", {"id": video_id}, vals)
+    if vals.get("status") in ("posted", "sent_to_drafts") and v.get("idea_id"):
+        db.update("ideas", {"id": v["idea_id"]}, {"status": "used"})
+    return st
+
+
+# ------------------------------------------------------------------ stats
+def sync_stats(channel_id: str | None = None) -> dict:
+    where = {"tiktok_account_id": ("not.is", "null")}
+    if channel_id:
+        where["id"] = channel_id
+    chans = db.select("channels", where)
+    n = 0
+    for ch in chans:
+        acc_id = ch["tiktok_account_id"]
+        try:
+            u = tiktok.user_info(acc_id)
+            db.update("tiktok_accounts", {"id": acc_id}, {k: u.get(k) for k in (
+                "display_name", "username", "avatar_url", "follower_count", "following_count", "likes_count",
+                "video_count", "is_verified")} | {"last_synced_at": now().isoformat()})
+            db.insert("account_stats", {"tiktok_account_id": acc_id, "follower_count": u.get("follower_count"),
+                                        "likes_count": u.get("likes_count"), "video_count": u.get("video_count")})
+            vids = tiktok.list_videos(acc_id)
+        except tiktok.TikTokError as e:
+            event(f"Stats sync failed for {ch['name']}: {e}", "warn", "stats", channel_id=ch["id"])
+            continue
+        ours = db.select("videos", {"channel_id": ch["id"], "status": ("in", ["posted", "sent_to_drafts"])})
+        by_id = {v["tiktok_video_id"]: v for v in ours if v.get("tiktok_video_id")}
+        unmatched = sorted([v for v in ours if not v.get("tiktok_video_id")], key=lambda v: v.get("posted_at") or "")
+        for tv in sorted(vids, key=lambda x: x.get("create_time", 0)):
+            v = by_id.get(str(tv["id"]))
+            if v is None and unmatched:
+                # drafts published from the inbox: match by publish time and duration
+                ct = datetime.fromtimestamp(tv.get("create_time", 0), timezone.utc)
+                for cand in unmatched:
+                    pa = datetime.fromisoformat(cand["posted_at"]) if cand.get("posted_at") else None
+                    dur_ok = not cand.get("duration_s") or abs(float(cand["duration_s"]) - float(tv.get("duration") or 0)) <= 2
+                    if pa and timedelta(minutes=-10) <= ct - pa <= timedelta(days=4) and dur_ok:
+                        v = cand
+                        unmatched.remove(cand)
+                        db.update("videos", {"id": v["id"]}, {"tiktok_video_id": str(tv["id"]), "status": "posted",
+                                                              "tiktok_url": tv.get("share_url"), "posted_at": ct.isoformat()})
+                        break
+            if v is None:
+                continue
+            db.insert("video_stats", {"video_id": v["id"], "views": tv.get("view_count"), "likes": tv.get("like_count"),
+                                      "comments": tv.get("comment_count"), "shares": tv.get("share_count"),
+                                      "raw": tv, "source": "api"})
+            if tv.get("share_url") and not v.get("tiktok_url"):
+                db.update("videos", {"id": v["id"]}, {"tiktok_url": tv["share_url"]})
+            n += 1
+    return {"videos_updated": n}
+
+
+def import_stats(storage_path: str, channel_id: str) -> dict:
+    """TikTok Studio export (CSV). Matches rows to our videos by title/caption prefix or date."""
+    raw = db.download("videos", storage_path).decode("utf-8-sig", errors="replace")
+    rows = list(csv.DictReader(io.StringIO(raw)))
+    ours = db.select("videos", {"channel_id": channel_id, "status": ("in", ["posted", "sent_to_drafts"])})
+
+    def pick(r: dict, *names) -> str | None:
+        for k, val in r.items():
+            kk = (k or "").strip().lower()
+            if any(n in kk for n in names):
+                return val
+        return None
+
+    def num(x) -> float | None:
+        if x in (None, ""):
+            return None
+        x = str(x).replace(",", "").replace("%", "").strip()
+        try:
+            return float(x)
+        except ValueError:
+            return None
+
+    n = 0
+    for r in rows:
+        title = (pick(r, "title", "caption", "description") or "").strip().lower()
+        vid = pick(r, "video id", "post id")
+        match = next((v for v in ours if vid and v.get("tiktok_video_id") == str(vid).strip()), None) or \
+            next((v for v in ours if title and (v.get("caption") or v["title"]).strip().lower()[:40] in title), None)
+        if not match:
+            continue
+        comp = num(pick(r, "watched full", "full video", "completion"))
+        db.insert("video_stats", {"video_id": match["id"], "source": "import",
+                                  "views": num(pick(r, "views", "video views")), "likes": num(pick(r, "likes")),
+                                  "comments": num(pick(r, "comments")), "shares": num(pick(r, "shares")),
+                                  "saves": num(pick(r, "saves", "favorites")),
+                                  "avg_watch_s": num(pick(r, "average watch", "avg. watch", "avg watch")),
+                                  "completion_rate": comp / 100 if comp and comp > 1 else comp,
+                                  "follows": num(pick(r, "new followers", "follows")), "raw": r})
+        n += 1
+    event(f"Imported TikTok Studio stats for {n} videos", "success", "stats", channel_id=channel_id)
+    return {"matched": n, "rows": len(rows)}
+
+
+# ------------------------------------------------------------------ weekly review
+class Adjust(BaseModel):
+    summary_md: str = Field(description="Weekly report in markdown: what worked, what didn't, numbers, decisions")
+    pillar_weights: dict[str, float]
+    hook_weights: dict[str, float]
+    test_variable: str = Field(description="ONE variable to test next week: hook | length | music | topic_type | cta")
+    test_variant: str
+    notes_for_writer: str = Field(description="Concrete guidance the scriptwriter will read next week")
+    retire_idea_titles: list[str]
+    new_idea_directions: list[str]
+
+
+def _latest_stats(video_ids: list[str]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for i in range(0, len(video_ids), 80):
+        rows = db.select("video_stats", {"video_id": ("in", video_ids[i:i + 80])}, order="captured_at.desc")
+        for r in rows:
+            cur = out.setdefault(r["video_id"], {})
+            for k in ("views", "likes", "comments", "shares", "saves", "avg_watch_s", "completion_rate", "follows"):
+                if cur.get(k) is None and r.get(k) is not None:
+                    cur[k] = r[k]
+    return out
+
+
+def weekly_review(channel_id: str | None = None) -> dict:
+    chans = [db.select("channels", {"id": channel_id}, single=True)] if channel_id else db.select("channels")
+    done = []
+    for ch in chans:
+        since = (now() - timedelta(days=28)).isoformat()
+        vids = db.select("videos", {"channel_id": ch["id"], "posted_at": ("gte", since)})
+        if len(vids) < 3:
+            continue
+        stats = _latest_stats([v["id"] for v in vids])
+        table = []
+        for v in vids:
+            s = stats.get(v["id"], {})
+            views = float(s.get("views") or 0)
+            table.append({"title": v["title"], "posted": v["posted_at"], "seconds": v.get("duration_s"),
+                          "hook_style": (v.get("experiment") or {}).get("hook_style"),
+                          "pillar": None, "views": views,
+                          "share_rate": round(float(s.get("shares") or 0) / views, 4) if views else None,
+                          "like_rate": round(float(s.get("likes") or 0) / views, 4) if views else None,
+                          "comment_rate": round(float(s.get("comments") or 0) / views, 4) if views else None,
+                          "completion": s.get("completion_rate"), "avg_watch_s": s.get("avg_watch_s")})
+        med = statistics.median([t["views"] for t in table]) if table else 0
+        prompt = f"""Weekly performance review for TikTok channel "{ch['name']}" ({ch['niche']}).
+Channel median views (28d): {med}
+Current strategy: {json.dumps(ch.get('strategy') or {})}
+Pillars: {json.dumps((ch.get('content') or {}).get('pillars'))}
+Hook styles: {json.dumps((ch.get('content') or {}).get('hook_styles'))}
+Videos (last 28 days):
+{json.dumps(table, default=str)[:20000]}
+
+Rules: double down on topics/hook styles that beat the median on completion and shares; retire what underperforms;
+change only ONE test variable for next week; be specific; weights between 0.2 and 2.0."""
+        adj, usd = llm.structured(Adjust, content.channel_system(ch), prompt, purpose="weekly_review",
+                                  channel_id=ch["id"], max_tokens=12000)
+        strategy = {"week_of": date.today().isoformat(), "pillar_weights": adj.pillar_weights,
+                    "hook_weights": adj.hook_weights, "test": {"variable": adj.test_variable, "variant": adj.test_variant},
+                    "notes": adj.notes_for_writer, "directions": adj.new_idea_directions}
+        db.update("channels", {"id": ch["id"]}, {"strategy": strategy})
+        for t in adj.retire_idea_titles:
+            db.update("ideas", {"channel_id": ch["id"], "title": t, "status": "new"}, {"status": "retired"})
+        db.insert("reports", {"channel_id": ch["id"], "period_start": (date.today() - timedelta(days=7)).isoformat(),
+                              "period_end": date.today().isoformat(), "title": f"{ch['name']} — week of {date.today():%b %d}",
+                              "summary_md": adj.summary_md, "data": {"median_views": med, "videos": table},
+                              "changes": [{"strategy": strategy}, {"retired": adj.retire_idea_titles}]})
+        event(f"Weekly review done for {ch['name']}: testing {adj.test_variable} → {adj.test_variant}", "success",
+              "review", channel_id=ch["id"])
+        _email_report(ch, adj.summary_md)
+        done.append(ch["name"])
+    return {"reviewed": done}
+
+
+def _email_report(ch: dict, md: str) -> None:
+    to = settings.get().get("report_email")
+    key = secrets.get("resend_api_key")
+    if not to or not key:
+        return
+    try:
+        httpx.post("https://api.resend.com/emails", headers={"Authorization": f"Bearer {key}"}, timeout=30,
+                   json={"from": "Overthought Studio <reports@resend.dev>", "to": [to],
+                         "subject": f"Weekly report — {ch['name']}", "text": md})
+    except Exception as e:
+        log.warning(f"report email failed: {e}")
+
+
+# ------------------------------------------------------------------ health & credits
+def health_check() -> dict:
+    out = {}
+    # Anthropic
+    try:
+        llm.ping()
+        credit = settings.get("anthropic_credit")
+        bal, set_at = credit.get("balance_usd"), credit.get("set_at")
+        if bal is not None and set_at:
+            used = spend.total_since(datetime.fromisoformat(set_at), "anthropic")
+            left = float(bal) - used
+            st = "ok" if left > 5 else ("warning" if left > 0.5 else "out_of_credits")
+            set_status("anthropic", st, None if st == "ok" else f"Estimated ${left:.2f} left. Top up at console.anthropic.com",
+                       balance=round(left, 2), unit="usd", limit=float(bal))
+        else:
+            set_status("anthropic", "ok", "Key works. Enter your credit balance in Settings to track it.")
+        out["anthropic"] = "ok"
+    except ServiceProblem as p:
+        _keep_or_report(p)
+        out["anthropic"] = p.status
+    # ElevenLabs
+    try:
+        sub = voice.subscription()
+        used, lim = int(sub.get("character_count", 0)), int(sub.get("character_limit", 0))
+        left = lim - used
+        st = "ok" if left > 6000 else ("warning" if left > 1500 else "out_of_credits")
+        reset = sub.get("next_character_count_reset_unix")
+        msg = None if st == "ok" else f"{left:,} characters left (~{left // 1400} videos)." + (
+            f" Resets {datetime.fromtimestamp(reset, timezone.utc):%b %d}." if reset else "")
+        set_status("elevenlabs", st, msg, balance=left, unit="chars", limit=lim, details={"tier": sub.get("tier")})
+        out["elevenlabs"] = st
+    except ServiceProblem as p:
+        if isinstance(p, NotConfigured) and "permission" in p.message and secrets.get("elevenlabs_api_key"):
+            set_status("elevenlabs", "warning", "Key works for voice but cannot read your balance — enable the "
+                       "'User: Read' permission on the ElevenLabs API key.")
+            out["elevenlabs"] = "warning"
+        else:
+            _keep_or_report(p)
+            out["elevenlabs"] = p.status
+    # RunPod
+    key = secrets.get("runpod_api_key")
+    if key:
+        try:
+            r = httpx.post("https://api.runpod.io/graphql", params={"api_key": key}, timeout=30,
+                           json={"query": "query { myself { clientBalance currentSpendPerHr } }"})
+            me = (r.json().get("data") or {}).get("myself") or {}
+            bal = float(me.get("clientBalance") or 0)
+            st = "ok" if bal > 2 else ("warning" if bal > 0.3 else "out_of_credits")
+            set_status("runpod", st, None if st == "ok" else f"${bal:.2f} left (~{int(bal / 0.1)} videos). Add funds at runpod.io",
+                       balance=round(bal, 2), unit="usd")
+            out["runpod"] = st
+        except Exception as e:
+            set_status("runpod", "warning", f"Could not read RunPod balance: {str(e)[:120]}")
+    else:
+        set_status("runpod", "unconfigured", "Add your RunPod API key in Settings")
+    # TikTok
+    if not (secrets.get("tiktok_client_key") and secrets.get("tiktok_client_secret")):
+        set_status("tiktok", "unconfigured", "Add the TikTok app client key/secret in Settings, then connect accounts")
+    else:
+        accs = db.select("tiktok_accounts")
+        bad = [a for a in accs if a["status"] != "connected"]
+        if not accs:
+            set_status("tiktok", "warning", "App keys saved — connect your first TikTok account in Accounts")
+        elif bad:
+            set_status("tiktok", "warning", f"{len(bad)} account(s) need reconnecting: " +
+                       ", ".join("@" + (a.get("username") or "?") for a in bad))
+        else:
+            set_status("tiktok", "ok", None, balance=len(accs), unit="accounts")
+    # Storage
+    try:
+        total = _bucket_bytes("videos")
+        gb = total / 1e9
+        limit = float(settings.get().get("storage_limit_gb", 1.0))
+        st = "ok" if gb < limit * 0.8 else ("warning" if gb < limit else "down")
+        set_status("storage", st, None if st == "ok" else f"Using {gb:.2f} GB of ~{limit:.0f} GB. Lower retention days in Settings.",
+                   balance=round(gb, 3), unit="GB", limit=limit)
+    except Exception as e:
+        set_status("storage", "warning", f"Could not measure storage: {str(e)[:120]}")
+    _resume_waiting()
+    return out
+
+
+def _keep_or_report(p: ServiceProblem) -> None:
+    from .services import report_problem
+    report_problem(p)
+
+
+def _bucket_bytes(bucket: str, prefix: str = "") -> int:
+    total = 0
+    for o in db.list_objects(bucket, prefix):
+        if o.get("id") is None:                     # folder
+            total += _bucket_bytes(bucket, f"{prefix}{o['name']}/")
+        else:
+            total += int((o.get("metadata") or {}).get("size") or 0)
+    return total
+
+
+def _resume_waiting() -> None:
+    """Re-queue jobs parked on a service that is healthy again; clear channel block reasons."""
+    st = {r["name"]: r["status"] for r in db.select("services")}
+    waiting = db.select("jobs", {"status": "waiting"})
+    for j in waiting:
+        svc = j.get("waiting_on")
+        if svc == "budget":
+            from .spend import over_budget
+            if over_budget():
+                continue
+        elif st.get(svc) not in ("ok", "warning"):
+            continue
+        db.update("jobs", {"id": j["id"]}, {"status": "queued", "waiting_on": None, "run_after": now().isoformat()})
+        if j.get("video_id"):
+            db.update("videos", {"id": j["video_id"], "status": "blocked"}, {"status": "queued", "error": None,
+                                                                              "stage_detail": "Resuming"})
+    for ch in db.select("channels", {"blocked_reason": ("not.is", "null")}):
+        still = db.select("jobs", {"channel_id": ch["id"], "status": "waiting"}, limit=1)
+        if not still:
+            db.update("channels", {"id": ch["id"]}, {"blocked_reason": None})
+            event(f"{ch['name']} is running again", "success", "services", channel_id=ch["id"])
+
+
+def refresh_tokens() -> dict:
+    n = 0
+    soon = (now() + timedelta(hours=2)).isoformat()
+    for a in db.select("tiktok_accounts", {"status": "connected", "access_expires_at": ("lt", soon)}):
+        try:
+            tiktok.refresh(a)
+            n += 1
+        except Exception as e:
+            log.warning(f"refresh failed for {a.get('username')}: {e}")
+    return {"refreshed": n}
+
+
+# ------------------------------------------------------------------ backups & cleanup
+BACKUP_TABLES = ["channels", "ideas", "videos", "video_stats", "account_stats", "tiktok_accounts", "settings",
+                 "secrets", "reports", "spend", "events", "services"]
+
+
+def backup_db() -> dict:
+    dump = {"created_at": now().isoformat(), "tables": {}}
+    for t in BACKUP_TABLES:
+        rows, off = [], 0
+        while True:
+            r = db.client().get(f"/rest/v1/{t}", params={"select": "*", "limit": "1000", "offset": str(off)})
+            r.raise_for_status()
+            batch = r.json()
+            rows += batch
+            if len(batch) < 1000:
+                break
+            off += 1000
+        dump["tables"][t] = rows
+    data = gzip.compress(json.dumps(dump, default=str).encode())
+    path = f"db/{date.today().isoformat()}.json.gz"
+    db.upload("backups", path, data, "application/gzip")
+    # keep 30 days
+    objs = sorted(o["name"] for o in db.list_objects("backups", "db/") if o.get("id"))
+    if len(objs) > 30:
+        db.remove("backups", [f"db/{n}" for n in objs[:-30]])
+    event(f"Backup saved ({len(data) / 1e6:.1f} MB)", "success", "backup")
+    return {"path": path, "bytes": len(data)}
+
+
+def cleanup_storage() -> dict:
+    days = int(settings.get().get("video_retention_days") or 21)
+    cutoff = (now() - timedelta(days=days)).isoformat()
+    old = db.select("videos", {"posted_at": ("lt", cutoff), "video_path": ("not.is", "null")})
+    rejected = db.select("videos", {"status": "rejected", "updated_at": ("lt", (now() - timedelta(days=3)).isoformat()),
+                                    "video_path": ("not.is", "null")})
+    n = 0
+    for v in old + rejected:
+        ch = db.select("channels", {"id": v["channel_id"]}, single=True, columns="slug")
+        base = f"{ch['slug']}/{v['id']}"
+        paths = [f"{base}/final.mp4", f"{base}/voice.mp3"] + [f"{base}/scenes/{o['name']}"
+                                                             for o in db.list_objects("videos", f"{base}/scenes/")]
+        db.remove("videos", paths)
+        db.update("videos", {"id": v["id"]}, {"video_path": None, "audio_path": None})
+        n += 1
+    # old events / finished jobs
+    db.delete("events", {"created_at": ("lt", (now() - timedelta(days=60)).isoformat())})
+    db.delete("jobs", {"status": ("in", ["done", "cancelled"]), "finished_at": ("lt", (now() - timedelta(days=14)).isoformat())})
+    db.delete("oauth_states", {"created_at": ("lt", (now() - timedelta(hours=1)).isoformat())})
+    return {"videos_cleaned": n}
