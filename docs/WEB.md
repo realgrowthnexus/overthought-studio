@@ -42,8 +42,27 @@ Only through Supabase: buttons insert rows into `jobs` (deduped per target), edi
 approvals update `videos`. Pages re-render live from Realtime on `videos`, `jobs`, `events`, `channels`, `services`.
 
 ## Security notes
-- Every server action calls `requireAdmin()` and validates input with zod.
-- Service-role client lives in `lib/supabase/service.ts` (`server-only`); secrets are encrypted with AES-256-GCM
-  (`lib/crypto.ts`, format `v1:` + base64(iv‖ct‖tag)) and never sent back to the browser — only the last 4 characters.
-- `/setup` fails closed if the database can't be read.
-- Middleware runs on the Node.js runtime and refreshes the Supabase session cookie.
+- **AuthZ in depth**: middleware only refreshes the session and redirects. The real gate is server-side:
+  every server action runs `requireAdmin()` before any service-role call, every loader in `lib/data.ts` calls it
+  too (cached per request), pages use `requireAdminPage()`, route handlers use `getAdmin()`. Signed-in users who
+  aren't in `admins` land on `/login?error=not_admin`.
+- **Validation**: zod on every mutation. `enqueueJob` accepts only dashboard job types, each with a strict payload
+  schema (production stages whitelisted), and checks the target row exists. Channel JSON fields are size-capped;
+  caption + hashtags must fit TikTok's 2200-char title; CSV/XLSX import checks extension + MIME, max 20 MB, and the
+  storage path is built only from the channel uuid, a timestamp and the extension.
+- **/setup**: answers only while no owner exists and fails closed when the DB can't be read. `SETUP_TOKEN`
+  (≥ 12 chars) is compared in constant time on SHA-256 digests. Claims are serialized, and a post-insert
+  earliest-row check rolls back a second owner created concurrently.
+- **TikTok OAuth**: 256-bit `state`, stored in `oauth_states` with a hash binding it to the admin
+  (`code_verifier` column, unused by web login) and mirrored in an httpOnly SameSite=Lax cookie scoped to the
+  callback. The callback deletes and reads the row in one statement (single use), rejects anything older than
+  10 minutes, uses the exact `APP_URL/api/tiktok/callback` redirect URI, and redirects only to `APP_URL`.
+- **Secrets**: service-role client (`lib/supabase/service.ts`), `lib/crypto.ts`, `lib/secrets.ts`, `lib/auth.ts`
+  are `server-only`. AES-256-GCM, format `v1:` + base64(iv‖ct‖tag), 16-byte tag pinned; interop with
+  `worker/studio/crypto.py` tested both ways. Only the last 4 characters (`hint`) ever reach the browser;
+  `tiktok_accounts` token columns are never selected.
+- **Headers** (`next.config.ts`): CSP (self + the Supabase project for REST/storage/realtime `wss:`, TikTok CDN
+  images; `frame-ancestors 'none'`), HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP,
+  `no-store` on `/api`, `/auth`, `/login`, `/setup`. Scripts still need `'unsafe-inline'` (no nonces yet).
+  `images.remotePatterns` is empty (remote images are `unoptimized`), so `/_next/image` isn't an open proxy.
+- Auth cookies are `Secure` when `APP_URL` is https. `output: "standalone"` for the Docker image.
