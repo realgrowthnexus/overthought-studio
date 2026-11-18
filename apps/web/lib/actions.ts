@@ -34,20 +34,40 @@ function fail(error: { message: string } | null) {
 
 /* ---------------- Jobs ---------------- */
 
+// Job types the dashboard may enqueue. import_stats only goes through importStats() (it needs an uploaded file);
+// check_publish is enqueued by the worker itself.
 const JOB_TYPES = [
-  "plan_channel", "produce_video", "research_ideas", "publish_video", "check_publish", "sync_stats",
-  "import_stats", "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage",
+  "plan_channel", "produce_video", "research_ideas", "publish_video", "sync_stats",
+  "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage",
 ] as const;
+type JobType = (typeof JOB_TYPES)[number];
 
-const JOB_LABEL: Record<(typeof JOB_TYPES)[number], string> = {
+const JOB_LABEL: Record<JobType, string> = {
   plan_channel: "Video queued", produce_video: "Regeneration queued", research_ideas: "Idea research queued",
-  publish_video: "Publish queued", check_publish: "Status check queued", sync_stats: "Stats sync queued",
-  import_stats: "Import queued", weekly_review: "Weekly review queued", health_check: "Health check queued",
+  publish_video: "Publish queued", sync_stats: "Stats sync queued",
+  weekly_review: "Weekly review queued", health_check: "Health check queued",
   refresh_tokens: "Token refresh queued", backup_db: "Backup queued", cleanup_storage: "Cleanup queued",
 };
 
+// Must match worker/studio/pipeline.py STAGES.
+const PRODUCTION_STAGES = ["research", "script", "factcheck", "visuals", "voice", "render"] as const;
+
+/** Per-type payload shape (strict: unknown keys are rejected) and which target id it needs. */
+const JOB_SPEC: Record<JobType, { target: "channel" | "video" | "optional_channel" | "none"; payload: z.ZodType<Record<string, unknown>> }> = {
+  plan_channel: { target: "channel", payload: z.strictObject({ channel_id: uuid, force: z.boolean().optional() }) },
+  research_ideas: { target: "channel", payload: z.strictObject({ channel_id: uuid, count: z.number().int().min(1).max(30).optional() }) },
+  produce_video: { target: "video", payload: z.strictObject({ video_id: uuid, from_stage: z.enum(PRODUCTION_STAGES).optional() }) },
+  publish_video: { target: "video", payload: z.strictObject({ video_id: uuid }) },
+  sync_stats: { target: "optional_channel", payload: z.strictObject({ channel_id: uuid.optional() }) },
+  weekly_review: { target: "optional_channel", payload: z.strictObject({ channel_id: uuid.optional() }) },
+  health_check: { target: "none", payload: z.strictObject({}) },
+  refresh_tokens: { target: "none", payload: z.strictObject({}) },
+  backup_db: { target: "none", payload: z.strictObject({}) },
+  cleanup_storage: { target: "none", payload: z.strictObject({}) },
+};
+
 export async function enqueueJob(input: {
-  type: (typeof JOB_TYPES)[number]; payload?: Record<string, unknown>; channel_id?: string | null; video_id?: string | null;
+  type: JobType; payload?: Record<string, unknown>; channel_id?: string | null; video_id?: string | null;
 }): Promise<ActionResult> {
   return guard(async () => {
     const data = z.object({
@@ -56,10 +76,33 @@ export async function enqueueJob(input: {
       channel_id: uuid.nullish(),
       video_id: uuid.nullish(),
     }).parse(input);
-    const dedupe = `${data.type}:${data.video_id ?? data.channel_id ?? "global"}:manual`;
-    const { error } = await serviceClient().from("jobs").insert({
-      type: data.type, payload: data.payload, channel_id: data.channel_id ?? null, video_id: data.video_id ?? null,
-      priority: 3, dedupe_key: dedupe,
+    const spec = JOB_SPEC[data.type];
+    const payload = spec.payload.parse(data.payload);
+    const db = serviceClient();
+    let channelId: string | null = null;
+    let videoId: string | null = null;
+
+    // The row's target columns come from the validated payload and must point at real rows.
+    if (spec.target === "video") {
+      const { data: v } = await db.from("videos").select("id,channel_id,status").eq("id", payload.video_id as string).maybeSingle();
+      if (!v) return { ok: false, error: "That video doesn't exist any more." };
+      if (data.type === "publish_video" && !["ready", "approved", "scheduled", "failed"].includes(v.status as string)) {
+        return { ok: false, error: "Only finished videos can be published." };
+      }
+      videoId = v.id as string;
+      channelId = v.channel_id as string;
+    } else if (spec.target === "channel" || (spec.target === "optional_channel" && payload.channel_id)) {
+      const { data: c } = await db.from("channels").select("id").eq("id", payload.channel_id as string).maybeSingle();
+      if (!c) return { ok: false, error: "That channel doesn't exist any more." };
+      channelId = c.id as string;
+    }
+    if ((data.video_id && data.video_id !== videoId) || (data.channel_id && data.channel_id !== channelId)) {
+      return { ok: false, error: "The job target doesn't match its payload." };
+    }
+
+    const dedupe = `${data.type}:${videoId ?? channelId ?? "global"}:manual`;
+    const { error } = await db.from("jobs").insert({
+      type: data.type, payload, channel_id: channelId, video_id: videoId, priority: 3, dedupe_key: dedupe,
     });
     if (error?.code === "23505") return { ok: true, message: "Already queued — the worker will pick it up shortly." };
     fail(error);
@@ -112,7 +155,7 @@ export async function setGlobalPause(paused: boolean): Promise<ActionResult> {
 }
 
 const settingsSchema = z.object({
-  model: z.string().min(3).max(60),
+  model: z.string().trim().regex(/^claude-[a-z0-9.-]{2,56}$/, "Use a Claude model id like claude-opus-5-5"),
   effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
   daily_budget_usd: z.coerce.number().min(0).max(10000),
   monthly_budget_usd: z.coerce.number().min(0).max(100000),
@@ -183,6 +226,10 @@ export async function deleteSecret(key: string): Promise<ActionResult> {
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24h)");
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #FFD60A");
 
+/** Caps a free-form JSON object (passthrough keys included) so channel rows stay small. */
+const jsonCap = <T extends z.ZodType>(schema: T, maxBytes: number) =>
+  schema.refine((v) => JSON.stringify(v ?? {}).length <= maxBytes, { message: `Too much data (max ${maxBytes / 1000} KB)` });
+
 const channelSchema = z.object({
   name: z.string().trim().min(2).max(60),
   slug: z.string().trim().regex(/^[a-z0-9-]{2,40}$/, "Lowercase letters, numbers and dashes"),
@@ -193,30 +240,37 @@ const channelSchema = z.object({
   require_approval: z.boolean(),
   posts_per_day: z.coerce.number().int().min(0).max(6),
   post_times: z.array(hhmm).max(6),
-  timezone: z.string().min(3).max(60),
+  timezone: z.string().min(3).max(60).refine((tz) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Unknown time zone"),
   buffer_days: z.coerce.number().int().min(0).max(7),
   min_seconds: z.coerce.number().int().min(61, "TikTok Creator Rewards needs videos over 60 seconds").max(600),
   max_seconds: z.coerce.number().int().min(62).max(600),
-  style: z.object({
+  style: jsonCap(z.object({
     preset: z.string().max(40).optional(),
     bg: hex.optional(), ink: hex.optional(), accent: hex.optional(),
     body_font: z.string().max(80).optional(), key_font: z.string().max(80).optional(),
     figure_prompt: z.string().max(1200).optional(), seed: z.coerce.number().int().min(0).max(2 ** 31).optional(),
     bug_text: z.string().max(40).optional(),
-  }).passthrough(),
-  voice: z.object({
+  }).passthrough(), 8_000),
+  voice: jsonCap(z.object({
     provider: z.string().max(40).optional(), voice_id: z.string().max(80).optional(), model_id: z.string().max(80).optional(),
     stability: z.coerce.number().min(0).max(1).optional(), similarity_boost: z.coerce.number().min(0).max(1).optional(),
     style: z.coerce.number().min(0).max(1).optional(), speed: z.coerce.number().min(0.7).max(1.3).optional(),
-  }).passthrough(),
-  content: z.object({
+  }).passthrough(), 4_000),
+  content: jsonCap(z.object({
     audience: z.string().max(400).optional(), tone: z.string().max(600).optional(),
     pillars: z.array(z.object({ name: z.string().min(1).max(80), weight: z.coerce.number().min(0).max(1) })).max(12).optional(),
     hook_styles: z.array(z.string().max(40)).max(20).optional(),
     hashtags_core: z.array(z.string().max(40)).max(20).optional(),
     rules: z.array(z.string().max(300)).max(30).optional(),
     banned: z.array(z.string().max(120)).max(30).optional(),
-  }).passthrough(),
+  }).passthrough(), 20_000),
 }).refine((c) => c.max_seconds > c.min_seconds, { message: "Max length must be longer than min length", path: ["max_seconds"] });
 
 export type ChannelInput = z.input<typeof channelSchema>;
@@ -361,7 +415,8 @@ export async function rejectVideo(id: string, note: string): Promise<ActionResul
     const n = z.string().max(1000).parse(note ?? "");
     const { data, error } = await serviceClient().from("videos")
       .update({ approval: "rejected", status: "rejected", rejection_note: n || null })
-      .eq("id", id).select("channel_id,title").single();
+      .eq("id", id).not("status", "in", "(uploading,sent_to_drafts,posted,rejected)").select("channel_id,title").single();
+    if (error?.code === "PGRST116") return { ok: false, error: "This video can't be rejected any more (it's posting or already out)." };
     fail(error);
     await logEvent(`Rejected: ${data?.title}${n ? ` — ${n}` : ""}`, { video_id: id, channel_id: data?.channel_id, level: "warn" });
     revalidatePath("/", "layout");
@@ -376,6 +431,9 @@ export async function updateCaption(id: string, caption: string, hashtags: strin
     const tags = z.array(z.string().regex(/^#[\p{L}\p{N}_]{1,60}$/u, "Hashtags look like #psychology")).max(10).parse(
       hashtags.map((t) => t.trim()).filter(Boolean).map((t) => (t.startsWith("#") ? t : `#${t}`)),
     );
+    // The worker posts `${caption}\n\n${hashtags.join(" ")}` as the TikTok title, which TikTok caps at 2200.
+    const title = `${c.trim()}\n\n${tags.join(" ")}`.trim();
+    if (title.length > 2200) return { ok: false, error: `Caption plus hashtags is ${title.length} characters; TikTok allows 2200.` };
     const { error } = await serviceClient().from("videos").update({ caption: c, hashtags: tags }).eq("id", id);
     fail(error);
     revalidatePath(`/videos/${id}`);
@@ -396,24 +454,35 @@ export async function scheduleVideo(id: string, whenIso: string | null): Promise
 
 /* ---------------- Stats import ---------------- */
 
+const IMPORT_TYPES: Record<string, { mime: string; accept: string[] }> = {
+  csv: { mime: "text/csv", accept: ["text/csv", "text/plain", "application/csv", "application/vnd.ms-excel", ""] },
+  xlsx: { mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", accept: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", ""] },
+  xls: { mime: "application/vnd.ms-excel", accept: ["application/vnd.ms-excel", "application/octet-stream", ""] },
+};
+
 export async function importStats(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     const channelId = uuid.parse(formData.get("channel_id"));
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a CSV or XLSX export from TikTok Studio." };
     if (file.size > 20 * 1024 * 1024) return { ok: false, error: "That file is over 20 MB." };
-    const ext = (file.name.split(".").pop() ?? "csv").toLowerCase();
-    if (!["csv", "xlsx", "xls"].includes(ext)) return { ok: false, error: "Upload a .csv or .xlsx file." };
+    const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+    const kind = IMPORT_TYPES[ext];
+    if (!kind || !kind.accept.includes(file.type)) return { ok: false, error: "Upload a .csv or .xlsx file." };
+    const { data: ch } = await serviceClient().from("channels").select("id").eq("id", channelId).maybeSingle();
+    if (!ch) return { ok: false, error: "That channel doesn't exist any more." };
+    // Storage path is built only from validated parts (uuid, timestamp, whitelisted extension) — never the file name.
     const path = `imports/${channelId}/${Date.now()}.${ext}`;
     const { error: upErr } = await serviceClient().storage.from("videos").upload(path, file, {
-      contentType: file.type || "text/csv", upsert: false,
+      contentType: kind.mime, upsert: false,
     });
     fail(upErr);
+    const filename = file.name.replace(/[\u0000-\u001f/\\]/g, "_").slice(0, 120);
     const { error } = await serviceClient().from("jobs").insert({
-      type: "import_stats", payload: { storage_path: path, channel_id: channelId, filename: file.name }, channel_id: channelId, priority: 3,
+      type: "import_stats", payload: { storage_path: path, channel_id: channelId, filename }, channel_id: channelId, priority: 3,
     });
     fail(error);
-    await logEvent(`Stats file uploaded: ${file.name}`, { channel_id: channelId });
+    await logEvent(`Stats file uploaded: ${filename}`, { channel_id: channelId });
     revalidatePath("/analytics");
     return { ok: true, message: "Uploaded. Watch-time and completion appear once the worker reads it." };
   });
