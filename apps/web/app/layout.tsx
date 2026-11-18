@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: { default: "Overthought Studio", template: "%s · Overthought Studio" },
   description: "Runs your TikTok channels: research, scripts, visuals, voice, posting and stats.",
   robots: { index: false, follow: false },
+  // iOS Safari otherwise turns dates and numbers ("Nov 18", "12,400") into tel/calendar links before React hydrates,
+  // which breaks hydration (React #418) on pages full of dates such as video detail and strategy.
+  formatDetection: { telephone: false, date: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {
@@ -21,6 +24,8 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // lets env(safe-area-inset-*) work for the fixed bottom nav on notched phones
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

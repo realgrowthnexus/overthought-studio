@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <LoginForm next={safeNextPath(next)} />
       {!claimed && (
         <p className="mt-6 rounded-[12px] border border-line bg-elev px-4 py-3 text-[13px] text-ink-2">
-          First time here? <Link href="/setup" className="font-medium text-ink underline decoration-accent decoration-2 underline-offset-4">Create the owner account</Link>.
+          First time here? <Link href="/setup" className="font-medium text-ink underline decoration-accent-mark decoration-2 underline-offset-4">Create the owner account</Link>.
         </p>
       )}
     </>

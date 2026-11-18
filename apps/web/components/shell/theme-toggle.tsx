@@ -17,11 +17,11 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(next)}
-      className="inline-flex size-9 items-center justify-center rounded-[9px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink"
+      className="tap relative inline-flex size-9 shrink-0 items-center justify-center rounded-[9px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink"
       aria-label={label}
       title={label}
     >
-      <Icon className="size-[17px]" strokeWidth={1.8} />
+      <Icon className="size-[17px]" strokeWidth={1.8} aria-hidden />
     </button>
   );
 }
