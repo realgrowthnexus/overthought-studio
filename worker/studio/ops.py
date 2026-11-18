@@ -237,9 +237,16 @@ def sync_stats(channel_id: str | None = None) -> dict:
 
 
 def import_stats(storage_path: str, channel_id: str) -> dict:
-    """TikTok Studio export (CSV). Matches rows to our videos by title/caption prefix or date."""
-    raw = db.download("videos", storage_path).decode("utf-8-sig", errors="replace")
-    rows = list(csv.DictReader(io.StringIO(raw)))
+    """TikTok Studio export (CSV or XLSX). Matches rows to our videos by video id or caption prefix."""
+    data = db.download("videos", storage_path)
+    if storage_path.lower().endswith(".xlsx") or data[:2] == b"PK":
+        from openpyxl import load_workbook
+        ws = load_workbook(io.BytesIO(data), read_only=True, data_only=True).active
+        it = ws.iter_rows(values_only=True)
+        header = [str(h or "").strip() for h in next(it, [])]
+        rows = [{header[i]: ("" if v is None else str(v)) for i, v in enumerate(r) if i < len(header)} for r in it]
+    else:
+        rows = list(csv.DictReader(io.StringIO(data.decode("utf-8-sig", errors="replace"))))
     ours = db.select("videos", {"channel_id": channel_id, "status": ("in", ["posted", "sent_to_drafts"])})
 
     def pick(r: dict, *names) -> str | None:

@@ -122,6 +122,16 @@ Overthought has 37 seed ideas.
   `/opt/overthought-studio/.env` (printed once for the owner to save). The owner only provides the Supabase secret key
   and a GitHub read-only token. Supabase Auth: owner must turn off public sign-ups and set the Site URL (SETUP.md step 2).
 
+### Audit log
+- Worker code audit: 25 issues fixed (commit "Worker hardening…"); migration 0002.
+- Dashboard security review: authz on every loader/action, race-safe /setup, session-bound single-use OAuth
+  state, CSP/HSTS headers, strict zod validation, GCM tag pinning; Node↔Python crypto interop verified.
+  Migration 0003: single-owner unique index on admins, oauth_states.admin_id. Open: CSP still allows
+  'unsafe-inline' scripts (nonces would be a future improvement).
+- Dashboard design audit: WCAG AA contrast fixes, 3:1 borders, touch targets, focus trap, hydration #418 fix,
+  mobile "More" sheet, empty states with next steps.
+- Base Docker images come from public.ecr.aws (Docker Hub rate-limits).
+
 ## 5. Cloud-session facts (Claude Code on the web)
 - Proxy-injected credentials in the owner's Default environment: `api.runpod.ai` (RunPod),
   `api.elevenlabs.io` (`xi-api-key`), `xkbgusqmdeocjwxaknjx.supabase.co` (Supabase secret as `apikey`). Code
