@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  getAccountStats, getAccounts, getChannels, getEvents, getLatestStats, getServices, getSettings, getSpendSince, getVideos,
+  getAccountStats, getAccounts, getChannels, getEvents, getLatestStats, getServices, getSettings, getSpendTotal, getVideos,
 } from "@/lib/data";
 import { Panel, PanelHeader, PageHeader, Badge } from "@/components/ui/primitives";
 import { ButtonLink } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default async function OverviewPage() {
     getVideos({ statuses: ["ready", "approved", "scheduled", "sent_to_drafts"], order: "scheduled", limit: 8 }),
     getVideos({ statuses: ["posted", "sent_to_drafts"], order: "posted", limit: 100 }),
     getEvents({ limit: 12 }),
-    getSpendSince(monthStart),
+    getSpendTotal(monthStart),
     getAccountStats(new Date(now - 8 * 86400000).toISOString()),
   ]);
 
@@ -44,7 +44,7 @@ export default async function OverviewPage() {
   }, 0);
   const followerDelta = followers - followersWeekAgo;
 
-  const spendMonth = spend.reduce((s, r) => s + Number(r.amount_usd || 0), 0);
+  const spendMonth = spend;
   const active = channels.filter((c) => c.status === "active");
   const blocked = channels.filter((c) => c.blocked_reason);
   const nextPost = upcoming.find((v) => v.scheduled_for);

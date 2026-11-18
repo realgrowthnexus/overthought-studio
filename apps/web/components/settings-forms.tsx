@@ -44,7 +44,7 @@ function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { h
         {stored && !editing && (
           <div className="flex items-center gap-2">
             <span className="rounded-[8px] bg-elev-2 px-2.5 py-1 font-mono text-[12px] text-ink-2">•••• {stored.hint}</span>
-            <span className="text-[12px] text-ink-3">updated {relTime(stored.updated_at)}</span>
+            <span className="text-[12px] text-ink-3" suppressHydrationWarning>updated {relTime(stored.updated_at)}</span>
           </div>
         )}
       </div>

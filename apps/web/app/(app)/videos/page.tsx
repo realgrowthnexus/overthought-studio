@@ -40,7 +40,7 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
     <>
       <LiveRefresh tables={["videos"]} />
       <PageHeader title="Videos" description="Everything the studio has made or is making, newest first." />
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-4 flex flex-col gap-2">
         <nav className="-mx-1 flex gap-1 overflow-x-auto px-1" aria-label="Filter by status">
           {GROUPS.map((g) => (
             <Link

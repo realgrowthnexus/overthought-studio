@@ -5,9 +5,9 @@ import { Check, Copy } from "lucide-react";
 export function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = React.useState(false);
   return (
-    <div className="flex items-center gap-3 rounded-[10px] border border-line bg-bg py-1.5 pr-1.5 pl-3">
-      <span className="w-32 shrink-0 text-[12px] text-ink-3">{label}</span>
-      <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{value}</code>
+    <div className="flex min-w-0 items-center gap-3 rounded-[10px] border border-line bg-bg py-1.5 pr-1.5 pl-3">
+      <span className="hidden w-32 shrink-0 text-[12px] text-ink-3 sm:block">{label}</span>
+      <span className="min-w-0 flex-1"><span className="block text-[11px] text-ink-3 sm:hidden">{label}</span><code className="block truncate font-mono text-[12.5px] text-ink">{value}</code></span>
       <button
         type="button"
         onClick={async () => {

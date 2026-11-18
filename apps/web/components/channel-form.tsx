@@ -297,8 +297,9 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
             {sections[s.id]}
           </section>
         ))}
-        <div className="sticky bottom-20 z-10 flex justify-end lg:bottom-4">
-          <Button variant="primary" size="lg" loading={pending} onClick={submit} className="shadow-[var(--shadow)]">Save changes</Button>
+        <div className="sticky bottom-20 z-10 flex items-center justify-between gap-4 rounded-[14px] border border-line bg-elev/90 py-2.5 pr-2.5 pl-5 shadow-[var(--shadow)] backdrop-blur lg:bottom-4">
+          <p className="text-[13px] text-ink-3">Changes apply to the next video this channel makes.</p>
+          <Button variant="primary" loading={pending} onClick={submit}>Save changes</Button>
         </div>
       </div>
     );

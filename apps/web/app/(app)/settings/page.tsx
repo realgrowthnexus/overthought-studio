@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAnthropicCredit, getSecretHints, getSettings, getSpendSince, getWorkers } from "@/lib/data";
+import { getAnthropicCredit, getSecretHints, getSettings, getSpendTotal, getWorkers } from "@/lib/data";
 import { hasMasterKey } from "@/lib/crypto";
 import { PageHeader, Panel, PanelHeader, KV, Badge } from "@/components/ui/primitives";
 import { SecretsForm, GlobalSettingsForm, CreditForm } from "@/components/settings-forms";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const [hints, settings, credit, workers] = await Promise.all([getSecretHints(), getSettings(), getAnthropicCredit(), getWorkers()]);
-  const spentSince = credit.set_at ? (await getSpendSince(credit.set_at)).filter((r) => r.service === "anthropic").reduce((s, r) => s + Number(r.amount_usd || 0), 0) : 0;
+  const spentSince = credit.set_at ? await getSpendTotal(credit.set_at, "anthropic") : 0;
   const remaining = credit.balance_usd != null ? credit.balance_usd - spentSince : null;
 
   return (

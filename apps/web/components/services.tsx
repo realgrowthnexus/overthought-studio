@@ -133,7 +133,7 @@ export function ServiceStrip({ initial }: { initial: Service[] }) {
                 {bal && <span className="shrink-0 text-[12px] text-ink-2 tabular">{bal}</span>}
               </div>
             )}
-            <p className="text-[11px] text-ink-3">Checked {relTime(s.checked_at)}</p>
+            <p className="text-[11px] text-ink-3" suppressHydrationWarning>Checked {relTime(s.checked_at)}</p>
           </li>
         );
       })}

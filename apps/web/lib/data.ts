@@ -131,9 +131,11 @@ export async function getStatsSeries(sinceIso: string, channelId?: string) {
   return { videos: vids ?? [], stats: (stats ?? []) as VideoStat[] };
 }
 
-export async function getSpendSince(iso: string) {
-  const { data } = await db().from("spend").select("service,amount_usd,created_at").gte("created_at", iso).limit(20000);
-  return (data ?? []) as { service: string; amount_usd: number; created_at: string }[];
+/** Sum of spend since a time (optionally one service), computed in Postgres — avoids the 1000-row select cap. */
+export async function getSpendTotal(sinceIso: string, service: string | null = null): Promise<number> {
+  const { data, error } = await db().rpc("spend_total", { p_since: sinceIso, p_service: service });
+  if (error) return 0;
+  return Number(data ?? 0);
 }
 
 export async function getAccountStats(sinceIso: string) {

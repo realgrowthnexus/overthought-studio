@@ -40,7 +40,7 @@ export default async function AccountsPage() {
               <>Go to <a className="text-ink underline decoration-accent decoration-2 underline-offset-4" href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a>, sign in and create an app called <strong className="text-ink">Overthought Studio</strong>.</>,
               <>Add the products <strong className="text-ink">Login Kit</strong> and <strong className="text-ink">Content Posting API</strong> (turn on Direct Post). Request the scopes user.info.basic, user.info.profile, user.info.stats, video.list, video.upload and video.publish.</>,
               <>Use these URLs in the app form:
-                <div className="mt-3 grid gap-2">
+                <div className="mt-3 grid min-w-0 grid-cols-1 gap-2">
                   <CopyField label="Redirect URI" value={`${base}/api/tiktok/callback`} />
                   <CopyField label="Privacy policy" value={`${base}/privacy`} />
                   <CopyField label="Terms of service" value={`${base}/terms`} />
@@ -52,7 +52,7 @@ export default async function AccountsPage() {
             ].map((step, i) => (
               <li key={i} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3">
                 <span className="flex size-7 items-center justify-center rounded-full border border-line-strong text-[12px] text-ink-2 tabular">{i + 1}</span>
-                <div className="pt-0.5 leading-relaxed">{step}</div>
+                <div className="min-w-0 pt-0.5 leading-relaxed">{step}</div>
               </li>
             ))}
           </ol>
