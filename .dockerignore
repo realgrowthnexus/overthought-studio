@@ -3,7 +3,7 @@
 **/.venv
 **/__pycache__
 worker/work
-apps
 .git
 assets/scenes
 assets/brand
+apps/web/.screenshots

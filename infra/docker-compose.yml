@@ -1,25 +1,54 @@
-# Overthought Studio on the VPS. Lives in /opt/overthought-studio and touches nothing else on the server:
-# no ports are published; it only makes outbound HTTPS calls.
+# Overthought Studio on the VPS (/opt/overthought-studio). Self-contained: touches nothing else on the server.
+# - worker: makes the videos (no ports)
+# - web:    the dashboard, only reachable from this machine (127.0.0.1:3100 and the docker bridge 172.17.0.1:3100)
+# - caddy:  optional HTTPS front door, enabled only when ports 80/443 are free (COMPOSE_PROFILES=caddy)
 name: overthought-studio
 
 services:
   worker:
-    build:
-      context: ./src
-      dockerfile: worker/Dockerfile
+    build: { context: ./src, dockerfile: worker/Dockerfile }
     image: overthought-studio-worker:local
     container_name: ots-worker
     restart: unless-stopped
     stop_grace_period: 15m        # let a running render/upload finish before restarts
     env_file: .env
-    volumes:
-      - work:/data/work
-    # leave head-room for the other app on this VPS (4 vCPU / 16 GB)
-    cpus: "3.0"
+    volumes: [work:/data/work]
+    cpus: "3.0"                   # leave head-room for the other app on this VPS
     mem_limit: 6g
-    logging:
-      driver: json-file
-      options: { max-size: "20m", max-file: "5" }
+    logging: { driver: json-file, options: { max-size: "20m", max-file: "5" } }
+
+  web:
+    build:
+      context: ./src
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+    image: overthought-studio-web:local
+    container_name: ots-web
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+    ports:
+      - "127.0.0.1:3100:3000"
+      - "${DOCKER_BRIDGE_IP:-172.17.0.1}:3100:3000"
+    mem_limit: 1g
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    container_name: ots-caddy
+    profiles: ["caddy"]
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    command: caddy reverse-proxy --from ${DOMAIN} --to web:3000
+    volumes: [caddy_data:/data, caddy_config:/config]
+    depends_on: [web]
 
 volumes:
   work:
+  caddy_data:
+  caddy_config:
