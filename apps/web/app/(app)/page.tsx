@@ -91,7 +91,7 @@ export default async function OverviewPage() {
           className="bg-elev"
           label="Waiting for review"
           value={num(awaitingReview)}
-          foot={awaitingReview ? <Link href="/videos?status=ready" className="underline decoration-accent decoration-2 underline-offset-4 hover:text-ink">Review now</Link> : "You're all caught up"}
+          foot={awaitingReview ? <Link href="/videos?status=ready" className="underline decoration-accent-mark decoration-2 underline-offset-4 hover:text-ink">Review now</Link> : "You're all caught up"}
         />
         <StatTile
           className="bg-elev"

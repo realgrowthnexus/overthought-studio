@@ -10,8 +10,8 @@ import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
 import { VideoActions, CaptionEditor } from "@/components/video-actions";
 import { MarginNote } from "@/components/brand";
-import { IN_PROGRESS, STATUS_LABEL, dateTime, duration, num, pct, usd, videoTone } from "@/lib/format";
-import type { ScriptBeat, Source } from "@/lib/types";
+import { IN_PROGRESS, SERVICE_LABEL, STATUS_LABEL, dateTime, duration, num, pct, usd, videoTone } from "@/lib/format";
+import type { ScriptBeat, ServiceName, Source } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Video" };
 export const dynamic = "force-dynamic";
@@ -22,6 +22,12 @@ async function signed(path: string | null) {
   const { data } = await serviceClient().storage.from("videos").createSignedUrl(path, 60 * 60);
   return data?.signedUrl ?? null;
 }
+
+const sentence = (k: string) => {
+  const t = k.replace(/_/g, " ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+const costLabel = (k: string) => SERVICE_LABEL[k as ServiceName] ?? sentence(k);
 
 function sourceLine(s: Source) {
   return s.citation || [s.researcher, s.institution, s.year].filter(Boolean).join(" · ");
@@ -72,7 +78,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             {video.duration_s ? <span>{duration(video.duration_s)}</span> : null}
             {video.script_version ? <span>· script v{video.script_version}</span> : null}
             {video.tiktok_url && (
-              <a href={video.tiktok_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink-2 underline decoration-accent decoration-2 underline-offset-4 hover:text-ink">
+              <a href={video.tiktok_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink-2 underline decoration-accent-mark decoration-2 underline-offset-4 hover:text-ink">
                 View on TikTok<ExternalLink className="size-3.5" aria-hidden />
               </a>
             )}
@@ -94,7 +100,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
 
       <div className="grid grid-cols-1 [&>*]:min-w-0 gap-6 lg:grid-cols-[minmax(280px,360px)_1fr]">
         <div className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
-          <div className="relative mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-[18px] border border-line bg-[#111111] shadow-[var(--shadow)]">
+          <div className="dark relative mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-[18px] border border-line bg-bg shadow-[var(--shadow)]">
             {videoUrl ? (
               <video src={videoUrl} poster={thumbUrl ?? undefined} controls playsInline preload="metadata" className="h-full w-full object-contain" />
             ) : thumbUrl ? (
@@ -102,9 +108,9 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
               <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-                <p className="font-hand text-[18px] text-[#f6f1e6]">{inProgress ? "still being made…" : "no video file"}</p>
+                <p className="font-hand text-[18px] text-ink">{inProgress ? "still being made…" : "no video file"}</p>
                 {inProgress && <Progress value={video.progress} live className="max-w-[200px]" />}
-                {video.stage_detail && <p className="text-[12px] text-[#a19a8d]">{video.stage_detail}</p>}
+                {video.stage_detail && <p className="text-[12px] text-ink-3">{video.stage_detail}</p>}
               </div>
             )}
           </div>
@@ -217,15 +223,16 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
               {Object.keys(scorecard).length ? (
                 <dl className="divide-y divide-line px-5 pb-3">
                   {Object.entries(scorecard).filter(([, v]) => typeof v === "number" || typeof v === "string").map(([k, v]) => (
-                    <KV key={k} k={k.replace(/_/g, " ")} v={typeof v === "number" ? (v <= 10 ? `${v}/10` : String(v)) : String(v)} />
+                    <KV key={k} k={sentence(k)} v={typeof v === "number" ? (v <= 10 ? `${v}/10` : String(v)) : String(v)} />
                   ))}
                 </dl>
               ) : <p className="px-5 pb-5 text-[13px] text-ink-3">Not scored yet.</p>}
             </Panel>
             <Panel>
               <PanelHeader title="Cost" description={`Total ${usd(video.cost_usd)}`} />
+              {!costs.length && <p className="px-5 pb-1 text-[13px] text-ink-3">No spend recorded yet.</p>}
               <dl className="divide-y divide-line px-5 pb-3">
-                {costs.length ? costs.map(([k, v]) => <KV key={k} k={k} v={usd(Number(v), 3)} />) : <p className="py-2 text-[13px] text-ink-3">No spend recorded yet.</p>}
+                {costs.map(([k, v]) => <KV key={k} k={costLabel(k)} v={usd(Number(v), 3)} />)}
                 <KV k="Created" v={dateTime(video.created_at, channel?.timezone)} />
                 {video.scheduled_for && <KV k="Scheduled" v={dateTime(video.scheduled_for, channel?.timezone)} />}
                 {video.posted_at && <KV k="Posted" v={dateTime(video.posted_at, channel?.timezone)} />}

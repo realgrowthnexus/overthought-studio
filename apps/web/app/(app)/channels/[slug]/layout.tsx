@@ -29,7 +29,7 @@ export default async function ChannelLayout({ children, params }: { children: Re
         description={
           <>
             {channel.niche}
-            <span className="block text-[13px]">{account ? <>Posting as <span className="text-ink-2">@{account.username ?? account.display_name}</span></> : <Link href={`${base}/settings#account`} className="underline decoration-accent decoration-2 underline-offset-4 hover:text-ink">Connect a TikTok account</Link>}</span>
+            <span className="block text-[13px]">{account ? <>Posting as <span className="text-ink-2">@{account.username ?? account.display_name}</span></> : <Link href={`${base}/settings#account`} className="underline decoration-accent-mark decoration-2 underline-offset-4 hover:text-ink">Connect a TikTok account</Link>}</span>
           </>
         }
         actions={

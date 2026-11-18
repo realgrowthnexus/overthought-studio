@@ -37,6 +37,21 @@ Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realti
 | `/privacy`, `/terms` | Public pages for TikTok app review |
 | `/api/tiktok/connect`, `/api/tiktok/callback` | Login Kit OAuth |
 
+## Design system notes
+- Tokens live in `app/globals.css` (`:root` = warm paper, `.dark` = charcoal). Adding `dark` to any element re-scopes the
+  tokens, used for always-dark surfaces (login brand panel, video frame).
+- Contrast (WCAG AA, checked from the token hex values): body text `ink`/`ink-2`/`ink-3` ≥ 4.5:1 on every surface in both
+  themes (lowest: `ink-3` on `inset`, light, 4.53:1). Status colours ≥ 4.5:1 on their soft badge fills.
+- `accent` (#FFD60A) is for fills with dark text on top (primary button, active step). For small marks — dots, ticks,
+  tab underlines, thin progress bars, link underlines — use `accent-mark`: yellow in dark mode, ochre `#9a7400` on paper
+  (3.6:1; raw yellow is 1.2:1 there).
+- Form controls and switch tracks use `line-input` (≥ 3:1 against `bg` and `elev`); `line`/`line-strong` are for dividers only.
+- Touch: add `tap` (plus `relative`) to compact controls; on coarse pointers it grows the hit area to 44px without
+  changing the look. `scroll-fade-x` fades the trailing edge of horizontal scroll rows on phones.
+- Dates/times in server components are fine (no hydration). Client components must not format "now"-relative times
+  without `suppressHydrationWarning`. `formatDetection` is off so iOS Safari doesn't rewrite dates/numbers into links
+  before hydration (React #418).
+
 ## How it talks to the worker
 Only through Supabase: buttons insert rows into `jobs` (deduped per target), edits write `channels`/`settings`/`secrets`,
 approvals update `videos`. Pages re-render live from Realtime on `videos`, `jobs`, `events`, `channels`, `services`.

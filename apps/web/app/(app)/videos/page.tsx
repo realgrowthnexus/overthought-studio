@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getChannels, getLatestStats, getVideos } from "@/lib/data";
 import { PageHeader, Panel } from "@/components/ui/primitives";
+import { ButtonLink } from "@/components/ui/button";
 import { VideoList } from "@/components/video-list";
 import { LiveRefresh } from "@/components/live";
 import { IN_PROGRESS, cn } from "@/lib/format";
@@ -41,7 +42,7 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
       <LiveRefresh tables={["videos"]} />
       <PageHeader title="Videos" description="Everything the studio has made or is making, newest first." />
       <div className="mb-4 flex flex-col gap-2">
-        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1" aria-label="Filter by status">
+        <nav className="scroll-fade-x -mx-1 flex gap-1 overflow-x-auto px-1" aria-label="Filter by status">
           {GROUPS.map((g) => (
             <Link
               key={g.id}
@@ -57,10 +58,10 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
           ))}
         </nav>
         {channels.length > 1 && (
-          <nav className="-mx-1 flex gap-1 overflow-x-auto px-1" aria-label="Filter by channel">
-            <Link href={href({ channel: null })} className={cn("h-9 shrink-0 rounded-full px-3 text-[13px] leading-9", !channel ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>All channels</Link>
+          <nav className="scroll-fade-x -mx-1 flex gap-1 overflow-x-auto px-1" aria-label="Filter by channel">
+            <Link href={href({ channel: null })} aria-current={!channel ? "page" : undefined} className={cn("h-9 shrink-0 rounded-full px-3 text-[13px] leading-9", !channel ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>All channels</Link>
             {channels.map((c) => (
-              <Link key={c.id} href={href({ channel: c.slug })} className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px]", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
+              <Link key={c.id} href={href({ channel: c.slug })} aria-current={channel?.id === c.id ? "page" : undefined} className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px]", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
                 <span className="size-2 rounded-full" style={{ background: c.color }} aria-hidden />{c.name}
               </Link>
             ))}
@@ -68,7 +69,27 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
         )}
       </div>
       <Panel className="overflow-hidden">
-        <VideoList videos={videos} channels={channels} stats={stats} emptyText={group.id === "ready" ? "Nothing waiting for review. Nice." : undefined} />
+        <VideoList
+          videos={videos}
+          channels={channels}
+          stats={stats}
+          {...(channels.length === 0
+            ? {
+                emptyTitle: "No videos yet",
+                emptyText: "Videos are made per channel. Create one and the worker starts on its first video.",
+                emptyAction: <ButtonLink href="/channels/new" variant="primary">Create a channel</ButtonLink>,
+              }
+            : group.id === "all" && !channel
+              ? {
+                  emptyTitle: "No videos yet",
+                  emptyText: "Switch a channel on and the worker makes videos on its schedule. To start one right away, open the channel and press “Make a video now”.",
+                  emptyAction: <ButtonLink href={`/channels/${channels[0].slug}`} variant="primary">Open {channels[0].name}</ButtonLink>,
+                }
+              : {
+                  emptyText: group.id === "ready" ? "Nothing waiting for review. You're all caught up." : "Nothing matches this filter right now.",
+                  emptyAction: <ButtonLink href="/videos" variant="secondary">Show all videos</ButtonLink>,
+                })}
+        />
       </Panel>
     </>
   );

@@ -48,13 +48,13 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
           <PanelHeader title="Events" />
           <div className="flex flex-wrap gap-1 px-5 pb-3">
             {LEVELS.map((l) => (
-              <Link key={l} href={q({ level: l })} className={cn("h-8 rounded-full px-3 text-[12px] leading-8 capitalize", l === level ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
+              <Link key={l} href={q({ level: l })} aria-current={l === level ? "page" : undefined} className={cn("tap relative h-8 rounded-full px-3 text-[12px] leading-8 capitalize transition-colors", l === level ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
                 {l === "warn" ? "Warnings" : l === "error" ? "Errors" : l === "success" ? "Successes" : l === "info" ? "Info" : "All"}
               </Link>
             ))}
             {channels.length > 1 && <span className="mx-1 my-1.5 w-px bg-line" aria-hidden />}
             {channels.length > 1 && channels.map((c) => (
-              <Link key={c.id} href={q({ channel: channel?.id === c.id ? null : c.slug })} className={cn("inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px]", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
+              <Link key={c.id} href={q({ channel: channel?.id === c.id ? null : c.slug })} aria-current={channel?.id === c.id ? "page" : undefined} className={cn("tap relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] transition-colors", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
                 <span className="size-2 rounded-full" style={{ background: c.color }} aria-hidden />{c.name}
               </Link>
             ))}
@@ -67,44 +67,44 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
             description="Jobs the worker claims one by one. “Waiting” means a service is out of credit or down; it resumes by itself."
             action={
               <div className="flex gap-1">
-                <Link href={q({ jobs: null })} className={cn("h-8 rounded-full px-3 text-[12px] leading-8", jobFilter === "all" ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>All</Link>
-                <Link href={q({ jobs: "problems" })} className={cn("h-8 rounded-full px-3 text-[12px] leading-8", jobFilter === "problems" ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>Problems</Link>
+                <Link href={q({ jobs: null })} aria-current={jobFilter === "all" ? "page" : undefined} className={cn("tap relative h-8 rounded-full px-3 text-[12px] leading-8 transition-colors", jobFilter === "all" ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>All</Link>
+                <Link href={q({ jobs: "problems" })} aria-current={jobFilter === "problems" ? "page" : undefined} className={cn("tap relative h-8 rounded-full px-3 text-[12px] leading-8 transition-colors", jobFilter === "problems" ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>Problems</Link>
               </div>
             }
           />
           {shownJobs.length === 0 ? (
-            <p className="px-5 pb-5 text-[13px] text-ink-3">The queue is empty.</p>
+            <p className="px-5 pb-5 text-[13px] text-ink-3">The queue is empty. The worker adds jobs on schedule, and buttons like “Make a video now” add them right away.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-[13px]">
+            <div className="relative overflow-x-auto">
+              <table className="w-full text-[13px] sm:min-w-[620px]">
                 <thead>
                   <tr className="border-y border-line text-left text-[12px] whitespace-nowrap text-ink-3">
                     <th className="px-5 py-2 font-medium">Job</th>
                     <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Tries</th>
-                    <th className="px-3 py-2 text-right font-medium">When</th>
-                    <th className="px-5 py-2"><span className="sr-only">Actions</span></th>
+                    <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">Tries</th>
+                    <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">When</th>
+                    <th className="px-4 py-2 sm:px-5"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {shownJobs.map((j) => {
                     const ch = channels.find((c) => c.id === j.channel_id);
+                    const when = j.status === "queued" && new Date(j.run_after).getTime() > Date.now() ? `runs ${relTime(j.run_after)}` : relTime(j.finished_at ?? j.started_at ?? j.created_at);
                     return (
                       <tr key={j.id} className="border-b border-line align-top last:border-b-0">
-                        <td className="px-5 py-2.5">
+                        <td className="py-2.5 pr-2 pl-4 sm:px-5">
                           <p className="text-ink">{JOB_NAME[j.type] ?? j.type}</p>
                           <p className="text-[12px] text-ink-3">
                             #{j.id}{ch ? ` · ${ch.name}` : ""}{j.video_id ? <> · <Link href={`/videos/${j.video_id}`} className="hover:underline">video</Link></> : null}
                           </p>
                           {j.last_error && <p className="mt-1 line-clamp-2 text-[12px] text-bad">{j.last_error}</p>}
                           {j.waiting_on && <p className="mt-1 text-[12px] text-info">Waiting on {j.waiting_on}</p>}
+                          <p className="mt-0.5 text-[12px] text-ink-3 sm:hidden">Try {j.attempts}/{j.max_attempts} · {when}</p>
                         </td>
-                        <td className="px-3 py-2.5"><Badge tone={JOB_TONE[j.status]} dot live={j.status === "running"}>{j.status}</Badge></td>
-                        <td className="px-3 py-2.5 text-right text-ink-2 tabular">{j.attempts}/{j.max_attempts}</td>
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap text-ink-3">
-                          {j.status === "queued" && new Date(j.run_after).getTime() > Date.now() ? `runs ${relTime(j.run_after)}` : relTime(j.finished_at ?? j.started_at ?? j.created_at)}
-                        </td>
-                        <td className="px-5 py-2.5 text-right"><JobRowActions id={j.id} status={j.status} /></td>
+                        <td className="px-2 py-2.5 sm:px-3"><Badge tone={JOB_TONE[j.status]} dot live={j.status === "running"}>{j.status}</Badge></td>
+                        <td className="hidden px-3 py-2.5 text-right text-ink-2 tabular sm:table-cell">{j.attempts}/{j.max_attempts}</td>
+                        <td className="hidden px-3 py-2.5 text-right whitespace-nowrap text-ink-3 sm:table-cell">{when}</td>
+                        <td className="py-2.5 pr-4 pl-2 text-right sm:px-5"><JobRowActions id={j.id} status={j.status} /></td>
                       </tr>
                     );
                   })}
