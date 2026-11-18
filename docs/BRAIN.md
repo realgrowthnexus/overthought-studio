@@ -140,6 +140,20 @@ VPS. Next Claude should do the following.
    - Recommend (a) if the owner still has the VPS; otherwise the cheapest reliable option.
    - Whichever is chosen, set the same `MASTER_KEY` on both web and worker.
 3. Update `docs/SETUP.md`, `infra/` and this file to match.
+4. **Progress (2026-11-18):** the owner's Hostinger plan currently offers **zip/file upload only** (no GitHub
+   connect yet). Delivered to the owner:
+   - `overthought-dashboard-hostinger.zip`: the `apps/web` source, no `node_modules` or `.next`;
+   - an env-variables file with a freshly generated `MASTER_KEY` and `SETUP_TOKEN`. These are not in the repo; the
+     owner keeps them, and **the worker must reuse that same MASTER_KEY**;
+   - a full-system zip as a backup.
+   Hostinger settings to use:
+   - Framework: Next.js
+   - Node: 20 or 22
+   - Install: `npm install`
+   - Build: `npm run build`
+   - Start: `npm start`
+   - Output dir: `.next`
+   - Root: the zip root, where `package.json` sits
 
 ## 6. Next steps (in order)
 1. Settle §5 with the owner, then deploy the dashboard on Web App Hosting and the worker wherever was decided.
