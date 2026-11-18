@@ -1,5 +1,7 @@
 # Overthought Studio: setup guide (VPS-only)
 
+> ⚠ **Hosting is changing** (owner, 2026-11-18): Hostinger **Web App Hosting** replaces the VPS for the dashboard. The worker host is still to be decided. See `docs/BRAIN.md` §5. The VPS steps below stay valid for running the worker on a VPS.
+
 The setup happens once. After that the system runs itself.
 
 ## What runs where

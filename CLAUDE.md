@@ -1,12 +1,20 @@
-# Overthought Studio — instructions for Claude
+# Overthought Studio: instructions for Claude
 
-**Before anything else, read `docs/BRAIN.md` completely.** It is the project memory: who the owner is, how they want
-to be talked to (Roman Urdu or simple English — never Hindi/Devanagari), every decision, the current state, IDs,
-and the next steps. You own this project end to end; continue exactly where the last session stopped.
+**Before anything else, read `docs/BRAIN.md` completely, starting with §0 "START HERE".** It is the project memory:
+- who the owner is and how to talk to them (Roman Urdu or simple English, never Hindi or Devanagari);
+- every decision made so far;
+- the current state, IDs and next steps;
+- the **open hosting decision** (Hostinger Web App Hosting replaces the VPS).
 
-Keep `docs/BRAIN.md` updated after every significant step (state, decisions, new IDs, open issues). Never write secret
-values into the repo.
+You own this project end to end. Continue exactly where the last session stopped.
 
-Key docs: `docs/ARCHITECTURE.md` (system contract), `docs/SETUP.md` (owner setup guide), `docs/tiktok-api-notes.md`.
-Commit with the attribution lines from the session's system reminder; push to `main` on
+Keep `docs/BRAIN.md` updated after every significant step. Never write secret values into the repo.
+
+Key docs:
+- `docs/ARCHITECTURE.md`: the system contract.
+- `docs/WEB.md`: the dashboard and its security model.
+- `docs/SETUP.md`: the owner setup guide. It still describes the VPS flow; update it after the hosting decision.
+- `docs/tiktok-api-notes.md`.
+
+Commit with the attribution lines from the session's system reminder, and push to `main` on
 `realgrowthnexus/overthought-studio`.

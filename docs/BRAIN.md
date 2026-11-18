@@ -1,168 +1,167 @@
-# BRAIN: project memory and handoff (read fully before doing anything)
+# BRAIN: project memory and handoff. Read all of it before doing anything.
 
-> This file is Claude's working memory for this project. The owner may switch Claude accounts/sessions at any time;
-> the next Claude must continue **with the same understanding, ownership and quality bar**, so the owner feels no
-> difference. **Update this file after every significant step** (decisions, state changes, new IDs, open issues).
-> Never put secret values here (keys, tokens, passwords). Last updated: 2026-11-18.
+> This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
+> continues with the same ownership and quality bar, and the owner should not notice a change.
+> **Update this file after every significant step.** Never put secret values here.
+> Last updated: 2026-11-18, end of session 1 (handoff).
 
-## 1. Who the owner is and how to work with them
-- They write in **Roman Urdu** (sometimes via voice-to-text that renders as Devanagari script). It is NOT Hindi.
-  **Always reply in Roman Urdu or simple English**, never Hindi or Devanagari.
-- Not a developer. Wants **simple, step-by-step directions** and short lists of "what I need from you".
-- Has handed Claude **full ownership**: "take over, you are in charge, plan → build → verify → audit → report".
-  Work like a senior team at Anthropic: plan big, split into phases, use sub-agents (design, design audit, dev,
-  code review), verify everything yourself (tests, screenshots, real renders), then report.
-  **Report back only when a chunk is truly finished and production-ready**, with brief progress pings in between.
-- Owner pays the tool bills only and wants **~100% automation** with no monthly manual work.
-  Owner-approved exceptions: approving videos at the start, and tapping Publish on TikTok drafts until the TikTok
-  app audit passes.
-- Owner will provide any tool or account needed (RunPod, ElevenLabs, Higgsfield, Claude API, VPS, domains). Ask for
-  things as a **simple numbered list**.
-- Secrets: owner said pasting in chat is "ok", but **never ask for that**. Use the secure credential form
-  (`request_credential`) or the dashboard Settings page. Anthropic keys can't use the credential form, so they
-  go in dashboard Settings.
+## 0. START HERE (next Claude)
+1. Read this file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md` and `docs/tiktok-api-notes.md`.
+2. **Open decision, owner changed hosting (latest instruction):** the owner bought **Hostinger "Web App Hosting"
+   (12 months)**. It supports GitHub deploys and Next.js. They want to use it **instead of the VPS**. See §5.
+3. Then follow §6 (next steps) in order.
 
-## 2. The product (what we are building)
-**Overthought Studio**: a self-running system for **5 US TikTok channels** aimed at the **Creator Rewards Program**.
-- Every video **must be > 60 s** (target 65–90 s); CRP pays only on 1 min+ videos. A hard gate in code checks this.
-- **Pattern-break style**: dark charcoal background with a thin white stick figure. Competitors use white
-  backgrounds; ours is dark. Yellow `#FFD60A` accent only on the "glitch" element, added in code. The full style
-  kit is in `assets/` (copied from the brand repo `realgrowthnexus/overthoug-youtube`). Don't redesign the
-  locked style.
-- **Scripts must be researched**: SEO/search phrases, audience interest, targeting. Strong hook in second 0 →
-  curiosity gap → a question to the viewer → emotional "you" connection → real study on screen
-  (`→ Researcher · Institution · Year`) → twist → payoff and fix → loop line.
-- **Accuracy is the brand**:
-  - Real studies only.
-  - Flag failed replications (ego depletion, power posing).
-  - Correct myths (Kitty Genovese "38 witnesses").
-  - Never round stats into falsehoods.
-  - "Spot the trick" content is framed as self-protection.
-- **Every 7 days**: analytics → weekly review → adjust pillar and hook weights, test ONE variable at a time.
-- **Dashboard on the owner's domain**:
-  - See and track everything.
-  - Connect TikTok accounts (official OAuth).
-  - Start, stop or edit any channel; add accounts.
-  - See **live credit balances and WHY anything stopped**. This is critical: the owner must never be left
-    guessing that credits ran out.
-- **Guardrails we agreed**:
-  - Only the official TikTok APIs. No bots, browser automation or unofficial posting.
-  - **I refused to build any proxy, static-IP or device-masking setup** to fake US presence. Creator Rewards needs
-    a real US-eligible adult per monetised account. The owner agreed.
-  - Ask before anything that posts publicly, spends more than a few dollars unexpectedly, or creates accounts.
+## 1. The owner and how to work with them
+- They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
+  **Reply only in Roman Urdu or simple English.**
+- Not a developer. Give short, numbered, step-by-step directions and a clear "what I need from you" list.
+- Claude has **full ownership**: plan → build → verify → audit → report. Use sub-agents for design, audits and
+  reviews. Verify with real runs and screenshots. Send short progress pings, and report fully only when a piece is
+  production-ready.
+- The owner wants ~100% automation and pays only the tool bills. Two exceptions they agreed to:
+  - approving videos at the start;
+  - tapping Publish on TikTok drafts until the TikTok app audit passes.
+- Secrets: never ask for them in chat. Use the `request_credential` form, or dashboard Settings. Anthropic keys
+  can't go through the form, so they go only in dashboard Settings.
+- Things I refused, and the owner accepted:
+  - no proxy, static-IP or device masking to fake US presence (Creator Rewards needs a real US-eligible adult per
+    monetised account);
+  - only official TikTok APIs, no bots or browser automation.
+- Ask before anything that posts publicly, spends more than a few dollars unexpectedly, or creates accounts.
 
-### The 5 channels (seeded, editable in the dashboard; all start PAUSED)
-| slug | name | accent | voice (ElevenLabs id) |
+## 2. Product: Overthought Studio
+A self-running studio for **5 US TikTok channels** targeting the **Creator Rewards Program**.
+- **Length:** every video must be **> 60 s**; target 65–90 s. A hard gate enforces this.
+- **Look:** pattern-break dark style. Charcoal `#111`, thin white stick figure, one accent colour drawn **in code**
+  (never by the image model). The style kit is in `assets/`, from brand repo `realgrowthnexus/overthoug-youtube`.
+- **Script formula:** hook at second 0 → curiosity gap → question to the viewer → emotional "you" moment → real study
+  on screen (`→ Researcher · Institution · Year`) → twist → payoff and fix → loop line.
+- **Accuracy:**
+  - real studies only;
+  - flag failed replications;
+  - correct myths;
+  - never round stats into falsehoods;
+  - "spot the trick" content is framed as self-protection.
+- **Weekly:** an analytics review adjusts pillar and hook weights and tests ONE variable.
+- **Dashboard** on `studio.getgrowthnexus.com` (domain confirmed). Live credit balances, and a red bar that always
+  says **why** something stopped and how to fix it. This is critical to the owner.
+
+Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 after the app is live**):
+
+| slug | name | accent | ElevenLabs voice |
 |---|---|---|---|
-| overthought | Overthought: why your brain does that | #FFD60A | Chris `iP95p4xoKVk53GoZ742B` |
-| money-brain | Money Brain: psychology of money (US) | #3DDC97 | Eric `cjVigY5qzO86Huf0OWal` |
-| tiny-history | Tiny History: strange true history | #FF7A59 | Brian `nPczCjzI2devNBz1zQrb` |
-| how-it-works | How It Works: everyday science and tech | #4CC9F0 | River `SAz9YHcvj6GT2YYXdXww` |
-| myth-busted | Myth Busted: famous facts that are wrong | #FF4D6D | Sarah `EXAVITQu4vr4xnSDxMaL` |
+| overthought | Overthought: why your brain does that (37 seed ideas) | #FFD60A | Chris `iP95p4xoKVk53GoZ742B` |
+| money-brain | Money Brain | #3DDC97 | Eric `cjVigY5qzO86Huf0OWal` |
+| tiny-history | Tiny History | #FF7A59 | Brian `nPczCjzI2devNBz1zQrb` |
+| how-it-works | How It Works | #4CC9F0 | River `SAz9YHcvj6GT2YYXdXww` |
+| myth-busted | Myth Busted | #FF4D6D | Sarah `EXAVITQu4vr4xnSDxMaL` |
 
-The owner said **niche selection will be discussed after the app is finished**, so these 5 are placeholders.
-Overthought has 37 seed ideas.
+## 3. What exists (all on `main` of `realgrowthnexus/overthought-studio`)
+- **`apps/web`:** Next.js 15.5 dashboard (App Router, React 19, Tailwind v4, Supabase SSR, `output: "standalone"`).
+  - Pages: overview, channels (wizard + tabs), videos (player, approve/reject/regenerate/publish), analytics
+    (CSV/XLSX import), reports, TikTok accounts (OAuth connect), settings (encrypted keys, budgets, auto-publish,
+    Claude credit), logs (events + jobs), `/privacy`, `/terms`, `/setup` (one-time owner), `/login`.
+  - Security-reviewed:
+    - an admin check in every loader and action;
+    - race-safe `/setup` plus a DB single-owner index;
+    - session-bound single-use OAuth state;
+    - CSP and HSTS;
+    - zod validation.
+  - Design-audited: WCAG AA, touch targets, mobile "More" sheet, empty states.
+  - Env vars are in `apps/web/.env.example`.
+- **`worker/`:** a Python 3.13 worker (`python -m studio.main`).
+  - Job lanes: heavy = `produce_video`; light = everything else. Jobs are claimed via the `claim_job` RPC
+    (SKIP LOCKED) with a lock heartbeat.
+  - Scheduler: a 1-minute tick that keeps the buffer full, assigns slots, and runs periodic jobs once per period
+    via `once_key`.
+  - Pipeline (`pipeline.py`): research (Claude + web_search) → script (structured output) → scorecard, rewriting
+    below 8/10 → fact-check, which is permanent-fail if it fails twice → RunPod Flux scenes → ElevenLabs voice with
+    word timings and a length gate → render.
+  - Render (`render/`): draw-on lines, accent pop, push-in, word captions, synthesized music bed, safe zones, loop
+    crossfade. Output is H.264 1080×1920 at 30 fps, rendered in a subprocess.
+  - Ops (`ops.py`):
+    - publishing through the official Content Posting API, in draft, private or public mode;
+    - stats sync, plus Studio CSV/XLSX import;
+    - weekly review;
+    - health and credit checks for Anthropic, ElevenLabs, RunPod, TikTok and storage, with auto-resume;
+    - budget caps, a circuit breaker, nightly backups to the Supabase `backups` bucket, and cleanup.
+  - Hardened by a 25-item code audit. 10 unit tests (`cd worker && python -m pytest -q tests`).
+  - Needs **ffmpeg, about 3 CPU cores, about 4–6 GB RAM, and a long-running process**.
+- **Supabase:** project `overthought-studio`, ref **`xkbgusqmdeocjwxaknjx`**, us-east-1, org "realgrowthnexus".
+  - Migrations 0001–0003 applied.
+  - Storage buckets: `videos`, `backups`.
+  - The dashboard and worker never talk directly; they share DB tables (`jobs`, `videos`, `channels`, `services`,
+    `events`, `spend`, `settings`, `secrets`).
+  - Secrets: AES-256-GCM, format `v1:`+b64(iv|ct|tag), env `MASTER_KEY`. It must be identical for web and worker.
+  - The owner still has to: turn **off public sign-ups** and set the Site URL (Auth settings).
+  - A stray empty project with the same name exists in the "hellowickettravels" org. The owner was asked to delete
+    it.
+- **`infra/`:**
+  - `docker-compose.yml`: worker + web + optional Caddy.
+  - `install.sh`: a VPS installer that builds from GitHub, auto-updates every 10 minutes, generates `MASTER_KEY`
+    and `SETUP_TOKEN`, and auto-detects Caddy, Nginx or a manual proxy.
+  - Both Docker images were verified building and running. Base images come from `public.ecr.aws` because of
+    Docker Hub rate limits.
+- **Preview:** a real doorway-effect video, id `477ffdfb-06c3-434c-b398-3429e9e750dd` (status `ready`), built from
+  the hand-written `worker/fixtures/doorway_script.json`.
+  - **The Claude-API steps have NEVER run end-to-end yet.** That needs the owner's Anthropic key in Settings.
 
-## 3. Architecture (details in `docs/ARCHITECTURE.md`)
-- `apps/web`: Next.js 15 dashboard. **Owner decided (2026-11-18): NO Vercel — dashboard runs on the VPS too** (Docker `ots-web`, 127.0.0.1:3100 + docker bridge), HTTPS via our Caddy if ports 80/443 are free, else an Nginx site + certbot, else a one-line proxy rule in the existing panel. DNS = **A record `studio` → VPS IP**. Domain **studio.getgrowthnexus.com** (confirmed by the owner 2026-11-18).
-- `worker/`: a Python worker in Docker on the owner's **Hostinger KVM 4 VPS** (Ubuntu 24, 4 vCPU, 16 GB RAM,
-  200 GB disk).
-  - **Another app already runs on that VPS**. Ours is isolated: no published ports, cpus 3.0, mem 6g.
-  - The VPS **builds from source** (GitHub fine-grained read token) and auto-updates every 10 minutes via cron
-    (`infra/install.sh`).
-  - The VPS is stateless; all data lives in Supabase, so moving to a new VPS means re-running the installer.
-- **Supabase** project `overthought-studio`, ref **`xkbgusqmdeocjwxaknjx`**, region us-east-1, org
-  "realgrowthnexus". Schema: `supabase/migrations/0001_init.sql` (applied).
-  - The dashboard ↔ worker contract runs entirely through DB tables: jobs queue + `claim_job` RPC with
-    SKIP LOCKED, services, events, spend, settings, secrets.
-  - (A stray empty project with the same name was accidentally created in the "hellowickettravels" org while the
-    connector pointed there. The owner was told to delete it.)
-- **Secrets**: `secrets` table, AES-256-GCM, format `v1:`+b64(iv|ct|tag), env `MASTER_KEY` (same on Vercel and
-  VPS). The worker falls back to env vars.
-- **External APIs**:
-  - Claude API (default `claude-opus-5-5`, adaptive thinking, server-side fallbacks, web_search_20260209,
-    structured outputs via `client.beta.messages.parse`).
-  - RunPod Flux dev (`api.runpod.ai/v2/black-forest-labs-flux-1-dev/runsync`, ~$0.012/image).
-  - ElevenLabs `with-timestamps` (word timings → captions).
-  - TikTok Content Posting API + Display API; facts in `docs/tiktok-api-notes.md`.
-- **Render engine** (`worker/studio/render/`), all original code:
-  - Geodesic "draw-on" line animation.
-  - Code-drawn accents with pop.
-  - Push-in toward the figure.
-  - Word captions.
-  - Synthesized music bed (no licensing).
-  - Safe zones (text centred at x=500).
-  - Loop crossfade.
-  - Output H.264 1080×1920 30 fps.
-  - Rendering runs in a subprocess (fork-safe).
-
-## 4. Current state (keep this section current)
-- ✅ Schema applied; 5 channels + 37 Overthought ideas seeded.
-- ✅ Worker built and hardened (25-item code audit applied; migration 0002 applied). 10 unit tests pass. Docker image
-  builds. Live trial: periodic jobs run exactly once per period.
-- ✅ Dashboard merged into main (Next.js 15, all pages, TikTok OAuth, encrypted settings). Design audit and
-  security review agents were running on it (check git log for their commits).
-- ✅ Real preview video rendered: doorway effect, 90 s, $0.64 total. Video id
-  `477ffdfb-06c3-434c-b398-3429e9e750dd`, script from `worker/fixtures/doorway_script.json`, hand-written. Sent
-  to the owner.
-- 🔄 Dashboard being built by a sub-agent on a worktree branch; it must be merged into main.
-- 🔄 Worker code audit running (sub-agent). Apply its fixes.
-- ⏳ **Claude-API steps not yet run end-to-end.** The Anthropic key will be entered in dashboard Settings after
-  deploy. Then run a real doorway video through the full pipeline and verify the fact-check quality.
-- ⏳ Deploy:
-  - Vercel: the Vercel MCP disconnected. Either the owner imports the repo in the Vercel UI (`docs/SETUP.md`
-    step 1), or ask for a Vercel token via the credential form for `api.vercel.com` and deploy with the CLI.
-  - VPS: the owner pastes the installer.
-  - TikTok developer app: owner, per the guide.
-- ⚠ **GitHub Actions blocked**: the owner's GitHub account is locked for billing. The CI workflow
-  (`.github/workflows/tests.yml`) won't run until that is fixed. Nothing depends on it.
-- ⚠ The ElevenLabs key currently saved in this cloud env lacks `user_read`, so balance can't be read. The owner
-  should create a key with User: Read when entering it in Settings.
-- `MASTER_KEY` and `SETUP_TOKEN` are now **generated by `infra/install.sh` on the VPS** and kept in
-  `/opt/overthought-studio/.env` (printed once for the owner to save). The owner only provides the Supabase secret key
-  and a GitHub read-only token. Supabase Auth: owner must turn off public sign-ups and set the Site URL (SETUP.md step 2).
-
-### Audit log
-- Worker code audit: 25 issues fixed (commit "Worker hardening…"); migration 0002.
-- Dashboard security review: authz on every loader/action, race-safe /setup, session-bound single-use OAuth
-  state, CSP/HSTS headers, strict zod validation, GCM tag pinning; Node↔Python crypto interop verified.
-  Migration 0003: single-owner unique index on admins, oauth_states.admin_id. Open: CSP still allows
-  'unsafe-inline' scripts (nonces would be a future improvement).
-- Dashboard design audit: WCAG AA contrast fixes, 3:1 borders, touch targets, focus trap, hydration #418 fix,
-  mobile "More" sheet, empty states with next steps.
-- Base Docker images come from public.ecr.aws (Docker Hub rate-limits).
-
-## 5. Cloud-session facts (Claude Code on the web)
-- Proxy-injected credentials in the owner's Default environment: `api.runpod.ai` (RunPod),
-  `api.elevenlabs.io` (`xi-api-key`), `xkbgusqmdeocjwxaknjx.supabase.co` (Supabase secret as `apikey`). Code
-  sends a placeholder; the proxy replaces it.
-  - The worker's `db.py` only sends `apikey`, so it works with the proxy.
+## 4. Known facts and gotchas
+- **GitHub Actions are blocked:** the owner's GitHub account is billing-locked. Nothing depends on CI.
+- Cloud-session proxy credentials (owner's Default environment): `api.runpod.ai`, `api.elevenlabs.io`
+  (`xi-api-key`), and `xkbgusqmdeocjwxaknjx.supabase.co` (Supabase secret as `apikey`). Code sends a placeholder.
+  - Outbound SSH is blocked.
   - Anthropic hosts can't be proxy-injected.
-- Outbound SSH (port 22) is blocked from the cloud container, so the VPS can't be reached directly. The owner
-  runs commands in the Hostinger browser terminal.
-- Docker builds in this container need the proxy CA for pip (temporary Dockerfile variant); the production
-  Dockerfile is clean.
-- Run worker code with `cd worker && . .venv/bin/activate && python -m studio.cli …`. Create the venv from
-  `worker/requirements.txt` if it's missing.
+  - Docker builds in the sandbox need the proxy CA (temporary Dockerfile variant only).
+- The ElevenLabs key saved in the cloud env lacks `user_read`, so it can't read the balance. The owner should create
+  a key with User: Read.
+- `docs/SETUP.md` currently describes the **VPS** flow. Rewrite it once the hosting decision in §5 is made.
 
-### Deploy status (2026-11-18)
-- Both production images build from GitHub main and run (verified in Docker): web 360 MB standalone, worker 1.2 GB.
-- Waiting on the owner: DNS A record, Supabase auth settings (SETUP.md step 2), run the installer on the VPS,
-  /setup, API keys in Settings, TikTok developer app. Owner-facing paste command is in SETUP.md / final report.
+## 5. OPEN DECISION: Hostinger Web App Hosting instead of the VPS
+The owner bought Hostinger **Web App Hosting** (managed Node.js: GitHub deploy, Next.js) and wants it instead of the
+VPS. Next Claude should do the following.
+1. **Dashboard → Web App Hosting.** It's a natural fit.
+   - Connect GitHub repo `realgrowthnexus/overthought-studio`, app root `apps/web`, build `npm ci && npm run build`.
+   - Start with `next start`, or `node .next/standalone/server.js` after copying `.next/static` and `public` into
+     standalone (check what Hostinger supports; drop `output: "standalone"` if it interferes).
+   - Env vars from `apps/web/.env.example`. Generate `MASTER_KEY` and `SETUP_TOKEN` (`openssl rand -base64 32`,
+     `openssl rand -hex 16`) and give them to the owner to paste into Hostinger's env settings.
+   - DNS: follow Hostinger's instructions for `studio.getgrowthnexus.com`.
+   - Check Hostinger's current docs for Node version, the env var UI, build limits and whether middleware is
+     supported.
+2. **The worker probably CANNOT run on managed web-app hosting.** It needs ffmpeg, multi-minute CPU renders and a
+   24/7 background process. Verify against Hostinger's docs, then present the owner with options and a
+   recommendation:
+   - (a) keep the existing Hostinger **KVM 4 VPS** for the worker only. `infra/install.sh` works there; drop the
+     web/caddy services. The VPS already runs another app, and our containers are isolated with cpus 3.0 and mem 6g.
+   - (b) a small always-on container host (Railway, Render, Fly.io, Hetzner); Dockerfile `worker/Dockerfile` is
+     ready.
+   - (c) RunPod CPU pod.
+   - Recommend (a) if the owner still has the VPS; otherwise the cheapest reliable option.
+   - Whichever is chosen, set the same `MASTER_KEY` on both web and worker.
+3. Update `docs/SETUP.md`, `infra/` and this file to match.
 
 ## 6. Next steps (in order)
-1. Merge the dashboard branch; run the design audit (contrast, button sizes, type, motion, scroll, dark/light),
-   the code/security audit, and the performance pass; fix everything.
-2. Apply the worker audit fixes; re-run tests and a render.
-3. Deploy the dashboard (Vercel) and give the owner exact env values plus the paste-ready VPS installer command.
-4. The owner enters keys in Settings. Run a full Claude-powered doorway video, check script quality, fact-check
-   and length, then send it to the owner.
-5. TikTok app setup with the owner (sandbox target users), connect accounts, test a draft upload.
-6. Final report to the owner in Roman Urdu: what's live, how to use it, costs, what is left for them.
-7. Then discuss niche selection for channels 2–5 with the owner.
+1. Settle §5 with the owner, then deploy the dashboard on Web App Hosting and the worker wherever was decided.
+2. Owner tasks:
+   - DNS;
+   - Supabase Auth settings;
+   - `/setup` to create the owner login;
+   - keys in Settings: Anthropic (plus credit balance), ElevenLabs (with User: Read), RunPod.
+3. Run a **real Claude-powered doorway video** through the full pipeline: dashboard → Overthought → "Make a video
+   now", or `python -m studio.cli`.
+   - Check script quality, fact-check, length and render, then send it to the owner.
+   - Also verify browser login works (it couldn't be tested in the sandbox).
+4. TikTok developer app (guide on the dashboard's TikTok accounts page):
+   - sandbox target users;
+   - connect accounts;
+   - test a draft upload;
+   - submit for review, then apply for the Content Posting API audit.
+5. Final report to the owner in Roman Urdu.
+6. Then discuss niches for channels 2–5.
 
 ## 7. Quality bar (do not lower)
-- Design: modern, custom (no generic templates), WCAG AA contrast, proper button sizes, smooth motion with
-  reduced-motion support, responsive on mobile, light and dark.
-- Backend: fast (RSC, minimal JS), every mutation validated and admin-checked, no secrets in client bundles.
-- Verify with real runs and screenshots before claiming anything works. Report failures honestly.
+- Design: modern, custom, WCAG AA, proper touch targets, smooth motion with reduced-motion support, mobile, light and
+  dark.
+- Backend: every mutation validated and admin-checked, no secrets client-side, fast.
+- Verify with real runs and screenshots. Report failures honestly.
