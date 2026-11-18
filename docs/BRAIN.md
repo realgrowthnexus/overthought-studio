@@ -64,8 +64,8 @@ The owner said **niche selection will be discussed after the app is finished**, 
 Overthought has 37 seed ideas.
 
 ## 3. Architecture (details in `docs/ARCHITECTURE.md`)
-- `apps/web`: Next.js 15 dashboard, deployed on **Vercel** at **studio.getgrowthnexus.com**. ⚠ The spelling
-  "getgrowthnexus" vs "getgrowthnaxis" is still to be CONFIRMED by the owner.
+- `apps/web`: Next.js 15 dashboard, deployed on **Vercel** at **studio.getgrowthnexus.com** (confirmed by the owner
+  2026-11-18). The owner was told to add DNS `CNAME studio → cname.vercel-dns.com` (DNS-only if on Cloudflare).
 - `worker/`: a Python worker in Docker on the owner's **Hostinger KVM 4 VPS** (Ubuntu 24, 4 vCPU, 16 GB RAM,
   200 GB disk).
   - **Another app already runs on that VPS**. Ours is isolated: no published ports, cpus 3.0, mem 6g.
