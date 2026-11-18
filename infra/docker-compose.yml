@@ -1,10 +1,13 @@
 # Overthought Studio on the VPS. Lives in /opt/overthought-studio and touches nothing else on the server:
-# no ports are published, it only makes outbound HTTPS calls.
+# no ports are published; it only makes outbound HTTPS calls.
 name: overthought-studio
 
 services:
   worker:
-    image: ghcr.io/realgrowthnexus/overthought-studio-worker:latest
+    build:
+      context: ./src
+      dockerfile: worker/Dockerfile
+    image: overthought-studio-worker:local
     container_name: ots-worker
     restart: unless-stopped
     env_file: .env
@@ -13,22 +16,9 @@ services:
     # leave head-room for the other app on this VPS (4 vCPU / 16 GB)
     cpus: "3.0"
     mem_limit: 6g
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
     logging:
       driver: json-file
       options: { max-size: "20m", max-file: "5" }
-
-  updater:
-    image: containrrr/watchtower:1.7.1
-    container_name: ots-updater
-    restart: unless-stopped
-    command: --label-enable --interval 300 --cleanup
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${HOME}/.docker/config.json:/config.json:ro
-    labels:
-      - com.centurylinklabs.watchtower.enable=false
 
 volumes:
   work:
