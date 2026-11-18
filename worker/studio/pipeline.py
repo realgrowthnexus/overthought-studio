@@ -1,8 +1,11 @@
 """produce_video: the full production line for one video, resumable stage by stage."""
 from __future__ import annotations
 
+import dataclasses
 import json
 import shutil
+import subprocess
+import sys
 import zlib
 from pathlib import Path
 
@@ -257,7 +260,13 @@ def _render(video: dict, ch: dict, work: Path) -> dict:
                         voice_path=str(work / "voice.mp3"), style=style,
                         music_seed=int(style.get("music_seed", zlib.crc32(ch["slug"].encode()) % 97)),
                         out_path=out, thumb_path=thumb)
-    pr = compose.render_video(spec)
+    spec_path = work / "spec.json"
+    spec_path.write_text(json.dumps(dataclasses.asdict(spec)))
+    proc = subprocess.run([sys.executable, "-m", "studio.render.run", str(spec_path)], cwd=str(config.ROOT),
+                          capture_output=True, text=True, timeout=3600)
+    if proc.returncode != 0:
+        raise RuntimeError("Render failed: " + (proc.stderr or proc.stdout)[-800:])
+    pr = json.loads(proc.stdout.strip().splitlines()[-1])
     if pr["duration"] < HARD_MIN_SECONDS:
         raise RuntimeError(f"Rendered video is {pr['duration']:.1f}s (< 61s)")
     return {"path": out, "thumb": thumb, "probe": pr}

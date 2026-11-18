@@ -60,8 +60,16 @@ def set_status(name: str, status: str, message: str | None = None, *, balance=No
         event(msg, lvl, "services", data={"service": name, "from": prev.get("status"), "to": status})
 
 
+SETUP_HINTS = {
+    "anthropic": "Add your Anthropic API key in Settings → API keys.",
+    "elevenlabs": "Add your ElevenLabs API key in Settings → API keys (enable the 'Text to Speech' and 'User: Read' permissions).",
+    "runpod": "Add your RunPod API key in Settings → API keys.",
+    "tiktok": "Add the TikTok app keys in Settings, then connect the account in Accounts.",
+}
+
+
 def report_problem(p: ServiceProblem) -> None:
-    hint = FIX_HINTS.get(p.service, "")
+    hint = (SETUP_HINTS if p.status == "unconfigured" else FIX_HINTS).get(p.service, "")
     set_status(p.service, p.status, f"{p.message}. {hint}".strip())
 
 
