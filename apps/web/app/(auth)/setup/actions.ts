@@ -1,5 +1,6 @@
 "use server";
 import { timingSafeEqual } from "node:crypto";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { serviceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
@@ -23,7 +24,9 @@ export async function claimOwner(_: unknown, formData: FormData): Promise<{ erro
   const expected = process.env.SETUP_TOKEN ?? "";
   if (!expected) return { error: "SETUP_TOKEN isn't configured on the server yet." };
   if (!sameToken(parsed.data.token, expected)) return { error: "That setup token is wrong." };
-  if (await hasAnyAdmin()) return { error: "An owner account already exists. Sign in instead." };
+  const claimed = await hasAnyAdmin().catch(() => null);
+  if (claimed === null) return { error: "The dashboard can't reach the database. Check SUPABASE_SERVICE_ROLE_KEY." };
+  if (claimed) return { error: "An owner account already exists. Sign in instead." };
 
   const admin = serviceClient();
   const { data, error } = await admin.auth.admin.createUser({
@@ -39,5 +42,5 @@ export async function claimOwner(_: unknown, formData: FormData): Promise<{ erro
 
   const supabase = await createClient();
   await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-  return { ok: true };
+  redirect("/");
 }

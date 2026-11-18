@@ -38,6 +38,8 @@ export async function requireAdmin() {
 }
 
 export async function hasAnyAdmin(): Promise<boolean> {
-  const { count } = await serviceClient().from("admins").select("user_id", { count: "exact", head: true });
+  // Fail closed: if the database can't be read (bad key, outage), treat the studio as claimed.
+  const { count, error } = await serviceClient().from("admins").select("user_id", { count: "exact", head: true });
+  if (error) throw new Error(`Couldn't reach the database: ${error.message}`);
   return (count ?? 0) > 0;
 }

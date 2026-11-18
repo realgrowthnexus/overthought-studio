@@ -128,7 +128,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
           <CaptionEditor video={video} />
 
           <Panel>
-            <PanelHeader title="Script" description={video.script?.hook ? undefined : "Appears once the writer finishes."} />
+            <PanelHeader title="Script" description={video.script?.hook || beats.length ? undefined : "Appears once the writer finishes."} />
             {video.script?.hook && (
               <div className="px-5 pb-2">
                 <p className="text-[12px] text-ink-3">Hook</p>

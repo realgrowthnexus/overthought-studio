@@ -7,7 +7,8 @@ export const metadata: Metadata = { title: "Create owner account" };
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
-  if (await hasAnyAdmin()) notFound();
+  const claimed = await hasAnyAdmin().catch(() => true);
+  if (claimed) notFound();
   return (
     <>
       <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-ink">Create the owner account</h1>

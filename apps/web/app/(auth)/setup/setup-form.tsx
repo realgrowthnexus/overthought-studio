@@ -1,19 +1,11 @@
 "use client";
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { claimOwner } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/primitives";
 
 export function SetupForm() {
-  const router = useRouter();
   const [state, action, pending] = React.useActionState(claimOwner, {});
-  React.useEffect(() => {
-    if (state.ok) {
-      router.replace("/");
-      router.refresh();
-    }
-  }, [state.ok, router]);
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field label="Setup token" htmlFor="token">
