@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Overthought Studio tokens
+   Dark = the brand's late-night charcoal. Light = warm newsprint paper.
+   Yellow is reserved for "the thing to look at": primary action, active nav,
+   the one number that matters. Status colours never double as decoration.
+------------------------------------------------------------------- */
+:root {
+  --bg: #eeeadf;
+  --bg-elev: #f9f7f2;
+  --bg-elev-2: #e7e2d5;
+  --bg-inset: #e3ddcf;
+  --line: #d9d2c3;
+  --line-strong: #bfb7a6;
+  --ink: #1a1916;
+  --ink-2: #45423c;
+  --ink-3: #66615a;
+  --accent: #ffd60a;
+  --accent-hover: #ffdf3d;
+  --accent-ink: #1a1916;
+  --accent-text: #7a5c00;
+  --accent-soft: rgb(255 214 10 / 0.22);
+  --good: #176b33;
+  --good-soft: rgb(23 107 51 / 0.12);
+  --warn: #8f5400;
+  --warn-soft: rgb(222 140 0 / 0.16);
+  --bad: #b3261e;
+  --bad-soft: rgb(179 38 30 / 0.1);
+  --info: #2457a8;
+  --info-soft: rgb(36 87 168 / 0.1);
+  --focus: #1a1916;
+  --shadow: 0 1px 0 rgb(26 25 22 / 0.04), 0 8px 24px -12px rgb(26 25 22 / 0.18);
+  --grain-opacity: 0.35;
+
+  /* chart roles (dataviz reference palette, light steps) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --chart-grid: #ddd7ca;
+  --chart-axis: #66615a;
+}
+
+.dark {
+  --bg: #111111;
+  --bg-elev: #191817;
+  --bg-elev-2: #22201e;
+  --bg-inset: #0c0c0c;
+  --line: #2b2926;
+  --line-strong: #3e3a35;
+  --ink: #f6f1e6;
+  --ink-2: #d0c9bb;
+  --ink-3: #a19a8d;
+  --accent: #ffd60a;
+  --accent-hover: #ffe04a;
+  --accent-ink: #141210;
+  --accent-text: #ffd60a;
+  --accent-soft: rgb(255 214 10 / 0.12);
+  --good: #5fcf7f;
+  --good-soft: rgb(95 207 127 / 0.12);
+  --warn: #f5b847;
+  --warn-soft: rgb(245 184 71 / 0.13);
+  --bad: #ff8070;
+  --bad-soft: rgb(255 128 112 / 0.12);
+  --info: #8db8ff;
+  --info-soft: rgb(141 184 255 / 0.12);
+  --focus: #ffd60a;
+  --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  --grain-opacity: 0.5;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --chart-grid: #2b2926;
+  --chart-axis: #a19a8d;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-elev-2: var(--bg-elev-2);
+  --color-inset: var(--bg-inset);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-hand: var(--font-kalam), cursive;
+  --font-brush: var(--font-caveat-brush), cursive;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* soft centre glow like the video frames, very faint */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(1200px 700px at 60% -10%, var(--accent-soft), transparent 60%);
+  opacity: 0.35;
+}
+.dark body::before {
+  background: radial-gradient(1000px 640px at 55% -12%, rgb(246 241 230 / 0.06), transparent 65%);
+  opacity: 1;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* skeleton shimmer */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-elev-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+/* live pulse for the in-progress lamp */
+@keyframes lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.lamp-live {
+  animation: lamp 1.6s ease-in-out infinite;
+}
+
+/* progress stripe for running stages */
+@keyframes stripe {
+  to { background-position: 24px 0; }
+}
+.progress-live {
+  background-image: repeating-linear-gradient(
+    -45deg, transparent 0 6px, rgb(0 0 0 / 0.12) 6px 12px
+  );
+  background-size: 24px 24px;
+  animation: stripe 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* markdown (reports, legal) */
+.prose-studio {
+  max-width: 72ch;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+.prose-studio h1, .prose-studio h2, .prose-studio h3 {
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 1.6em 0 0.5em;
+}
+.prose-studio h1 { font-size: 1.6rem; }
+.prose-studio h2 { font-size: 1.2rem; }
+.prose-studio h3 { font-size: 1.02rem; }
+.prose-studio p, .prose-studio ul, .prose-studio ol, .prose-studio table { margin: 0.8em 0; }
+.prose-studio ul { list-style: disc; padding-left: 1.3em; }
+.prose-studio ol { list-style: decimal; padding-left: 1.3em; }
+.prose-studio li { margin: 0.25em 0; }
+.prose-studio a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.prose-studio strong { color: var(--ink); }
+.prose-studio code { font-family: var(--font-mono); font-size: 0.88em; background: var(--bg-elev-2); padding: 0.1em 0.35em; border-radius: 4px; }
+.prose-studio table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+.prose-studio th, .prose-studio td { border-bottom: 1px solid var(--line); padding: 0.45em 0.6em; text-align: left; }
+.prose-studio th { color: var(--ink); font-weight: 600; }
+.prose-studio blockquote { border-left: 3px solid var(--accent); padding-left: 1em; color: var(--ink-2); }
