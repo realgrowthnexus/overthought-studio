@@ -34,12 +34,14 @@ export async function claimOwner(_: unknown, formData: FormData): Promise<Result
 }
 
 async function claim(formData: FormData): Promise<Result> {
-  const expected = process.env.SETUP_TOKEN ?? "";
-  if (expected.length < 8) return { error: "SETUP_TOKEN isn't configured on the server yet." };
+  if (!(formData instanceof FormData)) return { error: "Check the form" };
   // Fail closed: once an owner exists (or the DB can't be read) /setup does nothing, whatever the token.
   const claimed = await hasAnyAdmin().catch(() => null);
   if (claimed === null) return { error: "The dashboard can't reach the database. Check SUPABASE_SERVICE_ROLE_KEY." };
   if (claimed) return { error: "An owner account already exists. Sign in instead." };
+  const expected = process.env.SETUP_TOKEN ?? "";
+  if (!expected) return { error: "SETUP_TOKEN isn't configured on the server yet." };
+  if (expected.length < 12) return { error: "SETUP_TOKEN on the server is too short. Use a long random string (openssl rand -hex 24)." };
 
   const parsed = schema.safeParse({
     token: formData.get("token"), email: formData.get("email"), password: formData.get("password"),
