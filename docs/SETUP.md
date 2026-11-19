@@ -1,6 +1,6 @@
 # Overthought Studio: setup guide (VPS-only)
 
-> ⚠ **Hosting is changing** (owner, 2026-11-18): Hostinger **Web App Hosting** replaces the VPS for the dashboard. The worker host is still to be decided. See `docs/BRAIN.md` §5. The VPS steps below stay valid for running the worker on a VPS.
+> **Decision (owner, 2026-11-19):** everything (dashboard + worker) runs on the Hostinger VPS "JUC Vps". Web App Hosting is NOT used.
 
 The setup happens once. After that the system runs itself.
 
@@ -36,17 +36,16 @@ Go to Supabase → project **overthought-studio** → **Authentication**:
 - **Sign In / Providers**: turn **Allow new users to sign up** OFF.
 - **URL Configuration**: set Site URL to `https://studio.getgrowthnexus.com`.
 
-## Step 3: Two keys to have ready
-1. **Supabase secret key**: Supabase → Project Settings → **API Keys** → Secret key (`sb_secret_...`).
-2. **GitHub read-only token**: github.com → Settings → Developer settings → **Fine-grained tokens** → Generate.
-   - Repository access: only `overthought-studio`.
-   - Permissions: **Contents: Read-only**.
-   - Expiry: 1 year.
+## Step 3: One key to have ready
+**Supabase secret key**: Supabase → Project Settings → **API Keys** → Secret key (`sb_secret_...`).
+(The repo is public, so no GitHub token is needed. If it is made private later, run the installer with
+`GITHUB_TOKEN=github_pat_... ` in front, using a fine-grained token with Contents: Read-only.)
 
 ## Step 4: Install on the VPS (about 10 minutes)
 1. Hostinger → VPS → **Browser terminal**. Log in as root.
-2. Paste the install command from your setup message.
-   - It asks for the two keys above. Typing is hidden.
+2. Paste this command:
+   `curl -fsSL https://raw.githubusercontent.com/realgrowthnexus/overthought-studio/main/infra/install.sh | bash`
+   - It asks for the Supabase secret key. Typing is hidden.
 3. Wait for the build to finish. At the end it prints:
    - the **one-time setup token**, used to create your login;
    - your **MASTER_KEY**. Save it in a password manager.

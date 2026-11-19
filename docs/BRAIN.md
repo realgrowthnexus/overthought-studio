@@ -3,12 +3,12 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-18, end of session 1 (handoff).
+> Last updated: 2026-11-19, session 2.
 
 ## 0. START HERE (next Claude)
 1. Read this file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md` and `docs/tiktok-api-notes.md`.
-2. **Open decision, owner changed hosting (latest instruction):** the owner bought **Hostinger "Web App Hosting"
-   (12 months)**. It supports GitHub deploys and Next.js. They want to use it **instead of the VPS**. See §5.
+2. **Hosting is DECIDED (2026-11-19, owner):** everything (web + worker) goes on the Hostinger **VPS "JUC Vps"**
+   (IP `2.24.74.240`) with `infra/install.sh`, exactly as originally designed. Web App Hosting is NOT used. See §5.
 3. Then follow §6 (next steps) in order.
 
 ## 1. The owner and how to work with them
@@ -117,7 +117,18 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   a key with User: Read.
 - `docs/SETUP.md` currently describes the **VPS** flow. Rewrite it once the hosting decision in §5 is made.
 
-## 5. OPEN DECISION: Hostinger Web App Hosting instead of the VPS
+## 5. Hosting: DECIDED → VPS (2026-11-19)
+- Owner reversed the Web App Hosting idea: "sab VPS par, purane decision ke mutabiq". Ignore the old notes below.
+- VPS: "JUC Vps", `ssh root@2.24.74.240`. The owner pasted the root password in chat; told them to change it.
+  Never store it. Outbound SSH from cloud sessions is blocked, so the **owner runs the installer** in Hostinger's
+  Browser terminal: `curl -fsSL https://raw.githubusercontent.com/realgrowthnexus/overthought-studio/main/infra/install.sh | bash`
+- Repo is public, so `install.sh` no longer needs a GitHub token (optional `GITHUB_TOKEN` env).
+- The `MASTER_KEY` made for Web App Hosting is unused; the installer generates the real one into `/opt/overthought-studio/.env`.
+- Domain `getgrowthnexus.com` lives in the owner's OTHER Hostinger account: add A record `studio → 2.24.74.240` there.
+- Hostinger plugin is installed (needs owner OAuth sign-in in claude.ai Connectors); env `overthought-studio`
+  (env_01TJ5FBy4nZt3RRkNjTKNPPG) allows `mcp.hostinger.com`. Not required for the VPS path.
+
+### Old notes (superseded): Hostinger Web App Hosting instead of the VPS
 The owner bought Hostinger **Web App Hosting** (managed Node.js: GitHub deploy, Next.js) and wants it instead of the
 VPS. Next Claude should do the following.
 1. **Dashboard → Web App Hosting.** It's a natural fit.
@@ -156,7 +167,7 @@ VPS. Next Claude should do the following.
    - Root: the zip root, where `package.json` sits
 
 ## 6. Next steps (in order)
-1. Settle §5 with the owner, then deploy the dashboard on Web App Hosting and the worker wherever was decided.
+1. Owner runs the installer on the VPS (§5), adds DNS A record, sends me the installer output (NOT the keys).
 2. Owner tasks:
    - DNS;
    - Supabase Auth settings;

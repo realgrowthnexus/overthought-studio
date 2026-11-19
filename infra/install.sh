@@ -18,7 +18,8 @@ mkdir -p "$DIR"; cd "$DIR"; umask 077
 # keep existing secrets on re-run
 [ -f .env ] && set -a && . ./.env && set +a
 ask SUPABASE_SERVICE_ROLE_KEY "Supabase secret key (sb_secret_...)"
-ask GITHUB_TOKEN "GitHub read-only token (github_pat_...)"
+# The repo is public: a GitHub token is optional (only needed if the repo is made private later).
+GITHUB_TOKEN=${GITHUB_TOKEN:-}
 MASTER_KEY=${MASTER_KEY:-$(openssl rand -base64 32)}
 SETUP_TOKEN=${SETUP_TOKEN:-$(openssl rand -hex 16)}
 WORKER_ID=${WORKER_ID:-vps-$(hostname -s)}
@@ -29,7 +30,11 @@ command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
 docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 is required"; exit 1; }
 
 say "Getting the code"
-printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > .git-credentials
+if [ -n "$GITHUB_TOKEN" ]; then
+  printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > .git-credentials
+else
+  : > .git-credentials
+fi
 if [ -d src/.git ]; then
   git -C src fetch -q --depth 1 origin main && git -C src reset -q --hard origin/main
 else
