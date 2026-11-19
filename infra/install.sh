@@ -30,6 +30,8 @@ command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
 docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 is required"; exit 1; }
 
 say "Getting the code"
+# code is not secret: check it out world-readable so the non-root containers can read it
+umask 022
 if [ -n "$GITHUB_TOKEN" ]; then
   printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > .git-credentials
 else
@@ -42,6 +44,8 @@ else
 fi
 git -C src config credential.helper "store --file=$DIR/.git-credentials"
 cp src/infra/docker-compose.yml docker-compose.yml
+chmod -R a+rX src
+umask 077
 
 say "Choosing how HTTPS is served"
 BRIDGE=$(ip -4 addr show docker0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1); BRIDGE=${BRIDGE:-172.17.0.1}

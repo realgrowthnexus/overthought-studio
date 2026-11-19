@@ -15,7 +15,9 @@ RUN pip install --no-cache-dir -r worker/requirements.txt
 COPY assets/style/fonts assets/style/fonts
 COPY worker/studio worker/studio
 
-RUN useradd -m -u 10001 studio && mkdir -p /data/work && chown -R studio /data
+# Files must be readable by the non-root user even if the checkout was made with a strict umask (077).
+RUN chmod -R a+rX /app \
+ && useradd -m -u 10001 studio && mkdir -p /data/work && chown -R studio /data
 USER studio
 WORKDIR /app/worker
 ENTRYPOINT ["/usr/bin/tini", "--"]
