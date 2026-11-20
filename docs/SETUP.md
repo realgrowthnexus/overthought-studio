@@ -56,10 +56,27 @@ Go to Supabase → project **overthought-studio** → **Authentication**:
 
 **If ports 80/443 already belong to another panel** (Coolify, CapRover, Nginx Proxy Manager, Traefik…), the installer prints one line to add in that panel: `studio.getgrowthnexus.com → http://172.17.0.1:3100`.
 
-## Step 5: API keys (dashboard → Settings)
+## Step 5a: Connect Claude (once, 2 minutes, no API key)
+The studio runs Claude through **your Claude plan (Pro or Max)**, the same sign-in Claude Code uses. There is no API
+key, no credit and no per-use bill. On the VPS run:
+
+    sudo bash /opt/overthought-studio/src/infra/connect-claude.sh
+
+Open the link it prints, sign in with your Claude account, paste the code back, press Enter. That's it: the sign-in
+is saved encrypted and the dashboard's **Claude** card shows "Connected" with your 5-hour and weekly limits.
+
+- When a limit is reached, work **pauses and resumes on its own** after the reset. It is not an error.
+- If the weekly limit would run out early, the studio skips **evening** videos until the reset; morning videos keep
+  going.
+- The limit is shared with your own Claude chats on the same account.
+- Run the command again whenever the card says "Not signed in" (the sign-in lasts about a year).
+- Anthropic's terms allow your own Claude Code sign-in for your own scripts, and say plan limits assume ordinary
+  individual use. Keep the studio for your own use only.
+
+## Step 5b: Other API keys (dashboard → Settings)
 | Key | Where to get it | Notes |
 |---|---|---|
-| Anthropic (Claude) | console.anthropic.com → API Keys | Add credit under Billing, then type the balance into Settings so the dashboard can count it down |
+| Anthropic API key (optional) | console.anthropic.com → API Keys | **Not needed** — only if you ever switch from the Claude sign-in to pay-per-use |
 | ElevenLabs | elevenlabs.io → Developers → API Keys | Enable **Text to Speech**, **Voices: Read** and **User: Read**. User: Read is needed to show your balance |
 | RunPod | runpod.io → Settings → API Keys | |
 | TikTok client key and secret | Step 6 | |

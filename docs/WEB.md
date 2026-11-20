@@ -20,7 +20,8 @@ Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Nex
 
 ## First run
 1. Open `/setup`, enter `SETUP_TOKEN`, your email and a password. Works only while no owner exists.
-2. Settings → API keys: paste Claude, ElevenLabs, RunPod, TikTok client key/secret.
+2. Claude: run `infra/connect-claude.sh` on the VPS once (signs in with the owner's Claude plan; no API key).
+   Settings → API keys: paste ElevenLabs, RunPod, TikTok client key/secret.
 3. TikTok accounts: follow the on-page guide (redirect URI, privacy and terms URLs are shown with copy buttons).
 
 ## Routes
@@ -32,7 +33,7 @@ Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Nex
 | `/analytics` | Trend chart, performance vs channel median, TikTok Studio CSV import |
 | `/reports` | Weekly reports |
 | `/accounts` | TikTok accounts, connect/disconnect, app setup guide |
-| `/settings` | Encrypted API keys, budgets, model, auto-publish, Claude credit, worker status |
+| `/settings` | Claude card (sign-in, 5-hour/weekly limits, pacing), encrypted API keys, budgets, model, auto-publish, worker status; API credit under "Advanced" |
 | `/logs` | Events and job queue (retry/cancel) |
 | `/privacy`, `/terms` | Public pages for TikTok app review |
 | `/api/tiktok/connect`, `/api/tiktok/callback` | Login Kit OAuth |

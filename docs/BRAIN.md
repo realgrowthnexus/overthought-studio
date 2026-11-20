@@ -39,8 +39,25 @@
      - Audience: owner + their father. The father only watches and approves; money, keys and the red bar → "bete se kahein".
    - Env `overthought-studio` also allows: d2glxqk2uabbnd.cloudfront.net, speech.platform.bing.com; credential for
      api.supabase.com (owner asked to delete that token — not needed any more).
-   - NEXT (owner): Supabase Auth settings (sign-ups off, Site URL), keys in Settings (Anthropic + balance, ElevenLabs
-     WITH User: Read, RunPod). Then Task 6 of the first plan (first real video, ask before spending), TikTok app.
+   - **Claude runs on the owner's Claude Pro sign-in, NOT an API key (decided 2026-11-20, owner: "API is messy").**
+     Spec `docs/superpowers/specs/2026-11-20-claude-subscription-design.md`, plan
+     `docs/superpowers/plans/2026-11-20-claude-subscription.md`.
+     - Worker runs Claude Code headless (`worker/studio/claude_cli.py`, CLI pinned 2.1.329, Node 22 in the image).
+       Token: `claude setup-token` captured by `infra/connect-claude.sh` → `studio.cli claude-token` → encrypted in
+       `secrets.claude_oauth_token`. Never in argv/logs.
+     - `llm.backend()` = subscription unless an API key is saved AND `settings.llm_backend == "api"`.
+       Heavy work = plan default model; scorecard/smoke = sonnet.
+     - Limits: `LimitReached` parks jobs (no 24h give-up, no circuit breaker), stored as services.status `warning` +
+       `details.limited/resume_at` (no DB migration). `usage.py` reads the same endpoint as Claude Code's /usage,
+       measures weekly-% per video (avg of last 5), and turns **pacing** on (evening slots dropped) when the week is
+       projected past 95%. Planning is round-robin across channels.
+     - Dashboard: Claude card on Overview + Settings (`components/claude-usage.tsx`, view model `lib/claude-usage.ts`,
+       test `apps/web/tests/claude-usage.test.mjs`).
+     - Owner was told: Pro limits are shared with their own chats; target 5 channels × 2/day may not fit Pro — the
+       first real videos measure it; Anthropic's terms allow own-use scripts, volume line undefined; owner accepted.
+   - NEXT (owner): run `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` on the VPS; Supabase Auth
+     settings (sign-ups off, Site URL); keys in Settings (ElevenLabs WITH User: Read, RunPod). Then Task 6 of the first
+     plan (first real video — check the Claude card's per-video %), TikTok app.
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
@@ -167,7 +184,8 @@ History: on 2026-11-18 the owner briefly planned Hostinger Web App Hosting (zip 
    - DNS;
    - Supabase Auth settings;
    - `/setup` to create the owner login;
-   - keys in Settings: Anthropic (plus credit balance), ElevenLabs (with User: Read), RunPod.
+   - Claude sign-in: `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` (no Anthropic key);
+   - keys in Settings: ElevenLabs (with User: Read), RunPod.
 3. Run a **real Claude-powered doorway video** through the full pipeline: dashboard → Overthought → "Make a video
    now", or `python -m studio.cli`.
    - Check script quality, fact-check, length and render, then send it to the owner.
