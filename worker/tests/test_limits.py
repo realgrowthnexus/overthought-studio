@@ -59,6 +59,8 @@ def _signed_in(monkeypatch, ok=True):
     from studio import claude_cli, llm
     monkeypatch.setattr(llm, "backend", lambda: "subscription")
     monkeypatch.setattr(claude_cli, "auth_ok", lambda: ok)
+    from studio import usage
+    monkeypatch.setattr(usage, "read", lambda: None)              # no network in tests
 
 
 def test_health_on_subscription_reports_connected(world, monkeypatch):

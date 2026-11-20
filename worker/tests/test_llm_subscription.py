@@ -11,6 +11,9 @@ from test_llm_contract import SCORE
 FAKE = __import__("pathlib").Path(__file__).with_name("fake_claude.py")
 
 
+MARKS: list = []          # usage readings the subscription path asked for, in order
+
+
 @pytest.fixture
 def sub(monkeypatch, tmp_path):
     log = tmp_path / "calls.jsonl"
@@ -24,6 +27,9 @@ def sub(monkeypatch, tmp_path):
     spent = []
     monkeypatch.setattr(llm.spend, "record", lambda *a, **k: spent.append((a, k)))
     monkeypatch.setattr(llm, "set_status", lambda *a, **k: None)
+    MARKS.clear()
+    monkeypatch.setattr(llm.usage, "before_run", lambda vid: MARKS.append(("before", vid)))
+    monkeypatch.setattr(llm.usage, "after_run", lambda vid: MARKS.append(("after", vid)))
     calls = lambda: [json.loads(l)["argv"] for l in log.read_text().splitlines()]
     return monkeypatch, calls, keys, sets, spent
 
@@ -47,6 +53,7 @@ def test_structured_goes_through_cli_and_costs_nothing(sub):
     assert json.loads(a[a.index("--json-schema") + 1])["properties"]["overall"]
     assert a[a.index("--model") + 1] == "sonnet"        # light work saves limit
     assert spent and spent[-1][0][1] == 0.0
+    assert MARKS == [("before", "v1"), ("after", "v1")]      # each run is measured for its video
 
 
 def test_heavy_work_uses_the_plans_default_model(sub):

@@ -415,6 +415,11 @@ def _health_claude_subscription() -> str:
     row = db.select("services", {"name": "anthropic"}, single=True) or {}
     details = dict(row.get("details") or {})
     details["backend"] = "subscription"
+    try:
+        from . import usage
+        details.update(usage.refresh())
+    except Exception as e:
+        log.warning(f"claude usage refresh: {e}")
     if limit_active(row):
         db.update("services", {"name": "anthropic"}, {"details": details, "checked_at": now().isoformat()})
         return "warning"

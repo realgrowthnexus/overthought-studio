@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 import anthropic
 from pydantic import BaseModel
 
-from . import claude_cli, secrets, settings, spend
+from . import claude_cli, secrets, settings, spend, usage
 from .log import log
 from .services import NotConfigured, OutOfCredits, ServiceDown, set_status
 
@@ -58,6 +58,21 @@ def _sub_model(purpose: str) -> str | None:
     if purpose in LIGHT_PURPOSES:
         return "sonnet"
     return settings.get().get("subscription_model") or None
+
+
+def _sub_run(prompt: str, *, system: str, schema: dict, tools: list[str], purpose: str, channel_id, video_id) -> dict:
+    """One subscription run, bracketed by limit readings so the cost of each video can be measured."""
+    try:
+        usage.before_run(video_id)
+    except Exception as ex:
+        log.info(f"usage before-run skipped: {ex}")
+    out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=_sub_model(purpose))
+    try:
+        usage.after_run(video_id)
+    except Exception as ex:
+        log.info(f"usage after-run skipped: {ex}")
+    _sub_account(out, purpose, channel_id, video_id)
+    return out
 
 
 def _sub_account(out: dict, purpose: str, channel_id, video_id) -> None:
@@ -143,9 +158,8 @@ def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effor
                max_tokens: int = 16000, channel_id=None, video_id=None) -> tuple[T, float]:
     """One call that returns a validated Pydantic object."""
     if backend() == "subscription":
-        out = claude_cli.run(prompt, system=system, schema=schema.model_json_schema(), tools=[],
-                             model=_sub_model(purpose))
-        _sub_account(out, purpose, channel_id, video_id)
+        out = _sub_run(prompt, system=system, schema=schema.model_json_schema(), tools=[], purpose=purpose,
+                       channel_id=channel_id, video_id=video_id)
         if out.get("structured") is None:
             raise RuntimeError(f"Claude returned no structured output for {purpose}")
         return schema.model_validate(out["structured"]), 0.0
@@ -175,9 +189,8 @@ def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, e
              channel_id=None, video_id=None) -> tuple[str, list[dict], float]:
     """Web-grounded research. Returns (text, citations[{url,title,cited_text}], usd)."""
     if backend() == "subscription":
-        out = claude_cli.run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
-                             tools=["WebSearch", "WebFetch"], model=_sub_model(purpose))
-        _sub_account(out, purpose, channel_id, video_id)
+        out = _sub_run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
+                       tools=["WebSearch", "WebFetch"], purpose=purpose, channel_id=channel_id, video_id=video_id)
         r = _Research.model_validate(out.get("structured") or {"notes": out.get("text") or ""})
         seen, cites = set(), []
         for src in r.sources:
