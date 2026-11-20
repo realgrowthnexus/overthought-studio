@@ -1,0 +1,363 @@
+# Roman Urdu video guide for Overthought Studio. One Urdu sentence per Roman subtitle line (same count, same order).
+# The voice reads `urdu`; the screen shows `roman`. Actions run in order, spread over the scene's narration.
+# actions: goto <target> | click <target> | hover <target> | scroll <px> | wait <ms> | type <target> <text> |
+#          redbar on|off | play <target>.  Targets are Playwright selectors.
+chapters:
+  - id: 1
+    title_roman: "Studio kya hai"
+    scenes:
+      - id: "1.1"
+        route: /
+        highlight: "main h1"
+        actions:
+          - {do: wait, ms: 600}
+        roman:
+          - "Assalam-o-alaikum. Yeh Overthought Studio hai."
+          - "Yeh studio khud TikTok ke liye videos banata hai."
+          - "Topic dhoondna, script likhna, awaaz aur tasveerein, sab khud karta hai."
+          - "Aap ka kaam sirf do cheezein hain: dekhna, aur video approve karna."
+          - "Paise, keys aur settings aap ke bete sambhalenge."
+          - "Is guide mein hum har zaroori safha dekhenge."
+          - "Aaiye, qadam ba qadam shuru karte hain."
+        urdu:
+          - "السلام علیکم، یہ اوور تھاٹ اسٹوڈیو ہے۔"
+          - "یہ اسٹوڈیو خود ٹک ٹاک کے لیے ویڈیوز بناتا ہے۔"
+          - "موضوع ڈھونڈنا، اسکرپٹ لکھنا، آواز اور تصویریں، سب خود کرتا ہے۔"
+          - "آپ کا کام صرف دو چیزیں ہیں، دیکھنا، اور ویڈیو منظور کرنا۔"
+          - "پیسے، کیز اور سیٹنگز آپ کے بیٹے سنبھالیں گے۔"
+          - "اس گائیڈ میں ہم ہر ضروری صفحہ دیکھیں گے۔"
+          - "آئیے، قدم بہ قدم شروع کرتے ہیں۔"
+
+  - id: 2
+    title_roman: "Login"
+    scenes:
+      - id: "2.1"
+        route: /login
+        fresh: true
+        highlight: "form"
+        actions:
+          - {do: type, target: "input[type=email]", text: "owner@demo.local"}
+          - {do: type, target: "input[type=password]", text: "DemoPass!2026x"}
+          - {do: hover, target: "button[type=submit]"}
+          - {do: click, target: "button[type=submit]"}
+        roman:
+          - "Studio kholne ke liye browser mein yeh pata likhein:"
+          - "studio.getgrowthnexus.com"
+          - "Phir apni email aur password daalein."
+          - "Aur peela 'Sign in' ka button dabayein."
+        urdu:
+          - "اسٹوڈیو کھولنے کے لیے براؤزر میں یہ پتہ لکھیں۔"
+          - "اسٹوڈیو ڈاٹ گیٹ گروتھ نیکسس ڈاٹ کام۔"
+          - "پھر اپنی ای میل اور پاس ورڈ ڈالیں۔"
+          - "اور پیلا سائن اِن کا بٹن دبائیں۔"
+      - id: "2.2"
+        route: /
+        highlight: null
+        actions:
+          - {do: wait, ms: 400}
+        roman:
+          - "Password bhool jayein to fikr na karein."
+          - "Bete se kahein, woh naya password bana denge."
+        urdu:
+          - "اگر پاس ورڈ بھول جائیں تو فکر نہ کریں۔"
+          - "بیٹے سے کہیں، وہ نیا پاس ورڈ بنا دیں گے۔"
+
+  - id: 3
+    title_roman: "Overview: pehla safha"
+    scenes:
+      - id: "3.1"
+        route: /
+        highlight: "main section:first-of-type, main .grid:first-of-type"
+        actions:
+          - {do: wait, ms: 400}
+          - {do: hover, target: "main >> text=Waiting for review"}
+        roman:
+          - "Login ke baad yeh pehla safha khulta hai: Overview."
+          - "Upar chaar dabbe hain: views, followers, review aur kharcha."
+          - "'Waiting for review' mein woh videos hain jo aap ka intezar kar rahi hain."
+          - "Kharche wala dabba bete ke liye hai, us ki fikr na karein."
+        urdu:
+          - "لاگ اِن کے بعد یہ پہلا صفحہ کھلتا ہے، اوورویو۔"
+          - "اوپر چار ڈبے ہیں، ویوز، فالوورز، ریویو اور خرچہ۔"
+          - "ویٹنگ فار ریویو میں وہ ویڈیوز ہیں جو آپ کا انتظار کر رہی ہیں۔"
+          - "خرچے والا ڈبہ بیٹے کے لیے ہے، اس کی فکر نہ کریں۔"
+      - id: "3.2"
+        route: /
+        highlight: "main >> text=Production line >> xpath=ancestor::*[contains(@class,'rounded')][1]"
+        actions:
+          - {do: scroll, px: 260}
+        roman:
+          - "Neeche 'Production line' hai."
+          - "Har video baayen se daayen chalti hai, jaise kaarkhane mein."
+          - "Research, script, fact-check, tasveer, awaaz, aur aakhir mein 'Ready'."
+          - "Aap ko yahan kuch nahi karna, bas dekhna hai."
+        urdu:
+          - "نیچے پروڈکشن لائن ہے۔"
+          - "ہر ویڈیو بائیں سے دائیں چلتی ہے، جیسے کارخانے میں۔"
+          - "ریسرچ، اسکرپٹ، فیکٹ چیک، تصویر، آواز، اور آخر میں ریڈی۔"
+          - "آپ کو یہاں کچھ نہیں کرنا، بس دیکھنا ہے۔"
+      - id: "3.3"
+        route: /
+        redbar: true
+        highlight: "[role=alert]"
+        actions:
+          - {do: wait, ms: 500}
+        roman:
+          - "Kabhi kabhi upar ek laal patti nazar aayegi."
+          - "Is ka matlab hai ke koi kaam ruk gaya hai."
+          - "Patti mein likha hota hai ke kya ruka aur kyun."
+          - "Jaise yahan: awaaz wali service ka credit khatam ho gaya."
+          - "Aisi patti dekhein to bas bete ko bata dein."
+          - "Woh credit daalenge, aur kaam khud dobara shuru ho jayega."
+        urdu:
+          - "کبھی کبھی اوپر ایک لال پٹی نظر آئے گی۔"
+          - "اس کا مطلب ہے کہ کوئی کام رک گیا ہے۔"
+          - "پٹی میں لکھا ہوتا ہے کہ کیا رکا اور کیوں۔"
+          - "جیسے یہاں، آواز والی سروس کا کریڈٹ ختم ہو گیا ہے۔"
+          - "ایسی پٹی دیکھیں تو بس بیٹے کو بتا دیں۔"
+          - "وہ کریڈٹ ڈالیں گے، اور کام خود دوبارہ شروع ہو جائے گا۔"
+
+  - id: 4
+    title_roman: "Channels"
+    scenes:
+      - id: "4.1"
+        route: /
+        highlight: "main [role=switch] >> nth=0"
+        actions:
+          - {do: click, target: "aside >> role=link[name='Channels']"}
+          - {do: hover, target: "main [role=switch] >> nth=0"}
+        roman:
+          - "Ab baayen menu mein 'Channels' dabayein."
+          - "Yahan paanch channel hain, har ek ka apna TikTok account."
+          - "Har channel ke saath ek button hai: on ya off."
+          - "Peela matlab chal raha hai, grey matlab ruka hua."
+          - "Yeh button bete se pooch kar hi badlein."
+        urdu:
+          - "اب بائیں مینو میں چینلز دبائیں۔"
+          - "یہاں پانچ چینل ہیں، ہر ایک کا اپنا ٹک ٹاک اکاؤنٹ۔"
+          - "ہر چینل کے ساتھ ایک بٹن ہے، آن یا آف۔"
+          - "پیلا مطلب چل رہا ہے، گرے مطلب رکا ہوا۔"
+          - "یہ بٹن بیٹے سے پوچھ کر ہی بدلیں۔"
+      - id: "4.2"
+        route: /channels
+        highlight: "main >> role=button[name='Make a video now']"
+        actions:
+          - {do: click, target: "main >> role=link[name=/^Overthought/] >> nth=0"}
+          - {do: hover, target: "main >> role=button[name='Make a video now']"}
+        roman:
+          - "Kisi channel par click karein to us ka safha khulta hai."
+          - "'Make a video now' se foran ek nayi video banna shuru hoti hai."
+          - "Lekin is ki zaroorat nahi, studio roz khud videos banata hai."
+        urdu:
+          - "کسی چینل پر کلک کریں تو اس کا صفحہ کھلتا ہے۔"
+          - "میک اے ویڈیو ناؤ سے فوراً ایک نئی ویڈیو بننا شروع ہوتی ہے۔"
+          - "لیکن اس کی ضرورت نہیں، اسٹوڈیو روز خود ویڈیوز بناتا ہے۔"
+      - id: "4.3"
+        route: /channels/overthought
+        highlight: "main ol"
+        actions:
+          - {do: click, target: "main >> role=link[name='Idea bank']"}
+          - {do: scroll, px: 200}
+        roman:
+          - "'Idea bank' mein agli videos ke topic hain."
+          - "Sab se upar wala topic sab se pehle banega."
+          - "Yeh list studio khud bharta rehta hai."
+        urdu:
+          - "آئیڈیا بینک میں اگلی ویڈیوز کے موضوع ہیں۔"
+          - "سب سے اوپر والا موضوع سب سے پہلے بنے گا۔"
+          - "یہ فہرست اسٹوڈیو خود بھرتا رہتا ہے۔"
+
+  - id: 5
+    title_roman: "Video approve karna"
+    scenes:
+      - id: "5.1"
+        route: /
+        highlight: "main >> role=button[name='Needs review']"
+        actions:
+          - {do: click, target: "aside >> role=link[name='Videos']"}
+          - {do: wait, ms: 400}
+          - {do: click, target: "main >> role=button[name='Needs review']"}
+        roman:
+          - "Ab sab se zaroori kaam: video approve karna."
+          - "Baayen menu mein 'Videos' dabayein."
+          - "Yahan har video aur us ka haal likha hai."
+          - "'Needs review' dabayein to sirf intezar wali videos dikhengi."
+        urdu:
+          - "اب سب سے ضروری کام، ویڈیو منظور کرنا۔"
+          - "بائیں مینو میں ویڈیوز دبائیں۔"
+          - "یہاں ہر ویڈیو اور اس کا حال لکھا ہے۔"
+          - "نیڈز ریویو دبائیں تو صرف انتظار والی ویڈیوز دکھیں گی۔"
+      - id: "5.2"
+        route: /videos
+        highlight: "main video"
+        actions:
+          - {do: click, target: "main >> role=link[name='Why you forget why you walked into a room']"}
+          - {do: play, target: "main video"}
+          - {do: wait, ms: 1200}
+          - {do: scroll, px: 500}
+        roman:
+          - "Video par click karein."
+          - "Baayen taraf video chalayein aur poori dekhein."
+          - "Daayen taraf us ki poori script likhi hai."
+          - "Neeche woh study hai jis par video bani, aur fact-check bhi."
+        urdu:
+          - "ویڈیو پر کلک کریں۔"
+          - "بائیں طرف ویڈیو چلائیں اور پوری دیکھیں۔"
+          - "دائیں طرف اس کا پورا اسکرپٹ لکھا ہے۔"
+          - "نیچے وہ اسٹڈی ہے جس پر ویڈیو بنی، اور فیکٹ چیک بھی۔"
+      - id: "5.3"
+        route: "/videos/@ready"
+        highlight: "main >> role=button[name='Approve']"
+        actions:
+          - {do: hover, target: "main >> role=button[name='Approve']"}
+          - {do: wait, ms: 1500}
+          - {do: hover, target: "main >> role=button[name='Reject']"}
+          - {do: hover, target: "main >> role=button[name='Make again']"}
+          - {do: click, target: "main >> role=button[name='Approve']"}
+        roman:
+          - "Video achhi lage to peela 'Approve' button dabayein."
+          - "Bas! Video apne waqt par TikTok par chali jayegi."
+          - "Pasand na aaye to 'Reject' dabayein aur wajah likh dein."
+          - "'Make again' se studio wohi topic dobara banata hai."
+        urdu:
+          - "ویڈیو اچھی لگے تو پیلا اپروو کا بٹن دبائیں۔"
+          - "بس، ویڈیو اپنے وقت پر ٹک ٹاک پر چلی جائے گی۔"
+          - "پسند نہ آئے تو ریجیکٹ دبائیں اور وجہ لکھ دیں۔"
+          - "میک اگین سے اسٹوڈیو وہی موضوع دوبارہ بناتا ہے۔"
+
+  - id: 6
+    title_roman: "Publish aur TikTok"
+    scenes:
+      - id: "6.1"
+        route: /videos
+        highlight: "main >> role=button[name='Queued to post']"
+        actions:
+          - {do: click, target: "main >> role=button[name='Queued to post']"}
+          - {do: wait, ms: 800}
+        roman:
+          - "Approve ki hui video 'Queued to post' mein aa jaati hai."
+          - "Waqt aane par studio usay TikTok bhejta hai."
+          - "Abhi video TikTok app mein 'draft' ban kar aati hai."
+          - "Phone par TikTok kholein aur 'Post' dabayein."
+          - "TikTok ki manzoori ke baad yeh qadam bhi khud ho jayega."
+        urdu:
+          - "منظور کی ہوئی ویڈیو کیوڈ ٹو پوسٹ میں آ جاتی ہے۔"
+          - "وقت آنے پر اسٹوڈیو اسے ٹک ٹاک بھیجتا ہے۔"
+          - "ابھی ویڈیو ٹک ٹاک ایپ میں ڈرافٹ بن کر آتی ہے۔"
+          - "فون پر ٹک ٹاک کھولیں اور پوسٹ دبائیں۔"
+          - "ٹک ٹاک کی منظوری کے بعد یہ قدم بھی خود ہو جائے گا۔"
+      - id: "6.2"
+        route: /videos
+        highlight: null
+        actions:
+          - {do: click, target: "aside >> role=link[name='TikTok accounts']"}
+          - {do: wait, ms: 600}
+        roman:
+          - "'TikTok accounts' mein channel ke TikTok account jurte hain."
+          - "Yeh ek baar ka kaam hai, aur bete ka hai."
+        urdu:
+          - "ٹک ٹاک اکاؤنٹس میں چینل کے ٹک ٹاک اکاؤنٹ جڑتے ہیں۔"
+          - "یہ ایک بار کا کام ہے، اور بیٹے کا ہے۔"
+
+  - id: 7
+    title_roman: "Analytics aur weekly report"
+    scenes:
+      - id: "7.1"
+        route: /accounts
+        highlight: "main .recharts-wrapper"
+        actions:
+          - {do: click, target: "aside >> role=link[name='Analytics']"}
+          - {do: wait, ms: 2500}
+          - {do: scroll, px: 420}
+        roman:
+          - "'Analytics' mein dikhta hai ke videos kitni dekhi gayin."
+          - "Upar ka bara number kul views hain."
+          - "Lakeer upar ja rahi ho to channel barh raha hai."
+          - "Neeche har video ka alag hisaab hai."
+        urdu:
+          - "اینالیٹکس میں دکھتا ہے کہ ویڈیوز کتنی دیکھی گئیں۔"
+          - "اوپر کا بڑا نمبر کل ویوز ہیں۔"
+          - "لکیر اوپر جا رہی ہو تو چینل بڑھ رہا ہے۔"
+          - "نیچے ہر ویڈیو کا الگ حساب ہے۔"
+      - id: "7.2"
+        route: /analytics
+        highlight: "main article, main .rounded-\\[14px\\] >> nth=0"
+        actions:
+          - {do: click, target: "aside >> role=link[name='Reports']"}
+          - {do: wait, ms: 800}
+        roman:
+          - "Har Monday studio pichle hafte ka jaiza leta hai."
+          - "'Reports' mein likha hota hai ke kya chala aur kya nahi."
+          - "Aur agle hafte studio kya naya aazmayega."
+        urdu:
+          - "ہر پیر کو اسٹوڈیو پچھلے ہفتے کا جائزہ لیتا ہے۔"
+          - "رپورٹس میں لکھا ہوتا ہے کہ کیا چلا اور کیا نہیں۔"
+          - "اور اگلے ہفتے اسٹوڈیو کیا نیا آزمائے گا۔"
+
+  - id: 8
+    title_roman: "Settings"
+    scenes:
+      - id: "8.1"
+        route: /reports
+        highlight: null
+        actions:
+          - {do: click, target: "aside >> role=link[name='Settings']"}
+          - {do: wait, ms: 800}
+        roman:
+          - "'Settings' bete ka hissa hai."
+          - "Yahan keys, credit aur budget rakhe jaate hain."
+          - "Is safhe par aap ko kuch badalna nahi hai."
+        urdu:
+          - "سیٹنگز بیٹے کا حصہ ہے۔"
+          - "یہاں کیز، کریڈٹ اور بجٹ رکھے جاتے ہیں۔"
+          - "اس صفحے پر آپ کو کچھ بدلنا نہیں ہے۔"
+
+  - id: 9
+    title_roman: "Roz ka kaam"
+    scenes:
+      - id: "9.1"
+        route: /
+        highlight: "main >> text=Waiting for review"
+        actions:
+          - {do: wait, ms: 600}
+          - {do: hover, target: "main >> text=Waiting for review"}
+        roman:
+          - "Ab roz ka kaam, sirf ek minute ka."
+          - "Ek: studio kholein aur Overview dekhein."
+          - "Do: laal patti ho to bete ko batayein."
+          - "Teen: 'Waiting for review' mein koi video ho to dekhein."
+          - "Achhi ho to Approve, warna Reject."
+          - "Bas, itna hi kaam hai."
+          - "Baaqi sab studio khud karta hai."
+        urdu:
+          - "اب روز کا کام، صرف ایک منٹ کا۔"
+          - "ایک، اسٹوڈیو کھولیں اور اوورویو دیکھیں۔"
+          - "دو، لال پٹی ہو تو بیٹے کو بتائیں۔"
+          - "تین، ویٹنگ فار ریویو میں کوئی ویڈیو ہو تو دیکھیں۔"
+          - "اچھی ہو تو اپروو، ورنہ ریجیکٹ۔"
+          - "بس، اتنا ہی کام ہے۔"
+          - "باقی سب اسٹوڈیو خود کرتا ہے۔"
+
+  - id: 10
+    title_roman: "Phone par"
+    scenes:
+      - id: "10.1"
+        route: /
+        viewport: m
+        highlight: "nav[aria-label] >> nth=-1"
+        actions:
+          - {do: wait, ms: 800}
+          - {do: click, target: "role=link[name='Videos'] >> nth=-1"}
+          - {do: wait, ms: 600}
+        roman:
+          - "Yeh studio phone par bhi isi tarah chalta hai."
+          - "Phone par menu neeche hota hai."
+          - "'Videos' dabayein, video kholein, aur wahin Approve karein."
+          - "Baaqi safhe 'More' mein hain."
+          - "Shukriya. Koi bhi sawal ho to bete se poochein."
+        urdu:
+          - "یہ اسٹوڈیو فون پر بھی اسی طرح چلتا ہے۔"
+          - "فون پر مینو نیچے ہوتا ہے۔"
+          - "ویڈیوز دبائیں، ویڈیو کھولیں، اور وہیں اپروو کریں۔"
+          - "باقی صفحے مور میں ہیں۔"
+          - "شکریہ، کوئی بھی سوال ہو تو بیٹے سے پوچھیں۔"
