@@ -5,6 +5,7 @@ import type { GlobalSettings, SecretKey } from "@/lib/types";
 import { deleteSecret, saveSecret, setAnthropicCredit, updateSettings } from "@/lib/actions";
 import { useAction } from "@/components/use-action";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/primitives";
 import { Switch } from "@/components/ui/switch";
 import { relTime } from "@/lib/format";
@@ -28,6 +29,7 @@ export function SecretsForm({ hints }: { hints: { key: string; hint: string | nu
 
 function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { hint: string | null; updated_at: string } }) {
   const [editing, setEditing] = React.useState(!stored);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [show, setShow] = React.useState(false);
   const { pending, run } = useAction();
@@ -79,7 +81,13 @@ function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { h
       ) : (
         <div className="mt-2 flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Replace</Button>
-          <Button size="sm" variant="quiet" loading={pending} onClick={() => run(() => deleteSecret(meta.key))}>Remove</Button>
+          <Button size="sm" variant="quiet" onClick={() => setConfirmOpen(true)}>Remove</Button>
+          <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} title={`Remove the ${meta.label}?`} description="Work that needs this key stops until you add a key again. The key is deleted, not hidden.">
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button variant="danger" loading={pending} onClick={() => run(() => deleteSecret(meta.key), { onOk: () => setConfirmOpen(false) })}>Remove key</Button>
+            </div>
+          </Dialog>
         </div>
       )}
     </li>

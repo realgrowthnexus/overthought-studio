@@ -15,7 +15,7 @@ const SHOTS = opt('--shots');
 
 const ROUTES = ['/', '/channels', '/channels/overthought', '/channels/overthought/videos', '/channels/overthought/ideas',
   '/channels/overthought/strategy', '/channels/overthought/settings', '/channels/new', '/channels/money-brain',
-  '/videos', '/videos/@ready', '/analytics', '/reports', '/accounts', '/settings', '/logs'];
+  '/videos', '/videos/@ready', '/videos/@voice', '/analytics', '/reports', '/accounts', '/settings', '/logs'];
 
 // ---------------------------------------------------------------- cases
 const CASES = [
@@ -81,6 +81,28 @@ const CASES = [
     }),
   },
   {
+    name: 'remove-key-confirms', routes: ['/settings'], viewports: ['d'],
+    check: async (p) => {
+      const btn = p.getByRole('button', { name: 'Remove', exact: true }).first();
+      if (!(await btn.count())) return 'no stored key to remove';
+      await btn.click();
+      const dlg = p.getByRole('dialog');
+      try { await dlg.waitFor({ timeout: 1500 }); } catch { return 'Remove deleted the key with no confirmation'; }
+      const text = await dlg.innerText();
+      await p.getByRole('button', { name: 'Cancel' }).last().click();
+      return /Claude|ElevenLabs|RunPod|TikTok|Resend/.test(text) ? null : 'confirmation does not name the key';
+    },
+  },
+  {
+    name: 'progress-animates-transform', routes: ['/videos/@voice'], viewports: ['d'],
+    check: async (p) => p.evaluate(() => {
+      const fills = [...document.querySelectorAll('[role=progressbar] > div')];
+      if (!fills.length) return 'no progress bar on the page';
+      const bad = fills.filter((f) => /width|all/.test(getComputedStyle(f).transitionProperty));
+      return bad.length ? `progress fill transitions "${getComputedStyle(bad[0]).transitionProperty}"` : null;
+    }),
+  },
+  {
     name: 'empty-chart-no-axes', routes: ['/channels/money-brain'], viewports: ['m', 'd'],
     check: async (p) => {
       const msg = p.getByText('numbers appear after the first posts get views', { exact: false }).first();
@@ -108,17 +130,17 @@ const CASES = [
 ];
 
 // ---------------------------------------------------------------- runner
-async function readyVideoId() {
+async function videoIds() {
   const env = Object.fromEntries(fs.readFileSync(path.join(__dirname, 'demo.env'), 'utf8').split('\n')
     .filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
-  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/videos?select=id&status=eq.ready&limit=1`,
-    { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY } });
-  return (await r.json())[0]?.id;
+  const get = async (st) => (await (await fetch(`${env.SUPABASE_URL}/rest/v1/videos?select=id&status=eq.${st}&limit=1`,
+    { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY } })).json())[0]?.id;
+  return { ready: await get('ready'), voice: await get('voice') };
 }
 
 (async () => {
   const b = await chromium.launch();
-  const ready = await readyVideoId();
+  const ids = await videoIds();
   let fails = 0;
   const cases = CASES.filter((c) => !ONLY.length || ONLY.includes(c.name));
   for (const vpName of ['m', 'd']) {
@@ -134,7 +156,7 @@ async function readyVideoId() {
     }
     const routes = [...new Set(cases.filter((c) => c.viewports.includes(vpName)).flatMap((c) => c.routes))];
     for (const route of routes) {
-      const url = B + route.replace('@ready', ready);
+      const url = B + route.replace('@ready', ids.ready).replace('@voice', ids.voice);
       errors.length = 0;
       const res = await page.goto(url, { waitUntil: 'networkidle' });
       await page.waitForTimeout(250);

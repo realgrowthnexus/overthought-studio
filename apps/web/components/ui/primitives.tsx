@@ -135,8 +135,8 @@ export function Progress({ value, live, tone = "accent", className }: { value: n
   return (
     <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-elev-2", className)} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)}>
       <div
-        className={cn("h-full rounded-full transition-[width] duration-700 ease-[var(--ease-out-soft)]", fill, live && "progress-live")}
-        style={{ width: `${Math.max(3, Math.min(100, value))}%` }}
+        className={cn("h-full w-full origin-left rounded-full transition-transform duration-700 ease-[var(--ease-out-soft)]", fill, live && "progress-live")}
+        style={{ transform: `scaleX(${Math.max(3, Math.min(100, value)) / 100})` }}
       />
     </div>
   );

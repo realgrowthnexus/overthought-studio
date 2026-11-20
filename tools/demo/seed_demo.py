@@ -147,7 +147,18 @@ def run(render_dir: Path) -> dict[str, int]:
                      "notes": "'You' callouts held viewers 18% longer than numbers. This week tests question hooks."}})[0]
 
     ago = lambda **kw: iso(NOW - timedelta(**kw))  # noqa: E731
-    ready = _video(ch, "Why you forget why you walked into a room", "ready", approval="pending", created_at=ago(minutes=35))
+    import json
+    script = json.loads((ROOT / "worker" / "fixtures" / "doorway_script.json").read_text())
+    ready = _video(ch, "Why you forget why you walked into a room", "ready", approval="pending", created_at=ago(minutes=35),
+                   script=script, script_version=1, caption=script.get("caption"), hashtags=script.get("hashtags") or [],
+                   scorecard={"hook": 9, "curiosity_gap": 9, "viewer_question": 8, "emotional_connection": 8, "clarity": 9,
+                              "pacing": 8, "accuracy_framing": 9, "loop": 8, "originality": 8, "overall": 8.6,
+                              "biggest_risk": "The middle beat is slower than the hook.", "fixes": []},
+                   factcheck={"claims": [{"claim": "Walking through a doorway makes people forget more than staying in one room.",
+                                          "verdict": "supported", "evidence": "Radvansky et al. 2011, Notre Dame; replicated in "
+                                          "virtual and real rooms.", "source_url": "https://doi.org/10.1080/17470218.2011.571267"}],
+                              "citations_valid": True, "passes": True, "required_changes": [],
+                              "summary": "All claims supported; the effect size is described honestly."})
     sched = _video(ch, "Why a full inbox makes you more tired than a long workday", "scheduled",
                    approval="approved", created_at=ago(hours=9), approved_at=iso(NOW - timedelta(hours=3)),
                    scheduled_for=iso((NOW + timedelta(days=1)).replace(hour=23, minute=30, second=0, microsecond=0)))
@@ -202,6 +213,11 @@ def run(render_dir: Path) -> dict[str, int]:
     db.insert("spend", [{"service": s, "amount_usd": a, "detail": "demo", "channel_id": ch["id"],
                          "created_at": iso(NOW - timedelta(days=d))}
                         for d in range(1, 15) for s, a in (("anthropic", 0.48), ("elevenlabs", 0.25), ("runpod", 0.08))])
+    from studio import crypto
+    for key in ("anthropic_api_key", "elevenlabs_api_key", "runpod_api_key"):   # fake keys so Settings looks set up
+        fake = f"sk-demo-not-a-real-key-{key[:4]}"
+        db.insert("secrets", {"key": key, "ciphertext": crypto.encrypt(fake), "hint": fake[-4:]},
+                  upsert=True, on_conflict="key")
     from studio import settings
     settings.put("anthropic_credit", {"balance_usd": 25, "set_at": iso(NOW - timedelta(days=14))})
     services_ok()
