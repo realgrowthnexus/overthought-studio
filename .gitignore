@@ -19,3 +19,8 @@ test-results/
 .claude/worktrees/
 previews/
 supabase/.temp/
+tools/demo/demo.env
+tools/demo/.supabase/
+tools/demo/.state.json
+tools/demo/.shots/
+tools/demo/.renders/
