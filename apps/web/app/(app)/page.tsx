@@ -8,6 +8,7 @@ import { StatTile } from "@/components/stat";
 import { PauseSwitch } from "@/components/pause-switch";
 import { PipelineBoard } from "@/components/pipeline-board";
 import { ServiceStrip } from "@/components/services";
+import { ClaudeUsageCard } from "@/components/claude-usage";
 import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
 import { EmptyState } from "@/components/ui/empty";
@@ -158,6 +159,11 @@ export default async function OverviewPage() {
           <EventFeed events={events} channels={channels} compact />
         </Panel>
       </div>
+
+      <Panel>
+        <PanelHeader title="Claude" description="Research, scripts and fact-checks run on your Claude plan. Limits reset on their own." action={<ButtonLink href="/settings#claude" size="sm" variant="ghost">Details</ButtonLink>} />
+        <ClaudeUsageCard initial={services} />
+      </Panel>
 
       <Panel>
         <PanelHeader

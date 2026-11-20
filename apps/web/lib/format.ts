@@ -88,7 +88,7 @@ export function videoTone(s: VideoStatus): Tone {
 }
 
 export const SERVICE_LABEL: Record<ServiceName, string> = {
-  anthropic: "Claude API", elevenlabs: "ElevenLabs", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
+  anthropic: "Claude", elevenlabs: "ElevenLabs", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
 };
 
 export const SERVICE_ROLE: Record<ServiceName, string> = {
@@ -117,6 +117,7 @@ export function serviceFix(name: ServiceName, status: ServiceStatus): { text: st
   if (status === "unconfigured") {
     if (name === "worker") return { text: "Install the worker on your VPS — see the setup guide.", href: "/settings#worker" };
     if (name === "tiktok") return { text: "Add your TikTok app keys, then connect an account.", href: "/accounts" };
+    if (name === "anthropic") return { text: "Sign in to Claude once on the VPS — Settings shows the command.", href: "/settings#claude" };
     return { text: `Add your ${SERVICE_LABEL[name]} API key in Settings.`, ...settings };
   }
   if (status === "out_of_credits") {

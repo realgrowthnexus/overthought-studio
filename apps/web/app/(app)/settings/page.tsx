@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getAnthropicCredit, getSecretHints, getSettings, getSpendTotal, getWorkers } from "@/lib/data";
+import { getAnthropicCredit, getSecretHints, getServices, getSettings, getSpendTotal, getWorkers } from "@/lib/data";
+import { ClaudeUsageCard } from "@/components/claude-usage";
 import { hasMasterKey } from "@/lib/crypto";
 import { PageHeader, Panel, PanelHeader, KV, Badge } from "@/components/ui/primitives";
 import { SecretsForm, GlobalSettingsForm, CreditForm } from "@/components/settings-forms";
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [hints, settings, credit, workers] = await Promise.all([getSecretHints(), getSettings(), getAnthropicCredit(), getWorkers()]);
+  const [hints, settings, credit, workers, services] = await Promise.all([getSecretHints(), getSettings(), getAnthropicCredit(), getWorkers(), getServices()]);
   const spentSince = credit.set_at ? await getSpendTotal(credit.set_at, "anthropic") : 0;
   const remaining = credit.balance_usd != null ? credit.balance_usd - spentSince : null;
 
@@ -37,8 +38,14 @@ export default async function SettingsPage() {
           </Panel>
         </div>
         <div className="flex flex-col gap-6">
-          <Panel>
-            <PanelHeader title="Claude API credit" description="Anthropic doesn't share your balance through the API. Enter it after each top-up; the studio subtracts what it spends." />
+          <Panel id="claude" className="scroll-mt-24">
+            <PanelHeader title="Claude" description="The studio signs in with your Claude plan (no API key, no credits). When a limit is reached, work pauses and resumes on its own after the reset." />
+            <ClaudeUsageCard initial={services} />
+          </Panel>
+          <details className="group rounded-[var(--radius-lg)]">
+            <summary className="tap cursor-pointer rounded-[10px] px-1 py-2 text-[13px] text-ink-3 hover:text-ink">Advanced: use an Anthropic API key instead</summary>
+          <Panel className="mt-2">
+            <PanelHeader title="Claude API credit" description="Only used if you switch the studio to an API key. Anthropic doesn't share your balance through the API: enter it after each top-up; the studio subtracts what it spends." />
             <dl className="divide-y divide-line px-5">
               <KV k="Balance you entered" v={credit.balance_usd != null ? `${usd(credit.balance_usd)} · ${relTime(credit.set_at)}` : "Not set"} />
               <KV k="Spent since then" v={usd(spentSince)} />
@@ -46,6 +53,7 @@ export default async function SettingsPage() {
             </dl>
             <CreditForm />
           </Panel>
+          </details>
           <Panel id="worker" className="scroll-mt-24">
             <PanelHeader title="Worker" description="The program on your VPS that makes and posts the videos." />
             {workers.length === 0 ? (

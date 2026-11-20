@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { relTime } from "@/lib/format";
 
 const KEYS: { key: SecretKey; label: string; hint: string; where: string }[] = [
-  { key: "anthropic_api_key", label: "Claude API key", hint: "Research, scripts, fact-checks and weekly reviews.", where: "console.anthropic.com → API keys" },
+  { key: "anthropic_api_key", label: "Claude API key (optional)", hint: "Not needed: the studio uses your Claude sign-in. Only for switching to pay-per-use.", where: "console.anthropic.com → API keys" },
   { key: "elevenlabs_api_key", label: "ElevenLabs API key", hint: "Voiceover. One voice per channel.", where: "elevenlabs.io → Developers → API keys" },
   { key: "runpod_api_key", label: "RunPod API key", hint: "Scene images (Flux). About $0.012 per image.", where: "runpod.io → Settings → API keys" },
   { key: "tiktok_client_key", label: "TikTok client key", hint: "From your TikTok developer app.", where: "developers.tiktok.com → your app" },
