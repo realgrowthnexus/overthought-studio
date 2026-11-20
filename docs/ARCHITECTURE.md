@@ -3,10 +3,10 @@
 Self-running studio that produces and posts 60s+ TikTok explainers for up to N channels.
 
 ```
-apps/web     Next.js 15 dashboard (Vercel, studio.<domain>)  ──┐
+apps/web     Next.js 15 dashboard (Docker on the VPS)        ──┐
 worker/      Python worker (Docker on VPS)                      ├── Supabase (Postgres + Auth + Storage + Realtime)
 supabase/    SQL migrations                                   ──┘
-infra/       docker-compose, install.sh, CI
+infra/       docker-compose, install.sh, doctor.sh
 assets/      brand kit, fonts, base scenes
 ```
 
@@ -17,7 +17,7 @@ The dashboard never talks to the worker directly. Both read/write Supabase:
 
 ## Secrets
 `public.secrets(key, ciphertext, hint)` — written only by dashboard server code (service role), read by worker.
-Encryption: AES-256-GCM. `MASTER_KEY` env = 32 random bytes, base64. Same value on Vercel and VPS.
+Encryption: AES-256-GCM. `MASTER_KEY` env = 32 random bytes, base64. Web and worker containers share it via `/opt/overthought-studio/.env`.
 Ciphertext format: `v1:` + base64( iv[12] || ciphertext || tag[16] ).
 (Node: `createCipheriv('aes-256-gcm')`, append `getAuthTag()`. Python: `cryptography` AESGCM, which already returns ct||tag.)
 Keys: `anthropic_api_key`, `elevenlabs_api_key`, `runpod_api_key`, `tiktok_client_key`, `tiktok_client_secret`, `resend_api_key`.

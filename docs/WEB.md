@@ -2,9 +2,9 @@
 
 Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realtime, storage).
 
-## Deploy on Vercel
-- Root directory: `apps/web` · Framework: Next.js · Node 22.
-- Environment variables (Production):
+## Deploy (VPS, Docker)
+Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Next.js, Node 22), on
+`127.0.0.1:3100` behind Caddy or Nginx. The installer writes these env vars to `/opt/overthought-studio/.env`:
 
 | Name | Value |
 |---|---|
@@ -15,7 +15,7 @@ Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realti
 | `APP_URL` | `https://studio.<your-domain>` (no trailing slash) |
 | `SETUP_TOKEN` | any long random string; used once at `/setup` |
 
-- Domain: add `studio.<your-domain>` in Vercel → Domains, then a CNAME to `cname.vercel-dns.com`.
+- Domain: an A record `studio` → the VPS IP. The installer sets up HTTPS.
 - Supabase → Authentication → URL configuration: Site URL = `APP_URL`. Turn **off** "Allow new users to sign up" (owner is created by `/setup` through the admin API).
 
 ## First run

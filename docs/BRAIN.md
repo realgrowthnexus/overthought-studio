@@ -122,7 +122,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
 - `docs/SETUP.md` currently describes the **VPS** flow. Rewrite it once the hosting decision in §5 is made.
 
 ## 5. Hosting: DECIDED → VPS (2026-11-19)
-- Owner reversed the Web App Hosting idea: "sab VPS par, purane decision ke mutabiq". Ignore the old notes below.
+- Owner reversed the Web App Hosting idea: "sab VPS par, purane decision ke mutabiq".
 - VPS: "JUC Vps", `ssh root@2.24.74.240`. The owner pasted the root password in chat; told them to change it.
   Never store it. Outbound SSH from cloud sessions is blocked, so the **owner runs the installer** in Hostinger's
   Browser terminal: `curl -fsSL https://raw.githubusercontent.com/realgrowthnexus/overthought-studio/main/infra/install.sh | bash`
@@ -132,43 +132,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
 - Hostinger plugin is installed (needs owner OAuth sign-in in claude.ai Connectors); env `overthought-studio`
   (env_01TJ5FBy4nZt3RRkNjTKNPPG) allows `mcp.hostinger.com`. Not required for the VPS path.
 
-### Old notes (superseded): Hostinger Web App Hosting instead of the VPS
-The owner bought Hostinger **Web App Hosting** (managed Node.js: GitHub deploy, Next.js) and wants it instead of the
-VPS. Next Claude should do the following.
-1. **Dashboard → Web App Hosting.** It's a natural fit.
-   - Connect GitHub repo `realgrowthnexus/overthought-studio`, app root `apps/web`, build `npm ci && npm run build`.
-   - Start with `next start`, or `node .next/standalone/server.js` after copying `.next/static` and `public` into
-     standalone (check what Hostinger supports; drop `output: "standalone"` if it interferes).
-   - Env vars from `apps/web/.env.example`. Generate `MASTER_KEY` and `SETUP_TOKEN` (`openssl rand -base64 32`,
-     `openssl rand -hex 16`) and give them to the owner to paste into Hostinger's env settings.
-   - DNS: follow Hostinger's instructions for `studio.getgrowthnexus.com`.
-   - Check Hostinger's current docs for Node version, the env var UI, build limits and whether middleware is
-     supported.
-2. **The worker probably CANNOT run on managed web-app hosting.** It needs ffmpeg, multi-minute CPU renders and a
-   24/7 background process. Verify against Hostinger's docs, then present the owner with options and a
-   recommendation:
-   - (a) keep the existing Hostinger **KVM 4 VPS** for the worker only. `infra/install.sh` works there; drop the
-     web/caddy services. The VPS already runs another app, and our containers are isolated with cpus 3.0 and mem 6g.
-   - (b) a small always-on container host (Railway, Render, Fly.io, Hetzner); Dockerfile `worker/Dockerfile` is
-     ready.
-   - (c) RunPod CPU pod.
-   - Recommend (a) if the owner still has the VPS; otherwise the cheapest reliable option.
-   - Whichever is chosen, set the same `MASTER_KEY` on both web and worker.
-3. Update `docs/SETUP.md`, `infra/` and this file to match.
-4. **Progress (2026-11-18):** the owner's Hostinger plan currently offers **zip/file upload only** (no GitHub
-   connect yet). Delivered to the owner:
-   - `overthought-dashboard-hostinger.zip`: the `apps/web` source, no `node_modules` or `.next`;
-   - an env-variables file with a freshly generated `MASTER_KEY` and `SETUP_TOKEN`. These are not in the repo; the
-     owner keeps them, and **the worker must reuse that same MASTER_KEY**;
-   - a full-system zip as a backup.
-   Hostinger settings to use:
-   - Framework: Next.js
-   - Node: 20 or 22
-   - Install: `npm install`
-   - Build: `npm run build`
-   - Start: `npm start`
-   - Output dir: `.next`
-   - Root: the zip root, where `package.json` sits
+History: on 2026-11-18 the owner briefly planned Hostinger Web App Hosting (zip upload); reversed on 2026-11-19. Details are in git history.
 
 ## 6. Next steps (in order)
 1. Owner runs the installer on the VPS (§5), adds DNS A record, sends me the installer output (NOT the keys).
