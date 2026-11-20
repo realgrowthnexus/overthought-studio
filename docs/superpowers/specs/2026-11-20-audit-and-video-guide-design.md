@@ -9,6 +9,9 @@ The dashboard is live at `https://studio.getgrowthnexus.com`. The owner wants tw
 2. **A video guide** that teaches the whole app. The owner will watch it and use it to explain the app to **their
    father**. The father is older and not technical, and Roman Urdu or simple Urdu is his language.
 
+**The father's role (owner, 2026-11-20): he only watches and approves videos.** Money, keys and top-ups stay with the
+owner. When something needs money, the father's step is "tell your son".
+
 Success means the father can watch the guide once and then:
 - open the dashboard;
 - read the red bar;
@@ -123,18 +126,20 @@ Known findings from the first pass, all on phone:
 
 ### Chapters
 Roughly 30–80 s each, about 9 minutes in total:
-1. **Studio kya hai.** What it does by itself, and what you do: watch, approve, top up credits.
-2. **Login.** The address, email and password, and what to do if you forget.
-3. **Overview.** The cards, the production line, "waiting for review", and the **red bar**: what it says and how to
-   fix it.
+1. **Studio kya hai.** What it does by itself, and what you do: watch and approve. Money and keys are your son's job.
+2. **Login.** The address, email and password. If you forget the password: "bete se kahein", and the owner resets it
+   in Supabase. The app gets no forgot-password feature (owner, 2026-11-20).
+3. **Overview.** The cards, the production line, "waiting for review", and the **red bar**: what it says, and that
+   the fix is to tell your son.
 4. **Channels.** The 5 channels, the on/off switch, the channel page (Make a video now, Research ideas), the Idea bank.
 5. **Video approve karna.** The Videos page, filters, opening a video, play, approve, reject, regenerate.
 6. **Publish aur TikTok.** Teach **today's** behaviour: posting mode is `draft`, so an approved video arrives as a
    draft in the TikTok app's inbox and you tap Post there. One line says public auto-posting comes after TikTok's
    audit. The TikTok accounts page is covered in short. (Builder's call, from BRAIN §1 and §6.)
 7. **Analytics aur weekly report.** What the numbers mean and where the weekly report appears.
-8. **Settings.** Where keys and credit go. The fields are shown empty and nothing is typed. Budgets.
-9. **Roz ka kaam.** A 1-minute daily routine, and "jab kuch ruk jaye": read the red bar, top up, it resumes by itself.
+8. **Settings, in short.** "Yeh bete ka hissa hai." Show only where keys and budgets live. About 30 s.
+9. **Roz ka kaam.** A 1-minute daily routine: open the app, approve the waiting videos, glance at the red bar. And "jab
+   kuch ruk jaye": read the red bar, tell your son; after his top-up the work resumes by itself.
 10. **Mobile.** The same app on a phone, with the bottom tabs and the More menu. This chapter is short.
 
 ### Script
