@@ -17,7 +17,7 @@ SAMPLE = {"five_hour": {"utilization": 41.0, "resets_at": "2026-11-20T20:40:00+0
 def world(monkeypatch, tmp_path):
     w = install(monkeypatch, tmp_path / "work")
     w.ch = seed_channel(w)
-    w.insert("services", {"name": "anthropic", "status": "ok", "details": {}})
+    w.update("services", {"name": "anthropic"}, {"details": {}})
     monkeypatch.setattr(secrets, "get", lambda k: "sk-ant-oat01-x" if k == "claude_oauth_token" else None)
     return w
 

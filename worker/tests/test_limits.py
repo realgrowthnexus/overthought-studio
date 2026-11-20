@@ -13,7 +13,7 @@ from fakes import install, seed_channel, seed_video
 def world(monkeypatch, tmp_path):
     w = install(monkeypatch, tmp_path / "work")
     w.ch = seed_channel(w)
-    w.insert("services", {"name": "anthropic", "status": "ok"})
+    w.update("services", {"name": "anthropic"}, {"status": "ok"})
     return w
 
 

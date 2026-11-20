@@ -11,9 +11,13 @@ from .ops import enqueue, now
 IN_PRODUCTION = ["queued", "researching", "scripting", "fact_checking", "visuals", "voice", "rendering", "blocked"]
 
 
-def slots(ch: dict, days: int) -> list[datetime]:
+def slots(ch: dict, days: int, pacing: bool = False) -> list[datetime]:
+    """Post slots for the next `days` days. With pacing (Claude weekly limit running low) only the first post time
+    of each day counts, so fewer videos get made; videos that already have a slot keep it."""
     tz = ZoneInfo(ch.get("timezone") or "America/New_York")
     times = sorted(ch.get("post_times") or ["12:30", "19:30"])[: max(0, int(ch.get("posts_per_day") or 0))]
+    if pacing:
+        times = times[:1]
     out = []
     local_now = datetime.now(tz)
     for d in range(days + 1):
@@ -32,15 +36,39 @@ def tick() -> None:
     _periodic(t)
     if g.get("paused"):
         return
-    for ch in db.select("channels", {"status": "active"}):
+    try:
+        from . import usage
+        pacing = usage.pacing_on()
+    except Exception as e:
+        log.warning(f"pacing check: {e}")
+        pacing = False
+    chans = db.select("channels", {"status": "active"})
+    floor = _round_robin_floor(chans, pacing)
+    for ch in chans:
         try:
-            _channel(ch, t)
+            _channel(ch, t, pacing=pacing, floor=floor)
         except Exception as e:
             log.exception(f"scheduler error for {ch['slug']}: {e}")
 
 
-def _channel(ch: dict, t: datetime) -> None:
-    upcoming = slots(ch, int(ch.get("buffer_days") or 1))
+def _buffer(ch: dict, pacing: bool) -> tuple[int, int, int]:
+    """(videos held, slots to fill, videos in production) for one channel."""
+    upcoming = slots(ch, int(ch.get("buffer_days") or 1), pacing=pacing)
+    vids = db.select("videos", {"channel_id": ch["id"],
+                                "status": ("in", IN_PRODUCTION + ["ready", "approved", "scheduled"])}, columns="status")
+    in_prod = sum(1 for v in vids if v["status"] in IN_PRODUCTION)
+    return len(vids), len(upcoming), in_prod
+
+
+def _round_robin_floor(chans: list[dict], pacing: bool) -> int | None:
+    """Fewest videos in production among channels that still need one: no channel gets a second video in
+    production while another still has none (morning videos for every channel come first)."""
+    short = [b for b in (_buffer(ch, pacing) for ch in chans) if b[0] < b[1]]
+    return min((b[2] for b in short), default=None)
+
+
+def _channel(ch: dict, t: datetime, pacing: bool = False, floor: int | None = None) -> None:
+    upcoming = slots(ch, int(ch.get("buffer_days") or 1), pacing=pacing)
     vids = db.select("videos", {"channel_id": ch["id"],
                                 "status": ("in", IN_PRODUCTION + ["ready", "approved", "scheduled"])})
     scheduled = sorted([v for v in vids if v["status"] == "scheduled" and v.get("scheduled_for")],
@@ -82,7 +110,7 @@ def _channel(ch: dict, t: datetime) -> None:
     in_prod = [v for v in vids if v["status"] in IN_PRODUCTION]
     waiting_approval = [v for v in vids if v["status"] == "ready"]
     have = len(scheduled) + len(approved) + len(in_prod) + len(waiting_approval)
-    if have < len(upcoming) and len(in_prod) < 2:
+    if have < len(upcoming) and len(in_prod) < 2 and (floor is None or len(in_prod) <= floor):
         if enqueue("plan_channel", {"channel_id": ch["id"]}, dedupe=f"plan:{ch['id']}", priority=5, channel_id=ch["id"]):
             log.info(f"{ch['slug']}: buffer {have}/{len(upcoming)} → planning a video")
 
