@@ -10,10 +10,15 @@
 2. **Hosting is DECIDED (2026-11-19, owner):** everything (web + worker) goes on the Hostinger **VPS "JUC Vps"**
    (IP `2.24.74.240`) with `infra/install.sh`, exactly as originally designed. Web App Hosting is NOT used. See §5.
 3. Then follow §6 (next steps) in order.
-4. **Session 3 (2026-11-20):** owner said "take charge, make it production ready end to end". Plan:
-   `docs/superpowers/plans/2026-11-20-production-readiness.md` (Tasks 0–8). Baseline that day: 10 worker tests pass,
-   web tsc + lint + build pass. This session's env `overthought-studio` allows only Hostinger hosts (Supabase 403);
-   Task 0 adds the hosts + Supabase credential. Waiting for owner to review the plan and pick an execution method.
+4. **Session 3 (2026-11-20):** owner said "take charge, make it production ready end to end" and left the method to me
+   (Native/inline). Plan: `docs/superpowers/plans/2026-11-20-production-readiness.md`; ledger (git-ignored):
+   `.superpowers/sdd/2026-11-20-production-readiness/progress.md`.
+   - DONE: Task 0 (env `overthought-studio` now allows Supabase, studio domain, ElevenLabs, RunPod, TikTok hosts; Supabase
+     secret saved as proxy `apikey`), Task 1 (offline e2e pipeline tests; fixed: resume on a fresh machine re-paid
+     RunPod/ElevenLabs), Task 2 (Claude request-contract tests; no fix needed), Task 3 (`studio.cli smoke`,
+     `infra/doctor.sh`), Task 4 (docs no longer mention Vercel). 24 worker tests pass.
+   - NEXT: Task 5. Owner was given the installer + DNS steps on 2026-11-20 and is running them. Live state then:
+     channels seeded and paused, no worker heartbeat, no secrets saved, dashboard not reachable yet.
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
