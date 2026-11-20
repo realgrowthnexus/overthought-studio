@@ -1,15 +1,12 @@
-import { Skeleton } from "@/components/ui/primitives";
+import { SkCard, SkHead, SkStats, SkeletonPage } from "@/components/skeletons";
 
 export default function Loading() {
   return (
-    <div role="status" aria-busy="true">
-      <span className="sr-only">Loading…</span>
-      <Skeleton className="mb-2 h-8 w-56" />
-      <Skeleton className="mb-8 h-4 w-80" />
-      <div className="grid grid-cols-1 [&>*]:min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-[14px]" />)}
-      </div>
-      <Skeleton className="mt-6 h-72 rounded-[14px]" />
-    </div>
+    <SkeletonPage name="overview">
+      <SkHead />
+      <SkStats />
+      <SkCard className="mt-6 h-64" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-2"><SkCard rows={3} /><SkCard rows={3} /></div>
+    </SkeletonPage>
   );
 }

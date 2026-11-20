@@ -103,6 +103,64 @@ const CASES = [
     }),
   },
   {
+    // each page shows its own skeleton (data-skeleton=<name>) while the server renders it
+    name: 'route-skeleton-shape', routes: ['/'], viewports: ['d'],
+    check: async (p) => {
+      // [from page, link to click, expected skeleton] — real link clicks, as a person navigates
+      const steps = [['/', 'nav', 'Channels', 'channels'], ['/channels', 'main', 'Overthought', 'channel'],
+        ['/', 'nav', 'Videos', 'videos'], ['/videos', 'main', 'Why you forget why you walked into a room', 'video'],
+        ['/', 'nav', 'Analytics', 'analytics'], ['/', 'nav', 'Reports', 'reports'], ['/', 'nav', 'TikTok accounts', 'accounts'],
+        ['/', 'nav', 'Settings', 'settings'], ['/', 'nav', 'Activity', 'logs'], ['/videos', 'nav', 'Overview', 'overview']];
+      const out = [];
+      for (const [from, area, text, name] of steps) {
+        await p.goto(B + from, { waitUntil: 'networkidle' });
+        await p.waitForTimeout(400);                        // let in-view links prefetch their loading state
+        await p.route('**/*', async (r) => {
+          if (r.request().headers()['rsc'] && !r.request().headers()['next-router-prefetch']) await new Promise((res) => setTimeout(res, 1500));
+          await r.continue().catch(() => {});
+        });
+        const scope = area === 'nav' ? p.locator('aside, nav').first() : p.locator('main');
+        await scope.getByRole('link', { name: text, exact: false }).first().click();
+        try {
+          await p.locator(`[role=status][aria-busy=true][data-skeleton="${name}"]`).first().waitFor({ timeout: 700 });
+          const n = await p.locator(`[data-skeleton="${name}"] .skeleton`).count();
+          if (n < 2) out.push(`${name}: ${n} blocks`);
+        } catch { out.push(`${name}: no page skeleton`); }
+        await p.waitForLoadState('networkidle').catch(() => {});
+        await p.unroute('**/*');
+      }
+      return out.length ? out.join(', ') : null;
+    },
+  },
+  {
+    name: 'pending-buttons', routes: ['/channels/money-brain'], viewports: ['d'],
+    check: async (p) => {
+      await p.route('**/*', async (r) => {
+        if (r.request().method() === 'POST' && r.request().headers()['next-action']) await new Promise((res) => setTimeout(res, 1000));
+        await r.continue().catch(() => {});
+      });
+      const btn = p.getByRole('button', { name: 'Research ideas' }).first();
+      await btn.click();
+      await p.waitForTimeout(150);
+      const busy = (await btn.isDisabled()) || (await btn.getAttribute('aria-busy')) === 'true';
+      await p.waitForTimeout(1500);
+      await p.unroute('**/*');
+      return busy ? null : 'button shows no pending state within 150 ms';
+    },
+  },
+  {
+    name: 'reduced-motion-skeleton', routes: ['/'], viewports: ['d'],
+    check: async (p) => {
+      await p.emulateMedia({ reducedMotion: 'reduce' });
+      const name = await p.evaluate(() => {
+        const d = document.createElement('div'); d.className = 'skeleton'; document.body.append(d);
+        const n = getComputedStyle(d, '::after').animationName; d.remove(); return n;
+      });
+      await p.emulateMedia({ reducedMotion: 'no-preference' });
+      return name === 'none' ? null : `skeleton shimmer still animates ("${name}")`;
+    },
+  },
+  {
     name: 'empty-chart-no-axes', routes: ['/channels/money-brain'], viewports: ['m', 'd'],
     check: async (p) => {
       const msg = p.getByText('numbers appear after the first posts get views', { exact: false }).first();
@@ -141,6 +199,7 @@ async function videoIds() {
 (async () => {
   const b = await chromium.launch();
   const ids = await videoIds();
+  globalThis.__ids = ids;
   let fails = 0;
   const cases = CASES.filter((c) => !ONLY.length || ONLY.includes(c.name));
   for (const vpName of ['m', 'd']) {
