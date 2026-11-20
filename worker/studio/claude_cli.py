@@ -52,14 +52,15 @@ def _resume_at(text: str) -> datetime:
     return datetime.now(timezone.utc) + timedelta(hours=1)
 
 
-def run(prompt: str, *, system: str, schema: dict | None, tools: list[str], model: str,
+def run(prompt: str, *, system: str, schema: dict | None, tools: list[str], model: str | None,
         timeout: int = TIMEOUT) -> dict:
     """One headless Claude Code turn. Returns {text, structured, usage, model}."""
     tok = token()
     if not tok:
         raise NotConfigured("anthropic", "Claude is not signed in")
-    argv = [CLAUDE_BIN, "-p", prompt, "--output-format", "json", "--model", model, "--system-prompt", system,
-            "--tools", ",".join(tools), "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
+    argv = [CLAUDE_BIN, "-p", prompt, "--output-format", "json", "--system-prompt", system, "--tools", ",".join(tools), "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
+    if model:                                         # None = the plan's default model
+        argv += ["--model", model]
     if tools:
         argv += ["--allowedTools", ",".join(tools)]
     if schema is not None:
@@ -85,7 +86,7 @@ def run(prompt: str, *, system: str, schema: dict | None, tools: list[str], mode
         raise RuntimeError(f"Claude Code failed: {msg}")
     models = list((out.get("modelUsage") or {}).keys())
     return {"text": text, "structured": out.get("structured_output"), "usage": out.get("usage") or {},
-            "model": models[0] if models else model}
+            "model": models[0] if models else (model or "default")}
 
 
 def auth_ok() -> bool:

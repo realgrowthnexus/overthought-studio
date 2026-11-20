@@ -7,7 +7,7 @@ from . import db
 from .log import event
 
 FIX_HINTS = {
-    "anthropic": "Top up credits at console.anthropic.com → Billing, then enter the new balance in Settings.",
+    "anthropic": "Top up credits at console.anthropic.com → Billing (only when using an API key instead of the Claude sign-in).",
     "elevenlabs": "Top up or upgrade at elevenlabs.io → Subscription. Work resumes automatically.",
     "runpod": "Add funds at runpod.io → Billing. Work resumes automatically.",
     "tiktok": "Reconnect the TikTok account in Accounts, or check the TikTok app keys in Settings.",
@@ -80,7 +80,7 @@ def set_status(name: str, status: str, message: str | None = None, *, balance=No
 
 
 SETUP_HINTS = {
-    "anthropic": "Add your Anthropic API key in Settings → API keys.",
+    "anthropic": "Sign in to Claude: on the VPS run  sudo bash /opt/overthought-studio/src/infra/connect-claude.sh",
     "elevenlabs": "Add your ElevenLabs API key in Settings → API keys (enable the 'Text to Speech' and 'User: Read' permissions).",
     "runpod": "Add your RunPod API key in Settings → API keys.",
     "tiktok": "Add the TikTok app keys in Settings, then connect the account in Accounts.",

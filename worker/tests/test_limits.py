@@ -53,3 +53,37 @@ def test_limited_service_resumes_only_after_reset(world):
                                                                                - timedelta(minutes=1)).isoformat()}})
     ops._resume_waiting()
     assert world.select("jobs", {"id": job["id"]}, single=True)["status"] == "queued"
+
+
+def _signed_in(monkeypatch, ok=True):
+    from studio import claude_cli, llm
+    monkeypatch.setattr(llm, "backend", lambda: "subscription")
+    monkeypatch.setattr(claude_cli, "auth_ok", lambda: ok)
+
+
+def test_health_on_subscription_reports_connected(world, monkeypatch):
+    _signed_in(monkeypatch)
+    assert ops._health_anthropic() == "ok"
+    svc = world.select("services", {"name": "anthropic"}, single=True)
+    assert svc["status"] == "ok" and "subscription" in svc["message"]
+
+
+def test_health_not_signed_in_shows_the_connect_command(world, monkeypatch):
+    _signed_in(monkeypatch, ok=False)
+    out = {}
+    ops._section("anthropic", ops._health_anthropic, out)
+    svc = world.select("services", {"name": "anthropic"}, single=True)
+    assert svc["status"] == "unconfigured" and "connect-claude.sh" in svc["message"]
+
+
+def test_health_keeps_an_active_limit_and_clears_it_after_reset(world, monkeypatch):
+    _signed_in(monkeypatch)
+    future = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    world.update("services", {"name": "anthropic"}, {"status": "warning", "details": {"limited": True, "resume_at": future}})
+    assert ops._health_anthropic() == "warning"
+    assert world.select("services", {"name": "anthropic"}, single=True)["details"]["limited"] is True
+    past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    world.update("services", {"name": "anthropic"}, {"details": {"limited": True, "resume_at": past}})
+    assert ops._health_anthropic() == "ok"
+    d = world.select("services", {"name": "anthropic"}, single=True)["details"]
+    assert not d.get("limited")

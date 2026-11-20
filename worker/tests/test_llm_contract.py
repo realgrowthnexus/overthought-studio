@@ -46,6 +46,7 @@ def api(monkeypatch):
         return a
 
     monkeypatch.setattr(settings, "get", lambda *a, **k: dict(settings.DEFAULTS))
+    monkeypatch.setattr(llm, "backend", lambda: "api")          # these tests pin the API-key path
     monkeypatch.setattr(llm.spend, "record", lambda *a, **k: None)
     monkeypatch.setattr(llm, "set_status", lambda *a, **k: None)
     return use

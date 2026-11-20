@@ -393,6 +393,8 @@ def _scrub(text: str) -> str:
 
 
 def _health_anthropic() -> str:
+    if llm.backend() == "subscription":
+        return _health_claude_subscription()
     llm.ping()
     credit = settings.get("anthropic_credit")
     bal, set_at = credit.get("balance_usd"), credit.get("set_at")
@@ -404,6 +406,21 @@ def _health_anthropic() -> str:
                    balance=round(left, 2), unit="usd", limit=float(bal))
         return st
     set_status("anthropic", "ok", "Key works. Enter your credit balance in Settings to track it.")
+    return "ok"
+
+
+def _health_claude_subscription() -> str:
+    from .services import limit_active
+    llm.ping()                                       # raises NotConfigured when not signed in (no limit used)
+    row = db.select("services", {"name": "anthropic"}, single=True) or {}
+    details = dict(row.get("details") or {})
+    details["backend"] = "subscription"
+    if limit_active(row):
+        db.update("services", {"name": "anthropic"}, {"details": details, "checked_at": now().isoformat()})
+        return "warning"
+    details.pop("limited", None)
+    details.pop("resume_at", None)
+    set_status("anthropic", "ok", "Connected (Claude subscription)", details=details)
     return "ok"
 
 
