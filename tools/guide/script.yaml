@@ -172,11 +172,11 @@ chapters:
     scenes:
       - id: "5.1"
         route: /
-        highlight: "main >> role=button[name='Needs review']"
+        highlight: "main >> text=Needs review"
         actions:
           - {do: click, target: "aside >> role=link[name='Videos']"}
           - {do: wait, ms: 400}
-          - {do: click, target: "main >> role=button[name='Needs review']"}
+          - {do: click, target: "main >> text=Needs review"}
         roman:
           - "Ab sab se zaroori kaam: video approve karna."
           - "Baayen menu mein 'Videos' dabayein."
@@ -230,9 +230,9 @@ chapters:
     scenes:
       - id: "6.1"
         route: /videos
-        highlight: "main >> role=button[name='Queued to post']"
+        highlight: "main >> text=Queued to post"
         actions:
-          - {do: click, target: "main >> role=button[name='Queued to post']"}
+          - {do: click, target: "main >> text=Queued to post"}
           - {do: wait, ms: 800}
         roman:
           - "Approve ki hui video 'Queued to post' mein aa jaati hai."

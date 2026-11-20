@@ -98,8 +98,8 @@ def _stats(video: dict, posted_at: datetime, seed_views: int) -> list[dict]:
 
 def clear() -> None:
     db.delete("videos", {"experiment->>demo": "true"})          # cascades stats, jobs, events tied to videos
-    db.delete("events", {"data->>demo": "true"})
-    db.delete("jobs", {"payload->>demo": "true"})
+    db.delete("events", {"id": ("gte", 0)})       # local demo DB only: start every run with a clean activity feed
+    db.delete("jobs", {"id": ("gte", 0)})
     db.delete("reports", {"data->>demo": "true"})
     db.delete("spend", {"detail": "demo"})
 
