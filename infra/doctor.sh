@@ -41,6 +41,9 @@ echo "$DOMAIN -> $(getent hosts "$DOMAIN" | awk '{print $1}' | head -n 1 || true
 curl -s -o /dev/null -w "https://$DOMAIN/login -> %{http_code}\n" --max-time 15 "https://$DOMAIN/login" \
   || echo "https://$DOMAIN/login -> not reachable yet (DNS or certificate)"
 
+section "Claude sign-in"
+docker compose exec -T worker python -m studio.cli claude-status 2>&1 | redact | tail -n 1
+
 section "Services (one live call each)"
 docker compose exec -T worker python -m studio.cli smoke 2>&1 | redact | tail -n 1
 

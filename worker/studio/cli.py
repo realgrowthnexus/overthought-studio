@@ -6,6 +6,8 @@
   python -m studio.cli health                        # run the health/credit check once
   python -m studio.cli tick                          # run one scheduler tick
   python -m studio.cli smoke                         # check every paid service once; one JSON line, exit 1 on any failure
+  python -m studio.cli claude-token < token          # save the Claude sign-in token (used by infra/connect-claude.sh)
+  python -m studio.cli claude-status                 # one line: Claude sign-in + limits (used by infra/doctor.sh)
 """
 from __future__ import annotations
 
@@ -14,7 +16,7 @@ import re
 import subprocess
 import sys
 
-from . import content, db, llm, ops, pipeline, scheduler, seed, voice
+from . import claude_cli, content, crypto, db, llm, ops, pipeline, scheduler, secrets, seed, voice
 
 _KEYISH = re.compile(r"(sk-[A-Za-z0-9_-]{6,}|sb_secret_[A-Za-z0-9_-]+|(?i:bearer)\s+[A-Za-z0-9._-]{8,})")
 
@@ -77,12 +79,56 @@ def manual(slug: str, path: str) -> str:
     return v["id"]
 
 
+_OAT = re.compile(r"sk-ant-oat\d\d-[A-Za-z0-9_-]{30,}")
+
+
+def claude_token(raw: str) -> int:
+    """Store the Claude subscription token encrypted, like the dashboard stores API keys. Never prints it."""
+    m = _OAT.search(re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", raw))
+    if not m:
+        print("That doesn't look like a Claude sign-in token (sk-ant-oat…). Nothing was saved.")
+        return 1
+    tok = m.group(0)
+    db.insert("secrets", {"key": "claude_oauth_token", "ciphertext": crypto.encrypt(tok), "hint": tok[-4:]},
+              upsert=True, on_conflict="key")
+    secrets.clear_cache()
+    try:
+        ops.health_check()
+    except Exception as e:
+        print(f"Saved, but the health check could not run yet: {_clean(str(e))}")
+    print("Claude connected ✓ (sign-in saved, encrypted)")
+    return 0
+
+
+def claude_status() -> str:
+    if llm.backend() == "api":
+        return "using an Anthropic API key (Claude sign-in not in use)"
+    if not claude_cli.auth_ok():
+        return "NOT signed in — run: sudo bash /opt/overthought-studio/src/infra/connect-claude.sh"
+    d = (db.select("services", {"name": "anthropic"}, single=True) or {}).get("details") or {}
+    parts = ["connected (Claude subscription)"]
+    for key, label in (("five_hour", "5-hour"), ("seven_day", "weekly")):
+        w = d.get(key) or {}
+        if w.get("pct") is not None:
+            parts.append(f"{label} {int(w['pct'])}%")
+    if d.get("limited"):
+        parts.append(f"limit reached, resumes {d.get('resume_at')}")
+    if d.get("pacing"):
+        parts.append("pacing on (evening videos paused)")
+    return " · ".join(parts)
+
+
 def run(argv: list[str]) -> int:
     cmd, *args = argv or ["help"]
     if cmd == "smoke":
         res = smoke()
         print(json.dumps(res))
         return 0 if all(v["ok"] for v in res.values() if isinstance(v, dict)) else 1
+    if cmd == "claude-token":
+        return claude_token(sys.stdin.read())
+    if cmd == "claude-status":
+        print(claude_status())
+        return 0
     if cmd == "seed":
         seed.run()
     elif cmd == "manual":
