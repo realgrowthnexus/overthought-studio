@@ -19,6 +19,13 @@ mkdir -p "$DIR"; cd "$DIR"; umask 077
 # keep existing secrets on re-run
 [ -f .env ] && set -a && . ./.env && set +a
 ask SUPABASE_SERVICE_ROLE_KEY "Supabase secret key (sb_secret_...)"
+# browser terminals can add invisible characters to a paste; keys only use these characters
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY//$'\e[200~'/}; SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY//$'\e[201~'/}
+SUPABASE_SERVICE_ROLE_KEY=$(printf '%s' "$SUPABASE_SERVICE_ROLE_KEY" | tr -cd 'A-Za-z0-9_.-')
+case "$SUPABASE_SERVICE_ROLE_KEY" in
+  sb_secret_*|eyJ*) ;;
+  *) echo "That does not look like the Supabase secret key (it starts with sb_secret_). Run the installer again."; exit 1 ;;
+esac
 # The repo is public: a GitHub token is optional (only needed if the repo is made private later).
 GITHUB_TOKEN=${GITHUB_TOKEN:-}
 MASTER_KEY=${MASTER_KEY:-$(openssl rand -base64 32)}
@@ -46,6 +53,7 @@ fi
 git -C src config credential.helper "store --file=$DIR/.git-credentials"
 cp src/infra/docker-compose.yml docker-compose.yml
 install -m 700 src/infra/doctor.sh doctor.sh
+install -m 700 src/infra/caddy-attach.sh caddy-attach.sh
 chmod -R a+rX src
 umask 077
 
@@ -95,6 +103,7 @@ new=$(git -C src rev-parse HEAD)
 if [ "$old" != "$new" ] || [ "${1:-}" = "--force" ]; then
   cp src/infra/docker-compose.yml docker-compose.yml
   install -m 700 src/infra/doctor.sh doctor.sh
+  install -m 700 src/infra/caddy-attach.sh caddy-attach.sh
   docker compose build -q && docker compose up -d --remove-orphans
   docker image prune -f >/dev/null
   echo "$(date -Is) updated $old -> $new" >> update.log
@@ -132,6 +141,11 @@ NGX
     || echo "!! Certificate not issued yet — check that the DNS A record for $DOMAIN points to this VPS, then re-run this script."
 fi
 
+if [ "$MODE" = manual ]; then
+  say "Looking for another app's Caddy on ports 80/443"
+  if ./caddy-attach.sh "$DOMAIN" "$BRIDGE"; then MODE=attached; fi
+fi
+
 sleep 8
 docker compose ps
 say "Done"
@@ -145,8 +159,8 @@ echo
 echo "Create your owner login at https://$DOMAIN/setup with this one-time setup token:"
 echo "   $SETUP_TOKEN"
 echo
-echo "Your encryption key (MASTER_KEY) is saved in $DIR/.env — copy it somewhere safe (password manager):"
-echo "   $MASTER_KEY"
+echo "Do not share a screenshot of the token line. Your encryption key (MASTER_KEY) is saved in $DIR/.env;"
+echo "to back it up into a password manager, show it with:  grep MASTER_KEY $DIR/.env"
 echo
 echo "Health report (send the output to Claude, it contains no keys):  $DIR/doctor.sh"
 echo "Logs: cd $DIR && docker compose logs -f      Stop: cd $DIR && docker compose down"
