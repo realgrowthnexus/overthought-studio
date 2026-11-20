@@ -33,7 +33,7 @@ cd "$ROOT/apps/web"
 if [ "${REBUILD:-0}" = 1 ] || [ ! -f .next/BUILD_ID ] || ! grep -q "$API_URL" .next/required-server-files.json 2>/dev/null; then
   NEXT_TELEMETRY_DISABLED=1 npm run build >/tmp/demo-web-build.log 2>&1
 fi
-pkill -f "next start -p 3000" 2>/dev/null || true
+fuser -k 3000/tcp >/dev/null 2>&1 || true; sleep 1
 (nohup npx next start -p 3000 >/tmp/demo-web.log 2>&1 &)
 for _ in $(seq 30); do curl -s -o /dev/null http://localhost:3000/login && break; sleep 1; done
 echo "demo up: http://localhost:3000  (Supabase $API_URL)"

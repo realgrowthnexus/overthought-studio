@@ -91,7 +91,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           {ranked.length === 0 ? (
             <EmptyState title="No posted videos in this range" figure={false}>Stats sync from TikTok every six hours once videos are public.</EmptyState>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="scroll-fade-x overflow-x-auto">
               <table className="w-full min-w-[720px] text-[13px]">
                 <thead>
                   <tr className="border-b border-line text-left text-[12px] whitespace-nowrap text-ink-3">

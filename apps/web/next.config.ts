@@ -3,15 +3,16 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV !== "production";
 
 // Supabase project origin (REST, auth, storage signed URLs, realtime websocket). NEXT_PUBLIC_* is fixed at build time.
-const supabase = (() => {
+const sbUrl = (() => {
   try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host;
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
   } catch {
-    return "";
+    return null;
   }
 })();
-const sbHttp = supabase ? `https://${supabase}` : "https://*.supabase.co";
-const sbWs = supabase ? `wss://${supabase}` : "wss://*.supabase.co";
+const secure = !sbUrl || sbUrl.protocol === "https:";
+const sbHttp = sbUrl ? `${sbUrl.protocol}//${sbUrl.host}` : "https://*.supabase.co";
+const sbWs = sbUrl ? `${secure ? "wss" : "ws"}://${sbUrl.host}` : "wss://*.supabase.co";
 const tiktokImg = "https://*.tiktokcdn.com https://*.tiktokcdn-us.com";
 
 // 'unsafe-inline' scripts are needed for Next's inline bootstrap + next-themes without per-request nonces.

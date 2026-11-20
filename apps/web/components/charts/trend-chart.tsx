@@ -29,7 +29,7 @@ export function TrendChart({ data, height = 240, initial = "views" }: { data: Da
             {LABEL[metric].toLowerCase()} total · {last - first >= 0 ? "+" : ""}{num(last - first)} in {data.length} days
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <SegmentedControl
             label="Metric"
             layoutKey={`metric-${id}`}
@@ -59,12 +59,12 @@ export function TrendChart({ data, height = 240, initial = "views" }: { data: Da
           </table>
         </div>
       ) : (
+        empty ? (
+          <p className="flex items-center justify-center px-6 text-center font-hand text-[16px] text-ink-3" style={{ height }}>
+            numbers appear after the first posts get views.
+          </p>
+        ) : (
         <div className="relative px-2" style={{ height }}>
-          {empty && (
-            <p className="absolute inset-0 z-[1] flex items-center justify-center font-hand text-[16px] text-ink-3">
-              numbers appear after the first posts get views.
-            </p>
-          )}
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
               <defs>
@@ -101,6 +101,7 @@ export function TrendChart({ data, height = 240, initial = "views" }: { data: Da
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        )
       )}
     </div>
   );
