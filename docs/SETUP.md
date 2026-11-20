@@ -51,6 +51,8 @@ Go to Supabase → project **overthought-studio** → **Authentication**:
    - your **MASTER_KEY**. Save it in a password manager.
 4. Open `https://studio.getgrowthnexus.com/setup`, enter the setup token, and create your owner login.
    - Only one owner can ever be created.
+5. Run the health report and send the whole output to Claude. It contains no keys.
+   `/opt/overthought-studio/doctor.sh`
 
 **If ports 80/443 already belong to another panel** (Coolify, CapRover, Nginx Proxy Manager, Traefik…), the installer prints one line to add in that panel: `studio.getgrowthnexus.com → http://172.17.0.1:3100`.
 

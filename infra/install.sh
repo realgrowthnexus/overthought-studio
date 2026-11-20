@@ -11,6 +11,7 @@ SUPABASE_URL=${SUPABASE_URL:-https://xkbgusqmdeocjwxaknjx.supabase.co}
 SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_YsB1YII7YQ3d1s3NRfs9MQ_1YzxWIfR}
 
 say()  { printf '\n\033[1;33m==> %s\033[0m\n' "$*"; }
+# shellcheck disable=SC2229,SC2163  # ask() reads into and exports the variable *named* by $v
 ask()  { local v="$1" p="$2"; if [ -z "${!v:-}" ]; then read -r -s -p "$p: " "$v" </dev/tty; echo; export "$v"; fi; }
 [ "$(id -u)" = 0 ] || { echo "Please run as root (sudo -i)"; exit 1; }
 
@@ -44,6 +45,7 @@ else
 fi
 git -C src config credential.helper "store --file=$DIR/.git-credentials"
 cp src/infra/docker-compose.yml docker-compose.yml
+install -m 700 src/infra/doctor.sh doctor.sh
 chmod -R a+rX src
 umask 077
 
@@ -92,6 +94,7 @@ git -C src fetch -q --depth 1 origin main && git -C src reset -q --hard origin/m
 new=$(git -C src rev-parse HEAD)
 if [ "$old" != "$new" ] || [ "${1:-}" = "--force" ]; then
   cp src/infra/docker-compose.yml docker-compose.yml
+  install -m 700 src/infra/doctor.sh doctor.sh
   docker compose build -q && docker compose up -d --remove-orphans
   docker image prune -f >/dev/null
   echo "$(date -Is) updated $old -> $new" >> update.log
@@ -145,5 +148,6 @@ echo
 echo "Your encryption key (MASTER_KEY) is saved in $DIR/.env — copy it somewhere safe (password manager):"
 echo "   $MASTER_KEY"
 echo
+echo "Health report (send the output to Claude, it contains no keys):  $DIR/doctor.sh"
 echo "Logs: cd $DIR && docker compose logs -f      Stop: cd $DIR && docker compose down"
 echo "New VPS later? Copy $DIR/.env to it, run this installer there, then 'docker compose down' on the old one."
