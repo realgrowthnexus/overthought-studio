@@ -76,8 +76,17 @@ def render_title(seg: dict, out: Path) -> None:
                     f"anullsrc=r=48000:cl=stereo", "-t", str(seg["duration"]), "-vf", vf, *ENC, str(out)], check=True)
 
 
+def check_clip(scene_id: str, clips_dir: Path, audio_duration: float) -> None:
+    """A clip recorded before the narration changed would freeze early and drift from its subtitles."""
+    got = json.loads((clips_dir / f"{scene_id}.json").read_text())["duration"]
+    if got < audio_duration - 0.05:
+        raise ValueError(f"clip {scene_id} is {got:.2f}s but its narration is {audio_duration:.2f}s: "
+                         f"re-run record.cjs --scene {scene_id}")
+
+
 def render_scene(seg: dict, narration: dict, out: Path) -> None:
     n = narration[seg["id"]]
+    check_clip(seg["id"], OUT / "clips", n["duration"])
     ass = out.with_suffix(".ass")
     _ass([Cue(s, e, r) for s, e, r in n["cues"]], ass)
     clip = OUT / "clips" / f"{seg['id']}.mp4"

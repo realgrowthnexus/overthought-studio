@@ -23,3 +23,13 @@ def test_timeline_offsets_include_title_cards():
 
 def test_chapter_list_format():
     assert compose.chapter_lines([(0.0, "Ek"), (75.4, "Do")]) == "00:00 1. Ek\n01:15 2. Do\n"
+
+
+def test_short_clip_is_refused(tmp_path):
+    import json
+    import pytest
+    (tmp_path / "1.1.json").write_text(json.dumps({"duration": 9.0}))
+    with pytest.raises(ValueError, match="1.1"):
+        compose.check_clip("1.1", tmp_path, audio_duration=10.0)
+    (tmp_path / "1.2.json").write_text(json.dumps({"duration": 10.0}))
+    compose.check_clip("1.2", tmp_path, audio_duration=10.02)

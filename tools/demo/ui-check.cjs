@@ -161,6 +161,18 @@ const CASES = [
     },
   },
   {
+    // the striped fill must move, not be squeezed: a scaled fill squashes the stripes and squares the round end
+    name: 'progress-fill-not-scaled', routes: ['/videos/@voice'], viewports: ['d'],
+    check: async (p) => p.evaluate(() => {
+      const f = document.querySelector('[role=progressbar] > div');
+      if (!f) return 'no progress bar on the page';
+      const t = getComputedStyle(f).transform;
+      if (t === 'none') return null;
+      const a = new DOMMatrix(t).a;
+      return Math.abs(a - 1) < 0.001 ? null : `fill is scaled ×${a.toFixed(2)}`;
+    }),
+  },
+  {
     name: 'empty-chart-no-axes', routes: ['/channels/money-brain'], viewports: ['m', 'd'],
     check: async (p) => {
       const msg = p.getByText('numbers appear after the first posts get views', { exact: false }).first();

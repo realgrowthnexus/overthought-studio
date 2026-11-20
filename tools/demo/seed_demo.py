@@ -19,7 +19,14 @@ for line in (HERE / "demo.env").read_text().splitlines():
     if "=" in line and not line.startswith("#"):
         k, v = line.split("=", 1)
         os.environ[k] = v
-if "127.0.0.1" not in os.environ.get("SUPABASE_URL", "") and "localhost" not in os.environ.get("SUPABASE_URL", ""):
+
+
+def is_local(url: str) -> bool:
+    from urllib.parse import urlparse
+    return urlparse(url).hostname in ("127.0.0.1", "localhost")
+
+
+if not is_local(os.environ.get("SUPABASE_URL", "")):     # clear() wipes events/jobs: never touch a real project
     sys.exit("seed_demo refuses to run against a non-local Supabase")
 os.environ["NO_PROXY"] = os.environ["no_proxy"] = "localhost,127.0.0.1"
 sys.path.insert(0, str(ROOT / "worker"))
