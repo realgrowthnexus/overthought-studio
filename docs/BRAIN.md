@@ -3,13 +3,17 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-19, session 2.
+> Last updated: 2026-11-20, session 3.
 
 ## 0. START HERE (next Claude)
 1. Read this file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md` and `docs/tiktok-api-notes.md`.
 2. **Hosting is DECIDED (2026-11-19, owner):** everything (web + worker) goes on the Hostinger **VPS "JUC Vps"**
    (IP `2.24.74.240`) with `infra/install.sh`, exactly as originally designed. Web App Hosting is NOT used. See §5.
 3. Then follow §6 (next steps) in order.
+4. **Session 3 (2026-11-20):** owner said "take charge, make it production ready end to end". Plan:
+   `docs/superpowers/plans/2026-11-20-production-readiness.md` (Tasks 0–8). Baseline that day: 10 worker tests pass,
+   web tsc + lint + build pass. This session's env `overthought-studio` allows only Hostinger hosts (Supabase 403);
+   Task 0 adds the hosts + Supabase credential. Waiting for owner to review the plan and pick an execution method.
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
