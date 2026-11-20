@@ -17,8 +17,15 @@
      secret saved as proxy `apikey`), Task 1 (offline e2e pipeline tests; fixed: resume on a fresh machine re-paid
      RunPod/ElevenLabs), Task 2 (Claude request-contract tests; no fix needed), Task 3 (`studio.cli smoke`,
      `infra/doctor.sh`), Task 4 (docs no longer mention Vercel). 24 worker tests pass.
-   - NEXT: Task 5. Owner was given the installer + DNS steps on 2026-11-20 and is running them. Live state then:
-     channels seeded and paused, no worker heartbeat, no secrets saved, dashboard not reachable yet.
+   - LIVE (2026-11-20 08:30 UTC): VPS install works. Worker `vps-srv2163482` heartbeats; web healthy;
+     `https://studio.getgrowthnexus.com` served by the OTHER app's Caddy (`juc-caddy-1`, via `infra/caddy-attach.sh`);
+     Supabase ok. Fixed on the way: the pasted Supabase key had a stray char (every call 400) -> installer/worker/web
+     now strip non-key chars. Setup token + MASTER_KEY leaked in an owner screenshot -> rotated (nothing was encrypted
+     yet); installer no longer prints MASTER_KEY. Live Playwright smoke: /login 200 phone+desktop, CSP+HSTS, /privacy
+     /terms 200, / -> /login.
+   - Git push from cloud sessions sometimes returns 403; the GitHub MCP `push_files` to `main` works as a fallback.
+   - NEXT (owner): Supabase Auth settings, /setup owner login, keys in Settings (Anthropic + balance, ElevenLabs key
+     WITH User: Read, RunPod). Then Task 6 (first real video, ask before spending).
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
