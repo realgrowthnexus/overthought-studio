@@ -27,13 +27,17 @@ _client: anthropic.Anthropic | None = None
 _client_key: str | None = None
 
 
+def _make_client(key: str, http_client=None) -> anthropic.Anthropic:
+    return anthropic.Anthropic(api_key=key, max_retries=3, timeout=600, http_client=http_client)
+
+
 def _get_client() -> anthropic.Anthropic:
     global _client, _client_key
     key = secrets.get("anthropic_api_key")
     if not key:
         raise NotConfigured("anthropic", "No Anthropic API key saved")
     if _client is None or key != _client_key:
-        _client = anthropic.Anthropic(api_key=key, max_retries=3, timeout=600)
+        _client = _make_client(key)
         _client_key = key
     return _client
 
