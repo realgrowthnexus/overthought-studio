@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Channel, Video, VideoStat, VideoStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/primitives";
-import { IN_PROGRESS, STATUS_LABEL, dateTime, duration, num, relTime, videoTone } from "@/lib/format";
+import { IN_PROGRESS, dateTime, duration, num, relTime, videoStatusLabel, videoTone } from "@/lib/format";
 import { EmptyState } from "@/components/ui/empty";
 
 const LIVE: VideoStatus[] = IN_PROGRESS.filter((s) => s !== "queued");
@@ -41,7 +41,7 @@ export function VideoList({
             </Link>
             {note}
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px] text-ink-3">
-              <Badge tone={videoTone(v.status)} dot live={LIVE.includes(v.status)}>{STATUS_LABEL[v.status]}</Badge>
+              <Badge tone={videoTone(v.status, v.error)} dot live={LIVE.includes(v.status)}>{videoStatusLabel(v.status, v.error)}</Badge>
               {showChannel && ch && (
                 <span className="inline-flex items-center gap-1.5">
                   <span className="size-2 rounded-full" style={{ background: ch.color }} aria-hidden />{ch.name}
@@ -83,7 +83,7 @@ export function VideoList({
                     </span>
                   </td>
                 )}
-                <td className="px-3 py-3"><Badge tone={videoTone(v.status)} dot live={LIVE.includes(v.status)}>{STATUS_LABEL[v.status]}</Badge></td>
+                <td className="px-3 py-3"><Badge tone={videoTone(v.status, v.error)} dot live={LIVE.includes(v.status)}>{videoStatusLabel(v.status, v.error)}</Badge></td>
                 <td className="px-3 py-3 text-right text-ink-2 tabular">{duration(v.duration_s)}</td>
                 <td className="px-3 py-3 text-right text-ink tabular">{s ? num(s.views) : "—"}</td>
                 <td className="px-3 py-3 text-right text-ink-2 tabular">{v.cost_usd ? `$${Number(v.cost_usd).toFixed(2)}` : "—"}</td>

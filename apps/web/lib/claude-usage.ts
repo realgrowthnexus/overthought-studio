@@ -9,6 +9,7 @@ export interface ClaudeView {
   estimate: boolean;
   pacing: boolean;
   summary: string | null;
+  limitsNote: string | null;
 }
 
 interface ServiceLike { status: string; message: string | null; details?: Record<string, unknown> | null }
@@ -36,7 +37,13 @@ export function claudeView(s: ServiceLike | undefined, now: Date = new Date()): 
   const base = {
     fiveHour: win(d.five_hour, now), week: win(d.seven_day, now),
     estimate: d.source === "estimate", pacing: d.pacing === true,
+    limitsNote: null as string | null,
   };
+  if (!base.fiveHour && !base.week) {
+    base.limitsNote = d.source === "estimate"
+      ? "Claude doesn't share the limit numbers for this sign-in, so the studio counts videos instead."
+      : "Limits show up here after the first health check.";
+  }
   const made = typeof d.week_videos === "number" ? d.week_videos : null;
   const left = typeof d.videos_left === "number" && d.source === "reported" ? d.videos_left : null;
   const summary = made == null ? null
@@ -57,4 +64,9 @@ export function claudeView(s: ServiceLike | undefined, now: Date = new Date()): 
     return { state: "problem", headline: s.message ?? "Claude can't be reached right now", ...base, summary };
   }
   return { state: "connected", headline: "Connected to your Claude plan", ...base, summary };
+}
+
+/** True for the worker's "Claude limit reached — resumes at …" hold: a normal pause, shown calmly (never red). */
+export function isClaudePause(text: string | null | undefined): boolean {
+  return !!text && text.startsWith("Claude limit reached");
 }

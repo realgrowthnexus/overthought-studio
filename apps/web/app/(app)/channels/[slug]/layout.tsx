@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { holdTone } from "@/lib/format";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Sparkles, Lightbulb, LineChart } from "lucide-react";
 import { getAccounts, getChannelBySlug } from "@/lib/data";
@@ -23,7 +24,7 @@ export default async function ChannelLayout({ children, params }: { children: Re
           <span className="flex flex-wrap items-center gap-3">
             <span className="h-7 w-1.5 rounded-full" style={{ background: channel.color }} aria-hidden />
             {channel.name}
-            {channel.blocked_reason ? <Badge tone="bad" dot>On hold</Badge> : channel.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
+            {channel.blocked_reason ? <Badge tone={holdTone(channel.blocked_reason)} dot>On hold</Badge> : channel.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
           </span>
         }
         description={
@@ -45,8 +46,8 @@ export default async function ChannelLayout({ children, params }: { children: Re
         }
       />
       {channel.blocked_reason && (
-        <p className="mb-6 rounded-[12px] border border-bad/30 bg-bad-soft px-4 py-3 text-[13px] text-ink">
-          <strong className="font-semibold text-bad">On hold:</strong> {channel.blocked_reason}
+        <p className={holdTone(channel.blocked_reason) === "bad" ? "mb-6 rounded-[12px] border border-bad/30 bg-bad-soft px-4 py-3 text-[13px] text-ink" : "mb-6 rounded-[12px] border border-warn/30 bg-warn-soft px-4 py-3 text-[13px] text-ink"}>
+          <strong className={holdTone(channel.blocked_reason) === "bad" ? "font-semibold text-bad" : "font-semibold text-warn"}>On hold:</strong> {channel.blocked_reason}
         </p>
       )}
       <LinkTabs

@@ -66,13 +66,28 @@ def _sub_run(prompt: str, *, system: str, schema: dict, tools: list[str], purpos
         usage.before_run(video_id)
     except Exception as ex:
         log.info(f"usage before-run skipped: {ex}")
-    out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=_sub_model(purpose))
+    try:
+        out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=_sub_model(purpose))
+    except NotConfigured:
+        _mark_auth(rejected=True)                   # health check must not flip back to "ok" on token presence alone
+        raise
+    _mark_auth(rejected=False)
     try:
         usage.after_run(video_id)
     except Exception as ex:
         log.info(f"usage after-run skipped: {ex}")
     _sub_account(out, purpose, channel_id, video_id)
     return out
+
+
+def _mark_auth(rejected: bool) -> None:
+    try:
+        d = usage.details()
+        if bool(d.get("auth_rejected")) != rejected:
+            d["auth_rejected"] = rejected
+            usage._save(d)
+    except Exception as ex:
+        log.info(f"auth mark skipped: {ex}")
 
 
 def _sub_account(out: dict, purpose: str, channel_id, video_id) -> None:
@@ -191,7 +206,11 @@ def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, e
     if backend() == "subscription":
         out = _sub_run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
                        tools=["WebSearch", "WebFetch"], purpose=purpose, channel_id=channel_id, video_id=video_id)
-        r = _Research.model_validate(out.get("structured") or {"notes": out.get("text") or ""})
+        if out.get("structured") is None:
+            raise RuntimeError(f"Claude returned no structured research for {purpose} (will retry)")
+        r = _Research.model_validate(out["structured"])
+        if not r.notes.strip() or not r.sources:
+            raise RuntimeError(f"Claude's {purpose} came back without notes or sources (will retry)")
         seen, cites = set(), []
         for src in r.sources:
             if src.url and src.url not in seen:

@@ -16,6 +16,9 @@ def world(monkeypatch, tmp_path):
     seed_channel(w)
     secrets.clear_cache()
     monkeypatch.setattr(ops, "health_check", lambda: {"anthropic": "ok"})
+    w.checked = []
+    monkeypatch.setattr(cli.claude_cli, "run", lambda *a, **k: w.checked.append(k.get("with_token")) or
+                        {"text": "ok", "structured": None, "usage": {}, "model": "sonnet"})
     return w
 
 
@@ -44,3 +47,23 @@ def test_status_line_never_prints_the_token(world, monkeypatch, capsys):
     assert cli.run(["claude-status"]) == 0
     out = capsys.readouterr().out
     assert TOKEN not in out and "connected" in out and "41%" in out and "12%" in out
+
+
+def test_a_token_claude_rejects_is_not_saved(world, monkeypatch, capsys):
+    from studio.services import NotConfigured
+
+    def reject(*a, **k):
+        raise NotConfigured("anthropic", "Claude sign-in was rejected")
+    monkeypatch.setattr(cli.claude_cli, "run", reject)
+    monkeypatch.setattr("sys.stdin", io.StringIO(TOKEN))
+    assert cli.run(["claude-token"]) == 1
+    assert not world.select("secrets", {"key": "claude_oauth_token"})
+    assert "not" in capsys.readouterr().out.lower()
+
+
+def test_new_token_is_checked_with_one_tiny_call_and_clears_a_rejection(world, monkeypatch):
+    world.update("services", {"name": "anthropic"}, {"details": {"auth_rejected": True}})
+    monkeypatch.setattr("sys.stdin", io.StringIO(TOKEN))
+    assert cli.run(["claude-token"]) == 0
+    assert world.checked == [TOKEN]
+    assert not world.select("services", {"name": "anthropic"}, single=True)["details"].get("auth_rejected")

@@ -413,6 +413,8 @@ def _health_claude_subscription() -> str:
     from .services import limit_active
     llm.ping()                                       # raises NotConfigured when not signed in (no limit used)
     row = db.select("services", {"name": "anthropic"}, single=True) or {}
+    if (row.get("details") or {}).get("auth_rejected"):
+        raise NotConfigured("anthropic", "Claude rejected the saved sign-in")
     details = dict(row.get("details") or {})
     details["backend"] = "subscription"
     try:

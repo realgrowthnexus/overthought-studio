@@ -89,3 +89,20 @@ def test_health_keeps_an_active_limit_and_clears_it_after_reset(world, monkeypat
     assert ops._health_anthropic() == "ok"
     d = world.select("services", {"name": "anthropic"}, single=True)["details"]
     assert not d.get("limited")
+
+
+def test_a_rejected_sign_in_stays_not_signed_in_instead_of_flapping(world, monkeypatch):
+    from studio import claude_cli, llm
+    from studio.services import NotConfigured
+    monkeypatch.setattr(llm, "backend", lambda: "subscription")
+    monkeypatch.setattr(llm.usage, "before_run", lambda v: None)
+
+    def reject(*a, **k):
+        raise NotConfigured("anthropic", "Claude sign-in was rejected — sign in again")
+    monkeypatch.setattr(claude_cli, "run", reject)
+    with pytest.raises(NotConfigured):
+        llm._sub_run("p", system="s", schema={}, tools=[], purpose="script", channel_id=None, video_id=None)
+    _signed_in(monkeypatch)                    # the token is still present, so auth status alone says "logged in"
+    out = {}
+    ops._section("anthropic", ops._health_anthropic, out)
+    assert world.select("services", {"name": "anthropic"}, single=True)["status"] == "unconfigured"

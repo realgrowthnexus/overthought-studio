@@ -99,3 +99,10 @@ def test_remaining_slots_counts_every_active_channels_post_times(world):
                                                       "post_times": ["09:00", "19:00"], "timezone": "UTC"})
     n = usage.remaining_slots(datetime.now(timezone.utc) + timedelta(days=3))
     assert 5 <= n <= 7
+
+
+def test_unreadable_limits_from_the_start_are_marked_estimate(world, monkeypatch):
+    _serve(monkeypatch, 403, {"error": "scope"})
+    usage.refresh()
+    d = world.select("services", {"name": "anthropic"}, single=True)["details"]
+    assert d["source"] == "estimate" and "seven_day" not in d

@@ -50,3 +50,18 @@ test("pacing is surfaced", () => {
 test("api-key mode is named as such", () => {
   assert.equal(claudeView(svc("ok", { backend: "api" }), NOW).state, "api");
 });
+
+import { isClaudePause } from "../lib/claude-usage.ts";
+
+test("a Claude limit pause is recognised so it can be shown calmly, other holds are not", () => {
+  assert.equal(isClaudePause("Claude limit reached — resumes at Fri 3:40 PM"), true);
+  assert.equal(isClaudePause("Claude limit reached — resumes at Fri 3:40 PM — raise it in Settings"), true);
+  assert.equal(isClaudePause("Elevenlabs: quota used up"), false);
+  assert.equal(isClaudePause(null), false);
+});
+
+test("no readable limits: the card says so plainly instead of waiting forever", () => {
+  const v = claudeView({ status: "ok", message: null, details: { backend: "subscription", source: "estimate", week_videos: 4 } }, new Date());
+  assert.equal(v.estimate, true);
+  assert.equal(v.limitsNote, "Claude doesn't share the limit numbers for this sign-in, so the studio counts videos instead.");
+});

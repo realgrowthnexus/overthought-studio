@@ -140,8 +140,8 @@ def refresh() -> dict:
     r = read()
     if r:
         d.update(r)
-    elif d.get("seven_day"):
-        d["source"] = "estimate"
+    else:
+        d["source"] = "estimate"                     # unreadable (now or ever): the card says so, pacing stays off
     vids = _videos()
     per = _per_video_pct(vids)
     if per is not None:

@@ -58,7 +58,7 @@ def test_structured_goes_through_cli_and_costs_nothing(sub):
 
 def test_heavy_work_uses_the_plans_default_model(sub):
     mp, calls, _, _, _ = sub
-    mp.setenv("FAKE_CLAUDE_STRUCTURED", json.dumps({"notes": "n", "sources": []}))
+    mp.setenv("FAKE_CLAUDE_STRUCTURED", json.dumps({"notes": "n", "sources": [{"url": "https://x.org"}]}))
     llm.research("SYS", "find it", purpose="research")
     assert "--model" not in calls()[-1]
 
@@ -82,3 +82,15 @@ def test_ping_uses_no_model_call(sub):
     keys.clear()
     with pytest.raises(NotConfigured):
         llm.ping()
+
+
+@pytest.mark.parametrize("structured", [None, {"notes": "", "sources": []}, {"notes": "facts", "sources": []}])
+def test_research_without_notes_or_sources_is_retried_not_passed_on(sub, structured):
+    mp, _, _, _, _ = sub
+    if structured is None:
+        mp.delenv("FAKE_CLAUDE_STRUCTURED", raising=False)
+        mp.setattr(llm.claude_cli, "run", lambda *a, **k: {"text": "", "structured": None, "usage": {}, "model": "x"})
+    else:
+        mp.setenv("FAKE_CLAUDE_STRUCTURED", json.dumps(structured))
+    with pytest.raises(RuntimeError):
+        llm.research("SYS", "find it", purpose="research")

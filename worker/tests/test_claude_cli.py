@@ -87,3 +87,28 @@ def test_no_token_means_not_signed_in(cli):
 
 def test_auth_ok_with_token(cli):
     assert claude_cli.auth_ok() is True
+
+
+def test_overload_parks_as_service_down_not_a_retry_burning_error(cli):
+    from studio.services import ServiceDown
+    mp, _ = cli
+    mp.setenv("FAKE_CLAUDE_MODE", "overloaded")
+    with pytest.raises(ServiceDown):
+        claude_cli.run("x", system="S", schema=None, tools=[], model="opus")
+
+
+def test_limit_clock_text_gives_that_reset_time(cli):
+    mp, _ = cli
+    mp.setenv("FAKE_CLAUDE_MODE", "limit_clock")
+    with pytest.raises(LimitReached) as e:
+        claude_cli.run("x", system="S", schema=None, tools=[], model="opus")
+    ra = e.value.resume_at
+    assert (ra.hour, ra.minute) == (15, 0) and ra > datetime.now(timezone.utc)
+
+
+def test_parse_reset_clock_rolls_to_tomorrow_when_past():
+    now = datetime(2026, 11, 20, 16, 0, tzinfo=timezone.utc)
+    t = claude_cli.parse_reset("resets 3pm (UTC)", now)
+    assert t == datetime(2026, 11, 21, 15, 0, tzinfo=timezone.utc)
+    assert claude_cli.parse_reset("resets 9:30am (America/New_York)", now).hour == 14
+    assert claude_cli.parse_reset("no time here", now) is None

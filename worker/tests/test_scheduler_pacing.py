@@ -59,3 +59,18 @@ def test_pacing_never_moves_a_scheduled_evening_video(world, monkeypatch):
     assert world.select("videos", {"id": v["id"]}, single=True)["scheduled_for"] == evening.isoformat()
     ap = [x for x in world.tables["videos"] if x["title"] == "y"][0]
     assert ap["status"] == "scheduled" and datetime.fromisoformat(ap["scheduled_for"]).hour == 9
+
+
+def test_a_stopped_channel_does_not_hold_the_others_back(world):
+    world.insert("videos", {"channel_id": world.a["id"], "title": "x", "status": "scripting"})
+    world.update("channels", {"id": world.b["id"]}, {"blocked_reason": "Stopped making new videos: 3 failed"})
+    scheduler.tick()
+    assert world.a["id"] in _plans(world)
+
+
+def test_a_channel_whose_planning_keeps_failing_does_not_hold_the_others_back(world):
+    world.insert("videos", {"channel_id": world.a["id"], "title": "x", "status": "scripting"})
+    world.insert("jobs", {"type": "plan_channel", "status": "failed", "channel_id": world.b["id"],
+                          "finished_at": datetime.now(timezone.utc).isoformat()})
+    scheduler.tick()
+    assert world.a["id"] in _plans(world)

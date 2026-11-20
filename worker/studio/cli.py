@@ -16,6 +16,7 @@ import re
 import subprocess
 import sys
 
+from .services import ServiceProblem
 from . import claude_cli, content, crypto, db, llm, ops, pipeline, scheduler, secrets, seed, voice
 
 _KEYISH = re.compile(r"(sk-[A-Za-z0-9_-]{6,}|sb_secret_[A-Za-z0-9_-]+|(?i:bearer)\s+[A-Za-z0-9._-]{8,})")
@@ -89,9 +90,22 @@ def claude_token(raw: str) -> int:
         print("That doesn't look like a Claude sign-in token (sk-ant-oat…). Nothing was saved.")
         return 1
     tok = m.group(0)
+    try:                                             # one tiny real call proves the sign-in works before saving it
+        claude_cli.run("Reply with the word ok.", system="Reply with one word.", schema=None, tools=[],
+                       model="sonnet", timeout=180, with_token=tok)
+    except ServiceProblem as p:
+        if p.status == "unconfigured":
+            print("Claude did NOT accept this sign-in (the token was rejected or cut off). Nothing was saved. "
+                  "Run connect-claude.sh again.")
+            return 1
+    except Exception as e:
+        print(f"Could not test the sign-in right now ({_clean(str(e))}); saving it anyway.")
     db.insert("secrets", {"key": "claude_oauth_token", "ciphertext": crypto.encrypt(tok), "hint": tok[-4:]},
               upsert=True, on_conflict="key")
     secrets.clear_cache()
+    row = db.select("services", {"name": "anthropic"}, single=True) or {}
+    if (row.get("details") or {}).get("auth_rejected"):
+        db.update("services", {"name": "anthropic"}, {"details": {**row["details"], "auth_rejected": False}})
     try:
         ops.health_check()
     except Exception as e:

@@ -23,6 +23,12 @@ elif mode == "limit":
 elif mode == "limit_text":
     out = {"type": "result", "subtype": "success", "is_error": True,
            "result": "You've hit your session limit · resets 3pm (America/New_York)", "usage": usage}
+elif mode == "overloaded":
+    out = {"type": "result", "subtype": "success", "is_error": True,
+           "result": "API Error: 529 {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\"}}", "usage": usage}
+elif mode == "limit_clock":
+    out = {"type": "result", "subtype": "success", "is_error": True,
+           "result": "You've hit your weekly limit · resets 3pm (UTC)", "usage": usage}
 elif mode == "auth":
     out = {"type": "result", "subtype": "success", "is_error": True,
            "result": "Invalid API key · Please run /login", "usage": usage}

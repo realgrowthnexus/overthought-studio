@@ -51,7 +51,7 @@ export function ClaudeUsageCard({ initial }: { initial: Service[] }) {
               {v.week && <Meter label="Weekly limit" pct={v.week.pct} resets={v.week.resets} />}
             </div>
           ) : (
-            <p className="text-[13px] text-ink-3">Limits show up here after the first health check.</p>
+            <p className="text-[13px] text-ink-3">{v.limitsNote}</p>
           )}
           {v.pacing && (
             <p className="rounded-[10px] border border-warn/30 bg-warn-soft px-3 py-2 text-[13px] text-ink">

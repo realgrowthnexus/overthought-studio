@@ -63,7 +63,12 @@ def _buffer(ch: dict, pacing: bool) -> tuple[int, int, int]:
 def _round_robin_floor(chans: list[dict], pacing: bool) -> int | None:
     """Fewest videos in production among channels that still need one: no channel gets a second video in
     production while another still has none (morning videos for every channel come first)."""
-    short = [b for b in (_buffer(ch, pacing) for ch in chans) if b[0] < b[1]]
+    since = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+    stuck = {j["channel_id"] for j in db.select("jobs", {"type": "plan_channel", "status": "failed",
+                                                          "finished_at": ("gte", since)}, columns="channel_id")}
+    # only channels that can actually get a new video count: not stopped, and planning not failing right now
+    able = [ch for ch in chans if not ch.get("blocked_reason") and ch["id"] not in stuck]
+    short = [b for b in (_buffer(ch, pacing) for ch in able) if b[0] < b[1]]
     return min((b[2] for b in short), default=None)
 
 
