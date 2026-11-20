@@ -36,6 +36,8 @@ def _match(row: dict, where: dict | None) -> bool:
                 ok = have != val
             elif op == "is":
                 ok = have is None if val == "null" else have == (val == "true")
+            elif op == "not.is":
+                ok = have is not None if val == "null" else have != (val == "true")
             else:
                 raise NotImplementedError(f"fake db filter {op}")
         elif v is None:

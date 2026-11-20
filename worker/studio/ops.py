@@ -504,7 +504,10 @@ def _bucket_bytes(bucket: str, prefix: str = "") -> int:
 
 def _resume_waiting() -> None:
     """Re-queue jobs parked on a service that is healthy again; clear channel block reasons."""
-    st = {r["name"]: r["status"] for r in db.select("services")}
+    from .services import limit_active
+    rows = db.select("services")
+    st = {r["name"]: r["status"] for r in rows}
+    limited = {r["name"] for r in rows if limit_active(r)}
     waiting = db.select("jobs", {"status": "waiting"})
     for j in waiting:
         svc = j.get("waiting_on")
@@ -514,6 +517,10 @@ def _resume_waiting() -> None:
                 continue
         else:
             cur = st.get(svc)
+            if j.get("parked_status") == "limited":
+                if svc in limited:
+                    continue
+                cur = "ok"                           # the limit has reset
             # out-of-credits needs a real recovery ('ok'); a 'warning' would just fail again
             healthy = cur == "ok" or (cur == "warning" and j.get("parked_status") != "out_of_credits")
             if not healthy:

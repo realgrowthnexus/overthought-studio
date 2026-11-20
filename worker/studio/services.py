@@ -37,8 +37,23 @@ class NotConfigured(ServiceProblem):
     status = "unconfigured"
 
 
+class LimitReached(ServiceProblem):
+    """The Claude subscription's usage limit is used up. Not an error: work waits until the limit resets."""
+    status = "limited"
+
+    def __init__(self, service: str, message: str, resume_at: datetime):
+        super().__init__(service, message)
+        self.resume_at = resume_at
+
+
 class PermanentError(RuntimeError):
     """A failure that retrying cannot fix (e.g. fact-check failed). The job fails immediately."""
+
+
+def local_time(t: datetime) -> str:
+    """'3:40 PM' in the studio's display timezone (US Eastern, like the rest of the dashboard)."""
+    from zoneinfo import ZoneInfo
+    return t.astimezone(ZoneInfo("America/New_York")).strftime("%a %I:%M %p").replace(" 0", " ")
 
 
 def now_iso() -> str:
@@ -73,8 +88,23 @@ SETUP_HINTS = {
 
 
 def report_problem(p: ServiceProblem) -> None:
+    if isinstance(p, LimitReached):
+        prev = (db.select("services", {"name": p.service}, single=True) or {}).get("details") or {}
+        # stored as 'warning' + details.limited: the services.status check constraint has no 'limited' value
+        set_status(p.service, "warning", f"{p.message}. Work resumes on its own at {local_time(p.resume_at)}.",
+                   details={**prev, "limited": True, "resume_at": p.resume_at.isoformat()})
+        return
     hint = (SETUP_HINTS if p.status == "unconfigured" else FIX_HINTS).get(p.service, "")
     set_status(p.service, p.status, f"{p.message}. {hint}".strip())
+
+
+def limit_active(row: dict | None) -> bool:
+    """True while a Claude usage limit is in force (details.limited with a resume time still in the future)."""
+    d = (row or {}).get("details") or {}
+    if not d.get("limited"):
+        return False
+    ra = d.get("resume_at")
+    return not ra or datetime.fromisoformat(ra) > datetime.now(timezone.utc)
 
 
 def is_ok(name: str) -> bool:
