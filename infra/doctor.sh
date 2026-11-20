@@ -9,7 +9,7 @@ cd "$DIR" 2>/dev/null || { echo "Not installed: $DIR is missing. Run the install
 DOMAIN=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2-)
 DOMAIN=${DOMAIN:-studio.getgrowthnexus.com}
 
-redact() { sed -E 's/(sk-[A-Za-z0-9_-]{6,}|sb_secret_[A-Za-z0-9_-]+|eyJ[A-Za-z0-9._-]{20,})/***/g; s/((key|secret|token|password)[^=:]*[=:][[:space:]]*)[^[:space:]&,"]+/\1***/Ig'; }
+redact() { sed -E 's/(sk-[A-Za-z0-9_-]{6,}|sb_secret_[A-Za-z0-9_-]+|eyJ[A-Za-z0-9._-]{20,})/***/g; s/((api_key|apikey|key|secret|token|password)=)[^[:space:]&,"]+/\1***/Ig'; }
 section() { printf '\n===== %s =====\n' "$1"; }
 
 section "Version"
