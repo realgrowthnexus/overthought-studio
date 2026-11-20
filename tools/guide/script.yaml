@@ -121,6 +121,7 @@ chapters:
     title_roman: "Channels"
     scenes:
       - id: "4.1"
+        highlight_after: true      # the target is on the page the first click opens
         route: /
         highlight: "main [role=switch] >> nth=0"
         actions:
@@ -153,11 +154,12 @@ chapters:
           - "میک اے ویڈیو ناؤ سے فوراً ایک نئی ویڈیو بننا شروع ہوتی ہے۔"
           - "لیکن اس کی ضرورت نہیں، اسٹوڈیو روز خود ویڈیوز بناتا ہے۔"
       - id: "4.3"
+        highlight_after: true      # the target is on the page the first click opens
         route: /channels/overthought
-        highlight: "main ol"
+        highlight: "main ol > li >> nth=0"
         actions:
           - {do: click, target: "main >> role=link[name='Idea bank']"}
-          - {do: scroll, px: 200}
+          - {do: wait, ms: 1500}
         roman:
           - "'Idea bank' mein agli videos ke topic hain."
           - "Sab se upar wala topic sab se pehle banega."

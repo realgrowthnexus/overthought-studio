@@ -96,7 +96,7 @@ async function recordScene(b, scene, ids) {
   const dur = narration[scene.id].duration;
   const acts = scene.actions || [];
   const step = Math.max(600, (dur * 1000 * 0.8) / Math.max(1, acts.length));
-  let lit = await tryHighlight(page, scene.highlight);
+  let lit = scene.highlight_after ? false : await tryHighlight(page, scene.highlight);
   for (const a of acts) {
     const tStep = Date.now();
     if (a.do === 'wait') await page.waitForTimeout(a.ms);
@@ -109,7 +109,7 @@ async function recordScene(b, scene, ids) {
       if (a.do === 'type') { await loc.click(); await page.keyboard.type(a.text, { delay: 70 }); }
       if (a.do === 'play') await loc.evaluate((v) => { v.muted = true; v.play(); });
     }
-    if (!lit) lit = await tryHighlight(page, scene.highlight);
+    if (!lit && (!scene.highlight_after || a === acts[0])) lit = await tryHighlight(page, scene.highlight);
     const left = step - (Date.now() - tStep);
     if (left > 0) await page.waitForTimeout(left);
   }
