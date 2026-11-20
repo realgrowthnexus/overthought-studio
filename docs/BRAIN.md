@@ -24,8 +24,23 @@
      yet); installer no longer prints MASTER_KEY. Live Playwright smoke: /login 200 phone+desktop, CSP+HSTS, /privacy
      /terms 200, / -> /login.
    - Git push from cloud sessions sometimes returns 403; the GitHub MCP `push_files` to `main` works as a fallback.
-   - NEXT (owner): Supabase Auth settings, /setup owner login, keys in Settings (Anthropic + balance, ElevenLabs key
-     WITH User: Read, RunPod). Then Task 6 (first real video, ask before spending).
+   - Owner created their login (2026-11-20). Keys deliberately NOT added yet (owner: "keys skip, video zaroori").
+   - Session 3, part 2 (plan `docs/superpowers/plans/2026-11-20-audit-and-video-guide.md`, ledger
+     `.superpowers/sdd/2026-11-20-audit-and-video-guide/progress.md`):
+     - Local demo copy: `tools/demo` (up.sh = local Supabase via Docker Hub images + dashboard on :3000; seed_demo.py;
+       login.cjs; ui-check.cjs = phone/laptop checks incl. loading skeletons). Claude may NOT log into the owner's real
+       account (safety check refused a magic-link session) — use the demo copy for UI work and screenshots.
+     - Dashboard fixes, LIVE: chart controls/empty state, idea bank on phones, scroll hints, confirm before removing an
+       API key, progress bar transform, page-shaped loading skeletons, CSP follows the Supabase URL scheme.
+     - Roman Urdu video guide delivered to the owner (5:18; 1080p + 720p WhatsApp + SRT). Pipeline: `tools/guide`
+       (script.yaml → tts.py edge-tts `ur-PK-AsadNeural` −15% → record.cjs → compose.py ffmpeg). Re-run after UI
+       changes: `bash tools/demo/up.sh && python tools/demo/seed_demo.py && node tools/demo/login.cjs &&
+       python tools/guide/tts.py build && node tools/guide/record.cjs && python tools/guide/compose.py`.
+     - Audience: owner + their father. The father only watches and approves; money, keys and the red bar → "bete se kahein".
+   - Env `overthought-studio` also allows: d2glxqk2uabbnd.cloudfront.net, speech.platform.bing.com; credential for
+     api.supabase.com (owner asked to delete that token — not needed any more).
+   - NEXT (owner): Supabase Auth settings (sign-ups off, Site URL), keys in Settings (Anthropic + balance, ElevenLabs
+     WITH User: Read, RunPod). Then Task 6 of the first plan (first real video, ask before spending), TikTok app.
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
