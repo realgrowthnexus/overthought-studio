@@ -3,61 +3,102 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-20, session 3.
+> Last updated: 2026-11-21, end of session 3. **Handoff-ready.**
 
 ## 0. START HERE (next Claude)
-1. Read this file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md` and `docs/tiktok-api-notes.md`.
-2. **Hosting is DECIDED (2026-11-19, owner):** everything (web + worker) goes on the Hostinger **VPS "JUC Vps"**
-   (IP `2.24.74.240`) with `infra/install.sh`, exactly as originally designed. Web App Hosting is NOT used. See §5.
-3. Then follow §6 (next steps) in order.
-4. **Session 3 (2026-11-20):** owner said "take charge, make it production ready end to end" and left the method to me
-   (Native/inline). Plan: `docs/superpowers/plans/2026-11-20-production-readiness.md`; ledger (git-ignored):
-   `.superpowers/sdd/2026-11-20-production-readiness/progress.md`.
-   - DONE: Task 0 (env `overthought-studio` now allows Supabase, studio domain, ElevenLabs, RunPod, TikTok hosts; Supabase
-     secret saved as proxy `apikey`), Task 1 (offline e2e pipeline tests; fixed: resume on a fresh machine re-paid
-     RunPod/ElevenLabs), Task 2 (Claude request-contract tests; no fix needed), Task 3 (`studio.cli smoke`,
-     `infra/doctor.sh`), Task 4 (docs no longer mention Vercel). 24 worker tests pass.
-   - LIVE (2026-11-20 08:30 UTC): VPS install works. Worker `vps-srv2163482` heartbeats; web healthy;
-     `https://studio.getgrowthnexus.com` served by the OTHER app's Caddy (`juc-caddy-1`, via `infra/caddy-attach.sh`);
-     Supabase ok. Fixed on the way: the pasted Supabase key had a stray char (every call 400) -> installer/worker/web
-     now strip non-key chars. Setup token + MASTER_KEY leaked in an owner screenshot -> rotated (nothing was encrypted
-     yet); installer no longer prints MASTER_KEY. Live Playwright smoke: /login 200 phone+desktop, CSP+HSTS, /privacy
-     /terms 200, / -> /login.
-   - Git push from cloud sessions sometimes returns 403; the GitHub MCP `push_files` to `main` works as a fallback.
-   - Owner created their login (2026-11-20). Keys deliberately NOT added yet (owner: "keys skip, video zaroori").
-   - Session 3, part 2 (plan `docs/superpowers/plans/2026-11-20-audit-and-video-guide.md`, ledger
-     `.superpowers/sdd/2026-11-20-audit-and-video-guide/progress.md`):
-     - Local demo copy: `tools/demo` (up.sh = local Supabase via Docker Hub images + dashboard on :3000; seed_demo.py;
-       login.cjs; ui-check.cjs = phone/laptop checks incl. loading skeletons). Claude may NOT log into the owner's real
-       account (safety check refused a magic-link session) — use the demo copy for UI work and screenshots.
-     - Dashboard fixes, LIVE: chart controls/empty state, idea bank on phones, scroll hints, confirm before removing an
-       API key, progress bar transform, page-shaped loading skeletons, CSP follows the Supabase URL scheme.
-     - Roman Urdu video guide delivered to the owner (5:18; 1080p + 720p WhatsApp + SRT). Pipeline: `tools/guide`
-       (script.yaml → tts.py edge-tts `ur-PK-AsadNeural` −15% → record.cjs → compose.py ffmpeg). Re-run after UI
-       changes: `bash tools/demo/up.sh && python tools/demo/seed_demo.py && node tools/demo/login.cjs &&
-       python tools/guide/tts.py build && node tools/guide/record.cjs && python tools/guide/compose.py`.
-     - Audience: owner + their father. The father only watches and approves; money, keys and the red bar → "bete se kahein".
-   - Env `overthought-studio` also allows: d2glxqk2uabbnd.cloudfront.net, speech.platform.bing.com; credential for
-     api.supabase.com (owner asked to delete that token — not needed any more).
-   - **Claude runs on the owner's Claude Pro sign-in, NOT an API key (decided 2026-11-20, owner: "API is messy").**
-     Spec `docs/superpowers/specs/2026-11-20-claude-subscription-design.md`, plan
-     `docs/superpowers/plans/2026-11-20-claude-subscription.md`.
-     - Worker runs Claude Code headless (`worker/studio/claude_cli.py`, CLI pinned 2.1.329, Node 22 in the image).
-       Token: `claude setup-token` captured by `infra/connect-claude.sh` → `studio.cli claude-token` → encrypted in
-       `secrets.claude_oauth_token`. Never in argv/logs.
-     - `llm.backend()` = subscription unless an API key is saved AND `settings.llm_backend == "api"`.
-       Heavy work = plan default model; scorecard/smoke = sonnet.
-     - Limits: `LimitReached` parks jobs (no 24h give-up, no circuit breaker), stored as services.status `warning` +
-       `details.limited/resume_at` (no DB migration). `usage.py` reads the same endpoint as Claude Code's /usage,
-       measures weekly-% per video (avg of last 5), and turns **pacing** on (evening slots dropped) when the week is
-       projected past 95%. Planning is round-robin across channels.
-     - Dashboard: Claude card on Overview + Settings (`components/claude-usage.tsx`, view model `lib/claude-usage.ts`,
-       test `apps/web/tests/claude-usage.test.mjs`).
-     - Owner was told: Pro limits are shared with their own chats; target 5 channels × 2/day may not fit Pro — the
-       first real videos measure it; Anthropic's terms allow own-use scripts, volume line undefined; owner accepted.
-   - NEXT (owner): run `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` on the VPS; Supabase Auth
-     settings (sign-ups off, Site URL); keys in Settings (ElevenLabs WITH User: Read, RunPod). Then Task 6 of the first
-     plan (first real video — check the Claude card's per-video %), TikTok app.
+1. Read this whole file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md`, `docs/SETUP.md`, `docs/tiktok-api-notes.md`.
+2. Talk to the owner in **Roman Urdu or simple English** (never Hindi/Devanagari). They are not a developer (§1).
+3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
+   follow §6.
+
+### 0.1 Where things stand (2026-11-21)
+- **LIVE on the VPS** ("JUC Vps", `2.24.74.240`): web `https://studio.getgrowthnexus.com` (behind the other app's
+  Caddy `juc-caddy-1`, via `infra/caddy-attach.sh`) + worker `vps-srv2163482`. Supabase ok. The VPS pulls `main`
+  every 10 minutes and rebuilds (`infra/install.sh` timer), so **anything pushed to `main` goes live by itself.**
+- Owner login exists (created 2026-11-20). All 5 channels are PAUSED.
+- `main` = `e7dd75e`. Tests: worker 75 pass (`cd worker && python -m pytest -q -p no:cacheprovider`); web 9 node
+  tests (`cd apps/web && node --experimental-strip-types --test tests/claude-usage.test.mjs`), `npx tsc --noEmit`, `npx next lint` clean;
+  infra `bash infra/tests/connect_claude_test.sh`.
+- **Claude runs on the owner's Claude Pro sign-in, NOT an API key** (owner, 2026-11-20: "API is messy"). Built and
+  pushed; **not yet connected** — the dashboard's Claude card says "Not signed in" until the owner runs the sign-in
+  script (§0.2). Details §0.3.
+- **No Claude-powered video has ever run end to end.** The only real video is the hand-written doorway preview (§3).
+- Keys NOT added yet (owner: "keys skip, video zaroori"): ElevenLabs, RunPod. Nothing is being billed.
+
+### 0.2 What the owner still has to do (walk them through it, one step at a time)
+1. On the VPS (Hostinger Browser terminal): `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` — open
+   the link, sign in to Claude, paste the code back. The script captures the token itself; card then says Connected.
+   If anything fails: `sudo bash /opt/overthought-studio/src/infra/doctor.sh` and ask for the output (no secrets in it).
+2. Supabase → Auth settings: turn OFF public sign-ups; set Site URL to `https://studio.getgrowthnexus.com`.
+3. Dashboard → Settings: ElevenLabs key **with User: Read** permission, RunPod key.
+4. Delete the Supabase access token named `claude-demo` (api.supabase.com) — not needed any more.
+5. Change the VPS root password (it was pasted in chat once). Delete the stray empty Supabase project in the
+   "hellowickettravels" org.
+
+### 0.3 The Claude sign-in design (session 3, part 3)
+Spec `docs/superpowers/specs/2026-11-20-claude-subscription-design.md`; plan
+`docs/superpowers/plans/2026-11-20-claude-subscription.md` (all 8 tasks done, opus final review done, 6 important
+findings fixed in `e7dd75e`).
+- `worker/studio/claude_cli.py`: runs Claude Code headless (`claude -p … --output-format json --tools … --json-schema
+  … --no-session-persistence --setting-sources "" --strict-mcp-config`), CLI pinned **2.1.329**, Node 22 copied from
+  `public.ecr.aws/docker/library/node:22-slim` in `worker/Dockerfile`. Token = `claude setup-token` (`sk-ant-oat01-…`),
+  stored encrypted as `secrets.claude_oauth_token`, passed only via env `CLAUDE_CODE_OAUTH_TOKEN` (never argv/logs);
+  `HOME=$WORK/.claude-home`, empty temp cwd. Errors: limit text → `LimitReached` (resume time from `|epoch`, then
+  "resets 3pm (TZ)", then the usage endpoint, else +1h); overload/5xx/network/timeout → `ServiceDown` (park+retry);
+  auth → `NotConfigured`; else `RuntimeError` (token scrubbed).
+- `llm.py`: `backend()` = "subscription" unless an API key is saved AND `settings.llm_backend == "api"`. Heavy work
+  uses the plan's default model (or `settings.subscription_model`); scorecard/smoke use `sonnet`. Research uses
+  WebSearch+WebFetch with a `{notes, sources[]}` schema; empty result → RuntimeError (retried). Spend recorded as $0.
+- Limits: `LimitReached` parks the job (doesn't count to MAX_WAITS, never trips the circuit breaker); stored as
+  services.status `warning` + `details.limited/resume_at` (**no DB migration**); `ops._resume_waiting` re-queues
+  after `resume_at`. UI shows it amber/calm, never red.
+- `usage.py`: reads `https://api.anthropic.com/api/oauth/usage` (same as Claude Code's /usage; header
+  `anthropic-beta: oauth-2025-04-20`). **Unverified whether it accepts setup-token tokens** — if not, card shows
+  "estimate", counts videos only, pacing stays off (park-and-resume still works). Per-video weekly-% = avg of last 5
+  measured videos (settings row `claude_video_usage`). **Pacing**: if `week% + remaining_slots × per_video% ≥ 95`,
+  the scheduler keeps only the first post time per day (evening slots dropped; existing videos never moved).
+  Planning is round-robin across channels (stuck/blocked channels ignored).
+- CLI: `python -m studio.cli claude-token` (reads stdin, validates with one tiny sonnet call before saving),
+  `claude-status`. `infra/connect-claude.sh` wraps `setup-token` in `script`, strips ANSI, joins wrapped lines,
+  shreds the temp file. `infra/doctor.sh` has a "Claude sign-in" section.
+- Dashboard: Claude card on Overview + Settings (`#claude`), `components/claude-usage.tsx`, pure view model
+  `lib/claude-usage.ts`. API-key path kept under Settings → "Advanced" (labelled optional). Money balance hidden for
+  Claude on the plan.
+- Told the owner: Pro limit is shared with their own Claude chats; 5 channels × 2/day may not fit Pro — the first
+  real videos measure it (card shows per-video %); Anthropic's terms allow own-use scripts, volume line undefined;
+  owner accepted ("goahead").
+- **Not verified here:** the full worker image build (sandbox can't reach Debian apt); the Node/CLI stage was built
+  and run separately. First VPS rebuild after `e7dd75e` is the real test — if it breaks, ask for `doctor.sh` output.
+- **Deferred minors** (known, low impact): pacing has no hysteresis (can flip mid-week); lost-update race on the
+  `claude_video_usage` settings row; `smoke` (run by doctor) spends a tiny bit of limit each time; an unavailable
+  `subscription_model` fails as a plain RuntimeError; the token is visible once on screen/scrollback during sign-in;
+  "out of extra usage"/"Opus limit" wordings are not matched as limits.
+
+### 0.4 Earlier in session 3 (done)
+- Production-readiness plan `docs/superpowers/plans/2026-11-20-production-readiness.md`: Tasks 0–4 done (env hosts +
+  proxy secrets, offline e2e pipeline tests — fixed resume re-paying RunPod/ElevenLabs, Claude request-contract
+  tests, `studio.cli smoke` + `infra/doctor.sh`, docs no longer mention Vercel). **Task 6 (first real video) is
+  still open** — it is §6 step 3.
+- Install went live 2026-11-20 08:30 UTC. Fixed on the way: pasted Supabase key had a stray char → installer/worker/
+  web strip non-key chars; setup token + MASTER_KEY leaked in an owner screenshot → rotated; installer no longer
+  prints MASTER_KEY.
+- Audit + video guide plan `docs/superpowers/plans/2026-11-20-audit-and-video-guide.md`:
+  - Local demo copy `tools/demo` (`up.sh` = local Supabase + dashboard on :3000; `seed_demo.py`; `login.cjs`;
+    `ui-check.cjs --shots` = phone/laptop checks). **Claude may NOT log into the owner's real account** (safety check
+    refused a magic-link session) — use the demo copy for UI work and screenshots.
+  - Dashboard fixes LIVE (chart controls, idea bank on phones, scroll hints, confirm before removing a key, skeletons,
+    CSP follows Supabase URL scheme).
+  - Roman Urdu video guide delivered (5:18; 1080p + 720p + SRT). Pipeline `tools/guide`; re-run after UI changes:
+    `bash tools/demo/up.sh && python tools/demo/seed_demo.py && node tools/demo/login.cjs && python tools/guide/tts.py
+    build && node tools/guide/record.cjs && python tools/guide/compose.py`. **The guide predates the Claude card** —
+    its Anthropic-key part is now outdated; re-record if the owner wants.
+  - Audience: owner + their father. The father only watches and approves; money, keys, the red bar → "bete se kahein".
+- Cloud env `overthought-studio` (env_01TJ5FBy4nZt3RRkNjTKNPPG) allows Supabase, studio domain, ElevenLabs, RunPod,
+  TikTok, d2glxqk2uabbnd.cloudfront.net, speech.platform.bing.com, mcp.hostinger.com; proxy credential for the
+  Supabase secret (`apikey`) and api.supabase.com.
+- Git push from cloud sessions sometimes returns 403; GitHub MCP `push_files` to `main` works as a fallback.
+- Workflow used: superpowers brainstorming → spec → plan → executing-plans (TDD, ledger in git-ignored
+  `.superpowers/sdd/…`) → opus final review → one fix pass. Keep using it for new features.
 
 ## 1. The owner and how to work with them
 - They write **Roman Urdu**. Voice-to-text sometimes shows it in Devanagari script, but it is NOT Hindi.
@@ -69,8 +110,8 @@
 - The owner wants ~100% automation and pays only the tool bills. Two exceptions they agreed to:
   - approving videos at the start;
   - tapping Publish on TikTok drafts until the TikTok app audit passes.
-- Secrets: never ask for them in chat. Use the `request_credential` form, or dashboard Settings. Anthropic keys
-  can't go through the form, so they go only in dashboard Settings.
+- Secrets: never ask for them in chat. Use the `request_credential` form, or dashboard Settings. The Claude sign-in
+  goes only through `infra/connect-claude.sh` on the VPS.
 - Things I refused, and the owner accepted:
   - no proxy, static-IP or device masking to fake US presence (Creator Rewards needs a real US-eligible adult per
     monetised account);
@@ -108,7 +149,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
 - **`apps/web`:** Next.js 15.5 dashboard (App Router, React 19, Tailwind v4, Supabase SSR, `output: "standalone"`).
   - Pages: overview, channels (wizard + tabs), videos (player, approve/reject/regenerate/publish), analytics
     (CSV/XLSX import), reports, TikTok accounts (OAuth connect), settings (encrypted keys, budgets, auto-publish,
-    Claude credit), logs (events + jobs), `/privacy`, `/terms`, `/setup` (one-time owner), `/login`.
+    Claude sign-in card + limits), logs (events + jobs), `/privacy`, `/terms`, `/setup` (one-time owner), `/login`.
   - Security-reviewed:
     - an admin check in every loader and action;
     - race-safe `/setup` plus a DB single-owner index;
@@ -133,7 +174,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
     - weekly review;
     - health and credit checks for Anthropic, ElevenLabs, RunPod, TikTok and storage, with auto-resume;
     - budget caps, a circuit breaker, nightly backups to the Supabase `backups` bucket, and cleanup.
-  - Hardened by a 25-item code audit. 10 unit tests (`cd worker && python -m pytest -q tests`).
+  - Hardened by a 25-item code audit. 75 tests (`cd worker && python -m pytest -q -p no:cacheprovider`).
   - Needs **ffmpeg, about 3 CPU cores, about 4–6 GB RAM, and a long-running process**.
 - **Supabase:** project `overthought-studio`, ref **`xkbgusqmdeocjwxaknjx`**, us-east-1, org "realgrowthnexus".
   - Migrations 0001–0003 applied.
@@ -152,7 +193,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
     Docker Hub rate limits.
 - **Preview:** a real doorway-effect video, id `477ffdfb-06c3-434c-b398-3429e9e750dd` (status `ready`), built from
   the hand-written `worker/fixtures/doorway_script.json`.
-  - **The Claude-API steps have NEVER run end-to-end yet.** That needs the owner's Anthropic key in Settings.
+  - **The Claude steps have NEVER run end-to-end yet.** That needs the owner's Claude sign-in (§0.2 step 1).
 
 ## 4. Known facts and gotchas
 - **GitHub Actions are blocked:** the owner's GitHub account is billing-locked. Nothing depends on CI.
@@ -163,7 +204,8 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   - Docker builds in the sandbox need the proxy CA (temporary Dockerfile variant only).
 - The ElevenLabs key saved in the cloud env lacks `user_read`, so it can't read the balance. The owner should create
   a key with User: Read.
-- `docs/SETUP.md` currently describes the **VPS** flow. Rewrite it once the hosting decision in §5 is made.
+- `docs/SETUP.md` describes the VPS flow, incl. Step 5a "Connect Claude".
+- The 5-hour Claude limit is expected to hit sometimes; that is a calm pause, not an error (owner agreed).
 
 ## 5. Hosting: DECIDED → VPS (2026-11-19)
 - Owner reversed the Web App Hosting idea: "sab VPS par, purane decision ke mutabiq".
@@ -179,16 +221,13 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
 History: on 2026-11-18 the owner briefly planned Hostinger Web App Hosting (zip upload); reversed on 2026-11-19. Details are in git history.
 
 ## 6. Next steps (in order)
-1. Owner runs the installer on the VPS (§5), adds DNS A record, sends me the installer output (NOT the keys).
-2. Owner tasks:
-   - DNS;
-   - Supabase Auth settings;
-   - `/setup` to create the owner login;
-   - Claude sign-in: `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` (no Anthropic key);
-   - keys in Settings: ElevenLabs (with User: Read), RunPod.
+1. ~~Installer, DNS, `/setup` owner login~~ — DONE 2026-11-20.
+2. Owner tasks in §0.2 (Claude sign-in first).
 3. Run a **real Claude-powered doorway video** through the full pipeline: dashboard → Overthought → "Make a video
    now", or `python -m studio.cli`.
    - Check script quality, fact-check, length and render, then send it to the owner.
+   - **Ask before spending** (RunPod + ElevenLabs cost a little per video).
+   - Read the Claude card's per-video weekly % → tell the owner honestly how many videos/day Pro can carry.
    - Also verify browser login works (it couldn't be tested in the sandbox).
 4. TikTok developer app (guide on the dashboard's TikTok accounts page):
    - sandbox target users;
