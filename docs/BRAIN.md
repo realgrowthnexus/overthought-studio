@@ -3,12 +3,15 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-18, end of session 1 (handoff).
+> Last updated: 2026-11-23, end of session 1 (FINAL handoff, fresh-start package).
 
 ## 0. START HERE (next Claude)
 1. Read this file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md` and `docs/tiktok-api-notes.md`.
-2. **Open decision, owner changed hosting (latest instruction):** the owner bought **Hostinger "Web App Hosting"
-   (12 months)**. It supports GitHub deploys and Next.js. They want to use it **instead of the VPS**. See §5.
+2. **Status 2026-11-23: FRESH START.** The owner asked for the whole project as ONE zip on their own PC. They will
+   **redeploy it themselves, step by step, together with you, so they understand every step.** Nothing is live:
+   the VPS installer was never run, and no dashboard is confirmed deployed anywhere.
+   - Go slowly. One step at a time, explain *why* in simple Roman Urdu, wait for the owner to confirm each step.
+   - Ask the owner first which pieces still exist (see §5): GitHub repo, Supabase project, Hostinger upload.
 3. Then follow §6 (next steps) in order.
 
 ## 1. The owner and how to work with them
@@ -117,62 +120,40 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   a key with User: Read.
 - `docs/SETUP.md` currently describes the **VPS** flow. Rewrite it once the hosting decision in §5 is made.
 
-## 5. OPEN DECISION: Hostinger Web App Hosting instead of the VPS
-The owner bought Hostinger **Web App Hosting** (managed Node.js: GitHub deploy, Next.js) and wants it instead of the
-VPS. Next Claude should do the following.
-1. **Dashboard → Web App Hosting.** It's a natural fit.
-   - Connect GitHub repo `realgrowthnexus/overthought-studio`, app root `apps/web`, build `npm ci && npm run build`.
-   - Start with `next start`, or `node .next/standalone/server.js` after copying `.next/static` and `public` into
-     standalone (check what Hostinger supports; drop `output: "standalone"` if it interferes).
-   - Env vars from `apps/web/.env.example`. Generate `MASTER_KEY` and `SETUP_TOKEN` (`openssl rand -base64 32`,
-     `openssl rand -hex 16`) and give them to the owner to paste into Hostinger's env settings.
-   - DNS: follow Hostinger's instructions for `studio.getgrowthnexus.com`.
-   - Check Hostinger's current docs for Node version, the env var UI, build limits and whether middleware is
-     supported.
-2. **The worker probably CANNOT run on managed web-app hosting.** It needs ffmpeg, multi-minute CPU renders and a
-   24/7 background process. Verify against Hostinger's docs, then present the owner with options and a
-   recommendation:
-   - (a) keep the existing Hostinger **KVM 4 VPS** for the worker only. `infra/install.sh` works there; drop the
-     web/caddy services. The VPS already runs another app, and our containers are isolated with cpus 3.0 and mem 6g.
-   - (b) a small always-on container host (Railway, Render, Fly.io, Hetzner); Dockerfile `worker/Dockerfile` is
-     ready.
-   - (c) RunPod CPU pod.
-   - Recommend (a) if the owner still has the VPS; otherwise the cheapest reliable option.
-   - Whichever is chosen, set the same `MASTER_KEY` on both web and worker.
-3. Update `docs/SETUP.md`, `infra/` and this file to match.
-4. **Progress (2026-11-18):** the owner's Hostinger plan currently offers **zip/file upload only** (no GitHub
-   connect yet). Delivered to the owner:
-   - `overthought-dashboard-hostinger.zip`: the `apps/web` source, no `node_modules` or `.next`;
-   - an env-variables file with a freshly generated `MASTER_KEY` and `SETUP_TOKEN`. These are not in the repo; the
-     owner keeps them, and **the worker must reuse that same MASTER_KEY**;
-   - a full-system zip as a backup.
-   Hostinger settings to use:
-   - Framework: Next.js
-   - Node: 20 or 22
-   - Install: `npm install`
-   - Build: `npm run build`
-   - Start: `npm start`
-   - Output dir: `.next`
-   - Root: the zip root, where `package.json` sits
+## 5. Hosting plan and what may still exist
+**Target hosting:**
+- **Dashboard (`apps/web`)** → Hostinger **Web App Hosting** (owner's 12-month plan). It currently offers zip
+  upload only (no GitHub connect). Settings: Framework Next.js · Node 22 (or 20) · install `npm install` ·
+  build `npm run build` · start `npm start` · root = folder with `package.json` (zip `apps/web` alone).
+  Env vars: `apps/web/.env.example`. Generate fresh `MASTER_KEY` (`openssl rand -base64 32`) and `SETUP_TOKEN`
+  (`openssl rand -hex 16`) together with the owner; the owner keeps them in a password manager.
+- **Worker (`worker/`)** CANNOT run on web-app hosting (ffmpeg, multi-minute renders, 24/7 process). Options:
+  (a) the owner's Hostinger KVM 4 VPS, worker only (`infra/install.sh`, drop web/caddy services);
+  (b) a small container host (Railway/Render/Fly/Hetzner) with `worker/Dockerfile`; (c) RunPod CPU pod.
+  Recommend (a) if the owner still has the VPS. **Same `MASTER_KEY` on web and worker.**
 
-## 6. Next steps (in order)
-1. Settle §5 with the owner, then deploy the dashboard on Web App Hosting and the worker wherever was decided.
-2. Owner tasks:
-   - DNS;
-   - Supabase Auth settings;
-   - `/setup` to create the owner login;
-   - keys in Settings: Anthropic (plus credit balance), ElevenLabs (with User: Read), RunPod.
-3. Run a **real Claude-powered doorway video** through the full pipeline: dashboard → Overthought → "Make a video
-   now", or `python -m studio.cli`.
-   - Check script quality, fact-check, length and render, then send it to the owner.
-   - Also verify browser login works (it couldn't be tested in the sandbox).
-4. TikTok developer app (guide on the dashboard's TikTok accounts page):
-   - sandbox target users;
-   - connect accounts;
-   - test a draft upload;
-   - submit for review, then apply for the Content Posting API audit.
-5. Final report to the owner in Roman Urdu.
-6. Then discuss niches for channels 2–5.
+**What existed at handoff (2026-11-23), check with the owner before reusing or deleting:**
+- GitHub repo `realgrowthnexus/overthought-studio` (code on `main`).
+- Supabase project ref `xkbgusqmdeocjwxaknjx` (realgrowthnexus org): migrations 0001–0003 applied, 5 paused
+  channels + 37 ideas seeded, one preview video. If it was deleted, create a new project, run
+  `supabase/migrations/0001..0003` in order, then `python -m studio.cli seed`, and update the URL/publishable key
+  in `infra/install.sh` and env files.
+- Earlier-delivered files (`hostinger-env-variables.txt` etc.) are superseded; generate fresh keys on redeploy.
+- Cloud-session proxy credentials for RunPod/ElevenLabs/Supabase lived in the owner's Claude cloud environment
+  only (not in the zip).
+
+## 6. Next steps (in order, together with the owner)
+1. Supabase: confirm or recreate the project (see §5). Auth: sign-ups OFF, Site URL
+   `https://studio.getgrowthnexus.com`.
+2. Dashboard on Hostinger Web App Hosting (zip of `apps/web`), env vars, domain `studio.getgrowthnexus.com`
+   (follow Hostinger's DNS instructions), then `/setup` with the SETUP_TOKEN to create the owner login.
+3. Worker host (§5), same MASTER_KEY.
+4. Keys in dashboard Settings: Anthropic (plus credit balance), ElevenLabs (with User: Read), RunPod.
+5. Run a **real Claude-powered doorway video** end to end (dashboard → Overthought → "Make a video now").
+   Check script quality, fact-check, length, render; verify browser login.
+6. TikTok developer app (guide on the dashboard's TikTok accounts page): sandbox users → connect accounts →
+   draft upload test → review → Content Posting API audit.
+7. Rewrite `docs/SETUP.md` for the final hosting. Final report in Roman Urdu. Then discuss niches for channels 2–5.
 
 ## 7. Quality bar (do not lower)
 - Design: modern, custom, WCAG AA, proper touch targets, smooth motion with reduced-motion support, mobile, light and
