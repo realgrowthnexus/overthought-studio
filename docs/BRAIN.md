@@ -20,9 +20,10 @@
   block in the other app's Caddyfile (`juc-caddy-1`, backup `*.bak-ots-uninstall`) or Nginx site, and
   `/opt/overthought-studio`. It keeps `/root/overthought-studio-env-backup` (has MASTER_KEY; needed only if the
   same Supabase secrets are reused).
-- **Not deleted yet, needs the owner's explicit OK** (irreversible): Supabase project `xkbgusqmdeocjwxaknjx`
-  (owner login, channels, ideas, preview video, encrypted keys) and the GitHub repo. Ask the owner whether to keep
-  them for the redeploy (recommended: keep Supabase, it saves setup) or wipe.
+- **Owner decided (2026-11-23): KEEP** Supabase project `xkbgusqmdeocjwxaknjx` (owner login, channels, ideas,
+  preview video, encrypted keys) and the GitHub repo. Only the VPS gets uninstalled. Redeploy reuses both; reuse the
+  MASTER_KEY from `/root/overthought-studio-env-backup` (else saved keys in Supabase can't be decrypted and must be
+  re-entered). The owner will say later what comes next; do not start work unprompted.
 - If §0.1 below says "LIVE", that is the state *before* this cleanup. Ask the owner whether uninstall was run.
 - **Redeploy together:** go one step at a time and explain *why* each step exists in simple Roman Urdu; let the owner
   type the commands. Order: Supabase (keep or new + `supabase/migrations/*` + `python -m studio.cli seed`) → DNS A
