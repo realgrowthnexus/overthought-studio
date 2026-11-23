@@ -122,3 +122,12 @@ The VPS checks GitHub every 10 minutes and rebuilds itself when the code changes
 
 ## When something stops
 The red bar at the top of the dashboard always says **what** stopped and **why**, for example "ElevenLabs quota used up". Work resumes **by itself** within 10 minutes of the fix, for example after a top-up.
+
+## Remove everything from the VPS
+Hostinger → VPS → **Browser terminal**, then:
+
+```bash
+sudo bash /opt/overthought-studio/src/infra/uninstall.sh
+```
+
+It removes only Overthought Studio (containers, auto-update, its site in the web server, `/opt/overthought-studio`). Your other apps keep running and Supabase data is not touched. A private copy of the settings file is kept at `/root/overthought-studio-env-backup`.

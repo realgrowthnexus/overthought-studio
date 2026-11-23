@@ -7,12 +7,12 @@ You are taking over Overthought Studio. First read docs/BRAIN.md completely (sta
 docs/ARCHITECTURE.md, and skim docs/WEB.md and docs/SETUP.md. Reply to me only in Roman Urdu or
 simple English. I am not a developer: give me short numbered steps.
 
-Where we are: the studio is live on my VPS (studio.getgrowthnexus.com). Claude now runs on my
-Claude Pro sign-in, not an API key. That is built and pushed, but I have not signed in yet.
-No real video has been made yet.
+Where we are: I took the studio down to redeploy it myself, step by step WITH you, so I
+understand every part (BRAIN §0.0). Teach me as we go. Claude runs on my Claude Pro sign-in,
+not an API key. No real video has been made yet.
 
 What I want next:
-1. Help me finish my setup tasks in BRAIN §0.2, one step at a time, starting with the Claude sign-in.
+1. Redeploy with me one step at a time (order in BRAIN §0.0), then my setup tasks in §0.2.
 2. Then make the first real video (BRAIN §6 step 3). Ask me before you spend money.
 3. Then the TikTok app (BRAIN §6 step 4).
 

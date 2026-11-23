@@ -3,13 +3,31 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-21, end of session 3. **Handoff-ready.**
+> Last updated: 2026-11-23, session 4. **FRESH-START handoff** (see §0.0 first).
 
 ## 0. START HERE (next Claude)
 1. Read this whole file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md`, `docs/SETUP.md`, `docs/tiktok-api-notes.md`.
 2. Talk to the owner in **Roman Urdu or simple English** (never Hindi/Devanagari). They are not a developer (§1).
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
+
+### 0.0 LATEST (2026-11-23): owner is taking it down and will redeploy step by step WITH you
+- Owner: "project 1 zip file mein do, main khud dubara deploy karunga tumhare saath taaki mujhe samajh aaye; baaki
+  VPS se ya jahan bhi hai har jagah se clean karo."
+- Delivered: one zip of the whole repo (code + docs + git history, no secrets) with `START-HERE.txt`.
+- VPS cleanup: **owner runs** `sudo bash /opt/overthought-studio/src/infra/uninstall.sh` in Hostinger's Browser
+  terminal (cloud sessions cannot SSH). It removes only our cron line, `ots-*` containers/volumes/network/images, our
+  block in the other app's Caddyfile (`juc-caddy-1`, backup `*.bak-ots-uninstall`) or Nginx site, and
+  `/opt/overthought-studio`. It keeps `/root/overthought-studio-env-backup` (has MASTER_KEY; needed only if the
+  same Supabase secrets are reused).
+- **Not deleted yet, needs the owner's explicit OK** (irreversible): Supabase project `xkbgusqmdeocjwxaknjx`
+  (owner login, channels, ideas, preview video, encrypted keys) and the GitHub repo. Ask the owner whether to keep
+  them for the redeploy (recommended: keep Supabase, it saves setup) or wipe.
+- If §0.1 below says "LIVE", that is the state *before* this cleanup. Ask the owner whether uninstall was run.
+- **Redeploy together:** go one step at a time and explain *why* each step exists in simple Roman Urdu; let the owner
+  type the commands. Order: Supabase (keep or new + `supabase/migrations/*` + `python -m studio.cli seed`) → DNS A
+  record `studio → VPS IP` (domain is in the owner's OTHER Hostinger account) → `infra/install.sh` on the VPS →
+  `/setup` login → `infra/connect-claude.sh` → keys in Settings → first real video → TikTok app.
 
 ### 0.1 Where things stand (2026-11-21)
 - **LIVE on the VPS** ("JUC Vps", `2.24.74.240`): web `https://studio.getgrowthnexus.com` (behind the other app's
@@ -204,7 +222,7 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   - Docker builds in the sandbox need the proxy CA (temporary Dockerfile variant only).
 - The ElevenLabs key saved in the cloud env lacks `user_read`, so it can't read the balance. The owner should create
   a key with User: Read.
-- `docs/SETUP.md` describes the VPS flow, incl. Step 5a "Connect Claude".
+- `docs/SETUP.md` describes the VPS flow, incl. Step 5a "Connect Claude". Remove everything: `infra/uninstall.sh`.
 - The 5-hour Claude limit is expected to hit sometimes; that is a calm pause, not an error (owner agreed).
 
 ## 5. Hosting: DECIDED → VPS (2026-11-19)
