@@ -29,10 +29,11 @@ Owner said "GO, tumhari salah theek hai" to this plan:
   (`/data/work/library/{id}.mp4`, `pipeline.library_path`), Supabase gets `preview.mp4` (540×960, CRF 28), publish reads
   the disk copy (`pipeline.final_video`, re-renders from saved scenes+voice if missing). Cleanup: re-render inputs 1 day
   after posting, preview after `video_retention_days` (now default **7**), disk copy 2 days after posting.
-- **Migration `0004_free_voice.sql`** (services row, channel voices, drop ElevenLabs key, retention 7). **Not applied
-  yet as of this note**: the Supabase connector asked the owner for approval and timed out. Apply it (connector
-  `apply_migration` or SQL editor). Code is safe without it (worker creates the `voice` row; dashboard hides
-  `elevenlabs`; channels fall back to the default voice).
+- **Migration `0004_free_voice.sql`** (services row, channel voices, drop ElevenLabs key, retention 7): **APPLIED and
+  verified** on 2026-11-23 (owner approved). Code was also made safe without it (worker creates a missing service row;
+  dashboard hides retired services).
+- Owner chose the **terminal path** for the VPS (no Hostinger connector). Before install, `studio.getgrowthnexus.com`
+  answered 502 from the other app's Caddy, so DNS works and a studio block may still be in their Caddyfile.
 - **Cost (owner asked):** per video was $0.64 ($0.55 voice + $0.084 for 7 Flux images). Now ≈ **$0.084**. 10 videos/day ≈
   **$25/month RunPod** + Claude plan. Claude Pro likely carries ~3–6 videos/day; 10/day probably needs Max — measure
   with the Claude card after the first real videos. VPS already paid, Supabase free, TikTok free.
