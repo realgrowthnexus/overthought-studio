@@ -1,5 +1,6 @@
 """Runtime configuration from environment variables."""
 import os
+import re
 import socket
 from pathlib import Path
 
@@ -11,7 +12,8 @@ WORK = Path(os.environ.get("STUDIO_WORK", ROOT / "work"))
 WORK.mkdir(parents=True, exist_ok=True)
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://xkbgusqmdeocjwxaknjx.supabase.co").rstrip("/")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+# keys only use these characters; anything else is a paste artefact (CR, bracketed-paste bytes, spaces)
+SUPABASE_KEY = re.sub(r"[^A-Za-z0-9_.-]", "", os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""))
 MASTER_KEY = os.environ.get("MASTER_KEY", "")
 WORKER_ID = os.environ.get("WORKER_ID", socket.gethostname())
 CONCURRENCY = int(os.environ.get("WORKER_CONCURRENCY", "2"))      # parallel jobs

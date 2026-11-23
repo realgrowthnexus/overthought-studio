@@ -393,6 +393,8 @@ def _scrub(text: str) -> str:
 
 
 def _health_anthropic() -> str:
+    if llm.backend() == "subscription":
+        return _health_claude_subscription()
     llm.ping()
     credit = settings.get("anthropic_credit")
     bal, set_at = credit.get("balance_usd"), credit.get("set_at")
@@ -404,6 +406,28 @@ def _health_anthropic() -> str:
                    balance=round(left, 2), unit="usd", limit=float(bal))
         return st
     set_status("anthropic", "ok", "Key works. Enter your credit balance in Settings to track it.")
+    return "ok"
+
+
+def _health_claude_subscription() -> str:
+    from .services import limit_active
+    llm.ping()                                       # raises NotConfigured when not signed in (no limit used)
+    row = db.select("services", {"name": "anthropic"}, single=True) or {}
+    if (row.get("details") or {}).get("auth_rejected"):
+        raise NotConfigured("anthropic", "Claude rejected the saved sign-in")
+    details = dict(row.get("details") or {})
+    details["backend"] = "subscription"
+    try:
+        from . import usage
+        details.update(usage.refresh())
+    except Exception as e:
+        log.warning(f"claude usage refresh: {e}")
+    if limit_active(row):
+        db.update("services", {"name": "anthropic"}, {"details": details, "checked_at": now().isoformat()})
+        return "warning"
+    details.pop("limited", None)
+    details.pop("resume_at", None)
+    set_status("anthropic", "ok", "Connected (Claude subscription)", details=details)
     return "ok"
 
 
@@ -504,7 +528,10 @@ def _bucket_bytes(bucket: str, prefix: str = "") -> int:
 
 def _resume_waiting() -> None:
     """Re-queue jobs parked on a service that is healthy again; clear channel block reasons."""
-    st = {r["name"]: r["status"] for r in db.select("services")}
+    from .services import limit_active
+    rows = db.select("services")
+    st = {r["name"]: r["status"] for r in rows}
+    limited = {r["name"] for r in rows if limit_active(r)}
     waiting = db.select("jobs", {"status": "waiting"})
     for j in waiting:
         svc = j.get("waiting_on")
@@ -514,6 +541,10 @@ def _resume_waiting() -> None:
                 continue
         else:
             cur = st.get(svc)
+            if j.get("parked_status") == "limited":
+                if svc in limited:
+                    continue
+                cur = "ok"                           # the limit has reset
             # out-of-credits needs a real recovery ('ok'); a 'warning' would just fail again
             healthy = cur == "ok" or (cur == "warning" and j.get("parked_status") != "out_of_credits")
             if not healthy:

@@ -13,7 +13,7 @@ export function PipelineBoard({ videos, channels }: { videos: Video[]; channels:
 
   return (
     <div className="relative">
-      <div className="overflow-x-auto pb-1">
+      <div className="scroll-fade-x snap-x overflow-x-auto pb-1">
         <ol className="grid min-w-[880px] grid-cols-8">
           {columns.map((col, i) => (
             <li key={col.key} className="relative flex min-h-[188px] flex-col px-2 first:pl-5 last:pr-5">

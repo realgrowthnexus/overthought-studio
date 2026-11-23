@@ -5,7 +5,8 @@ export const publicEnv = {
 
 /** Server-only env; throws a clear message when something is missing. */
 export function serverEnv() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  // keys only use these characters; anything else is a paste artefact (CR, bracketed-paste bytes, spaces)
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").replace(/[^A-Za-z0-9_.-]/g, "");
   if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
   return {
     serviceRoleKey,

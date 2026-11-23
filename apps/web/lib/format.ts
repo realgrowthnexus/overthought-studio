@@ -1,3 +1,4 @@
+import { isClaudePause } from "@/lib/claude-usage";
 import type { ServiceName, ServiceStatus, VideoStatus } from "@/lib/types";
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
@@ -78,7 +79,8 @@ export const IN_PROGRESS: VideoStatus[] = [
 
 export type Tone = "neutral" | "good" | "warn" | "bad" | "accent" | "info";
 
-export function videoTone(s: VideoStatus): Tone {
+export function videoTone(s: VideoStatus, error?: string | null): Tone {
+  if (s === "blocked" && isClaudePause(error)) return "warn";      // waiting for the Claude limit to reset
   if (s === "posted" || s === "sent_to_drafts") return "good";
   if (s === "failed" || s === "blocked") return "bad";
   if (s === "rejected") return "neutral";
@@ -88,7 +90,7 @@ export function videoTone(s: VideoStatus): Tone {
 }
 
 export const SERVICE_LABEL: Record<ServiceName, string> = {
-  anthropic: "Claude API", elevenlabs: "ElevenLabs", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
+  anthropic: "Claude", elevenlabs: "ElevenLabs", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
 };
 
 export const SERVICE_ROLE: Record<ServiceName, string> = {
@@ -117,6 +119,7 @@ export function serviceFix(name: ServiceName, status: ServiceStatus): { text: st
   if (status === "unconfigured") {
     if (name === "worker") return { text: "Install the worker on your VPS — see the setup guide.", href: "/settings#worker" };
     if (name === "tiktok") return { text: "Add your TikTok app keys, then connect an account.", href: "/accounts" };
+    if (name === "anthropic") return { text: "Sign in to Claude once on the VPS — Settings shows the command.", href: "/settings#claude" };
     return { text: `Add your ${SERVICE_LABEL[name]} API key in Settings.`, ...settings };
   }
   if (status === "out_of_credits") {
@@ -136,4 +139,14 @@ export function slugify(s: string) {
 
 export function cn(...parts: (string | false | null | undefined)[]) {
   return parts.filter(Boolean).join(" ");
+}
+
+/** Badge label for a video: a Claude-limit hold reads as a pause, not as "Blocked". */
+export function videoStatusLabel(s: VideoStatus, error?: string | null): string {
+  return s === "blocked" && isClaudePause(error) ? "Paused (Claude limit)" : STATUS_LABEL[s];
+}
+
+/** Tone for a channel's "On hold" reason: a Claude-limit pause is amber, everything else red. */
+export function holdTone(reason: string | null | undefined): Tone {
+  return isClaudePause(reason) ? "warn" : "bad";
 }

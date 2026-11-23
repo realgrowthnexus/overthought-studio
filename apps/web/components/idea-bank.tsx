@@ -52,9 +52,9 @@ export function IdeaBank({ channelId, ideas, pillars }: { channelId: string; ide
       ) : (
         <ol className="divide-y divide-line border-t border-line">
           {list.map((idea, idx) => (
-            <li key={idea.id} className="flex gap-4 px-5 py-3.5">
+            <li key={idea.id} className="flex flex-wrap gap-x-4 gap-y-2 px-5 py-3.5 sm:flex-nowrap">
               {filter === "waiting" && <span className="w-6 pt-0.5 text-right text-[13px] text-ink-3 tabular">{idx + 1}</span>}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-[calc(100%-2.5rem)] sm:basis-auto">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[14px] font-medium text-ink">{idea.title}</p>
                   {idea.pillar && <Badge>{idea.pillar}</Badge>}
@@ -67,7 +67,7 @@ export function IdeaBank({ channelId, ideas, pillars }: { channelId: string; ide
                   {idea.sources?.[0] && <> · → {[idea.sources[0].researcher, idea.sources[0].institution, idea.sources[0].year].filter(Boolean).join(" · ")}</>}
                 </p>
               </div>
-              <div className="flex shrink-0 items-start gap-1">
+              <div className={cn("flex shrink-0 items-start gap-1 sm:ml-0", filter === "waiting" && "ml-10")}>
                 <span className={cn("mr-2 inline-flex h-8 min-w-11 items-center justify-center rounded-[8px] px-2 text-[13px] font-semibold tabular", idea.score >= 75 ? "bg-accent-soft text-accent-text" : "bg-elev-2 text-ink-2")} title="Score out of 100">
                   {Math.round(idea.score)}
                 </span>

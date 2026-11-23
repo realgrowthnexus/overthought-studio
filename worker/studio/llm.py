@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 import anthropic
 from pydantic import BaseModel
 
-from . import secrets, settings, spend
+from . import claude_cli, secrets, settings, spend, usage
 from .log import log
 from .services import NotConfigured, OutOfCredits, ServiceDown, set_status
 
@@ -27,15 +27,91 @@ _client: anthropic.Anthropic | None = None
 _client_key: str | None = None
 
 
+def _make_client(key: str, http_client=None) -> anthropic.Anthropic:
+    return anthropic.Anthropic(api_key=key, max_retries=3, timeout=600, http_client=http_client)
+
+
 def _get_client() -> anthropic.Anthropic:
     global _client, _client_key
     key = secrets.get("anthropic_api_key")
     if not key:
         raise NotConfigured("anthropic", "No Anthropic API key saved")
     if _client is None or key != _client_key:
-        _client = anthropic.Anthropic(api_key=key, max_retries=3, timeout=600)
+        _client = _make_client(key)
         _client_key = key
     return _client
+
+
+# Subscription backend: heavy work runs on the plan's default model (whatever the Claude plan gives Claude Code);
+# light work runs on Sonnet to save limit. settings.subscription_model overrides the heavy model.
+LIGHT_PURPOSES = {"scorecard", "smoke"}
+
+
+def backend() -> str:
+    """'subscription' (Claude Code signed in with the owner's Claude plan) unless an API key is saved AND opted in."""
+    if settings.get().get("llm_backend") == "api" and secrets.get("anthropic_api_key"):
+        return "api"
+    return "subscription"
+
+
+def _sub_model(purpose: str) -> str | None:
+    if purpose in LIGHT_PURPOSES:
+        return "sonnet"
+    return settings.get().get("subscription_model") or None
+
+
+def _sub_run(prompt: str, *, system: str, schema: dict, tools: list[str], purpose: str, channel_id, video_id) -> dict:
+    """One subscription run, bracketed by limit readings so the cost of each video can be measured."""
+    try:
+        usage.before_run(video_id)
+    except Exception as ex:
+        log.info(f"usage before-run skipped: {ex}")
+    try:
+        out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=_sub_model(purpose))
+    except NotConfigured:
+        _mark_auth(rejected=True)                   # health check must not flip back to "ok" on token presence alone
+        raise
+    _mark_auth(rejected=False)
+    try:
+        usage.after_run(video_id)
+    except Exception as ex:
+        log.info(f"usage after-run skipped: {ex}")
+    _sub_account(out, purpose, channel_id, video_id)
+    return out
+
+
+def _mark_auth(rejected: bool) -> None:
+    try:
+        d = usage.details()
+        if bool(d.get("auth_rejected")) != rejected:
+            d["auth_rejected"] = rejected
+            usage._save(d)
+    except Exception as ex:
+        log.info(f"auth mark skipped: {ex}")
+
+
+def _sub_account(out: dict, purpose: str, channel_id, video_id) -> None:
+    try:
+        spend.record("anthropic", 0.0, units=(out.get("usage") or {}).get("output_tokens"), unit="output_tokens",
+                     detail=f"{purpose} (subscription)", channel_id=channel_id, video_id=video_id)
+    except Exception as ex:
+        log.warning(f"spend record failed: {ex}")
+
+
+class _Sources(BaseModel):
+    url: str
+    title: str = ""
+    quote: str = ""
+
+
+class _Research(BaseModel):
+    notes: str
+    sources: list[_Sources] = []
+
+
+RESEARCH_SUFFIX = ("\n\nUse web search and fetch real pages. Put everything you found in `notes` (full detail, with "
+                   "the source named next to each fact) and list every page you relied on in `sources` with its "
+                   "exact URL, title and a short quote from it.")
 
 
 def model_cfg() -> tuple[str, str]:
@@ -96,6 +172,12 @@ def _check_stop(resp: Any, purpose: str) -> None:
 def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effort: str | None = None,
                max_tokens: int = 16000, channel_id=None, video_id=None) -> tuple[T, float]:
     """One call that returns a validated Pydantic object."""
+    if backend() == "subscription":
+        out = _sub_run(prompt, system=system, schema=schema.model_json_schema(), tools=[], purpose=purpose,
+                       channel_id=channel_id, video_id=video_id)
+        if out.get("structured") is None:
+            raise RuntimeError(f"Claude returned no structured output for {purpose}")
+        return schema.model_validate(out["structured"]), 0.0
     client = _get_client()
     model, default_effort = model_cfg()
     try:
@@ -121,6 +203,20 @@ def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effor
 def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, effort: str | None = None,
              channel_id=None, video_id=None) -> tuple[str, list[dict], float]:
     """Web-grounded research. Returns (text, citations[{url,title,cited_text}], usd)."""
+    if backend() == "subscription":
+        out = _sub_run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
+                       tools=["WebSearch", "WebFetch"], purpose=purpose, channel_id=channel_id, video_id=video_id)
+        if out.get("structured") is None:
+            raise RuntimeError(f"Claude returned no structured research for {purpose} (will retry)")
+        r = _Research.model_validate(out["structured"])
+        if not r.notes.strip() or not r.sources:
+            raise RuntimeError(f"Claude's {purpose} came back without notes or sources (will retry)")
+        seen, cites = set(), []
+        for src in r.sources:
+            if src.url and src.url not in seen:
+                seen.add(src.url)
+                cites.append({"url": src.url, "title": src.title, "cited_text": src.quote[:400]})
+        return r.notes.strip(), cites, 0.0
     client = _get_client()
     model, default_effort = model_cfg()
     tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches,
@@ -158,7 +254,12 @@ def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, e
 
 
 def ping() -> dict:
-    """Cheap health check — counts tokens (free) to validate the key."""
+    """Cheap health check — counts tokens (free) to validate the key; on the subscription, the CLI's auth status."""
+    if backend() == "subscription":
+        t0 = time.time()
+        if not claude_cli.auth_ok():
+            raise NotConfigured("anthropic", "Claude is not signed in")
+        return {"ok": True, "latency_ms": int((time.time() - t0) * 1000), "backend": "subscription"}
     client = _get_client()
     model, _ = model_cfg()
     t0 = time.time()

@@ -301,3 +301,9 @@ body::before {
 .prose-studio th, .prose-studio td { border-bottom: 1px solid var(--line); padding: 0.45em 0.6em; text-align: left; }
 .prose-studio th { color: var(--ink); font-weight: 600; }
 .prose-studio blockquote { border-left: 3px solid var(--accent-mark); padding-left: 1em; color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}

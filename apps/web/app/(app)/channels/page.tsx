@@ -7,7 +7,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
 import { ChannelToggle } from "@/components/channel-toggle";
 import { LiveRefresh } from "@/components/live";
-import { num, relTime } from "@/lib/format";
+import { cn, holdTone, num, relTime } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Channels" };
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export default async function ChannelsPage() {
                       {c.name}
                     </Link>
                     <p className="truncate text-[13px] text-ink-3">{c.niche}</p>
-                    {c.blocked_reason && <p className="mt-1 text-[12px] text-bad">On hold: {c.blocked_reason}</p>}
+                    {c.blocked_reason && <p className={cn("mt-1 text-[12px]", holdTone(c.blocked_reason) === "bad" ? "text-bad" : "text-warn")}>On hold: {c.blocked_reason}</p>}
                   </div>
                   <div className="hidden text-[13px] md:block">
                     <p className="text-ink">{account ? `@${account.username ?? account.display_name}` : <span className="text-ink-3">No account linked</span>}</p>
@@ -68,7 +68,7 @@ export default async function ChannelsPage() {
                     <p className="text-ink-3">views, 7 days</p>
                   </div>
                   <div className="relative z-[1] flex items-center gap-3">
-                    {c.blocked_reason ? <Badge tone="bad" dot>On hold</Badge> : c.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
+                    {c.blocked_reason ? <Badge tone={holdTone(c.blocked_reason)} dot>On hold</Badge> : c.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
                     <ChannelToggle id={c.id} status={c.status} />
                   </div>
                 </li>

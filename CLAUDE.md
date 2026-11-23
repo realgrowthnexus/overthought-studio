@@ -4,7 +4,7 @@
 - who the owner is and how to talk to them (Roman Urdu or simple English, never Hindi or Devanagari);
 - every decision made so far;
 - the current state, IDs and next steps;
-- the **open hosting decision** (Hostinger Web App Hosting replaces the VPS).
+- the **hosting decision**: everything runs on the Hostinger VPS (decided 2026-11-19, live 2026-11-20).
 
 You own this project end to end. Continue exactly where the last session stopped.
 
@@ -13,7 +13,7 @@ Keep `docs/BRAIN.md` updated after every significant step. Never write secret va
 Key docs:
 - `docs/ARCHITECTURE.md`: the system contract.
 - `docs/WEB.md`: the dashboard and its security model.
-- `docs/SETUP.md`: the owner setup guide. It still describes the VPS flow; update it after the hosting decision.
+- `docs/SETUP.md`: the owner setup guide for the VPS (installer, doctor.sh, keys, TikTok app).
 - `docs/tiktok-api-notes.md`.
 
 Commit with the attribution lines from the session's system reminder, and push to `main` on

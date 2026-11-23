@@ -8,10 +8,11 @@ import { StatTile } from "@/components/stat";
 import { PauseSwitch } from "@/components/pause-switch";
 import { PipelineBoard } from "@/components/pipeline-board";
 import { ServiceStrip } from "@/components/services";
+import { ClaudeUsageCard } from "@/components/claude-usage";
 import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
 import { EmptyState } from "@/components/ui/empty";
-import { IN_PROGRESS, STATUS_LABEL, dateTime, num, usd, videoTone } from "@/lib/format";
+import { IN_PROGRESS, dateTime, cn, holdTone, num, usd, videoStatusLabel, videoTone } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function OverviewPage() {
 
   const spendMonth = spend;
   const active = channels.filter((c) => c.status === "active");
-  const blocked = channels.filter((c) => c.blocked_reason);
+  const blocked = channels.filter((c) => c.blocked_reason && holdTone(c.blocked_reason) === "bad");
   const nextPost = upcoming.find((v) => v.scheduled_for);
   const awaitingReview = inProgress.filter((v) => v.status === "ready").length;
 
@@ -110,7 +111,7 @@ export default async function OverviewPage() {
               <li key={c.id} className="flex items-start justify-between gap-4 border-t border-line py-3 first:border-t-0">
                 <div>
                   <Link href={`/channels/${c.slug}`} className="text-[14px] font-medium text-ink hover:underline">{c.name}</Link>
-                  <p className="mt-0.5 text-[13px] text-bad">{c.blocked_reason}</p>
+                  <p className={cn("mt-0.5 text-[13px]", holdTone(c.blocked_reason) === "bad" ? "text-bad" : "text-warn")}>{c.blocked_reason}</p>
                 </div>
                 <ButtonLink href={`/channels/${c.slug}/settings`} size="sm">Open</ButtonLink>
               </li>
@@ -145,7 +146,7 @@ export default async function OverviewPage() {
                         <span className="block truncate text-[14px] text-ink">{v.title || "Untitled"}</span>
                         <span className="block text-[12px] text-ink-3">{ch?.name} · {v.scheduled_for ? `${dateTime(v.scheduled_for, ch?.timezone)} ET` : "next free slot"}</span>
                       </span>
-                      <Badge tone={videoTone(v.status)}>{STATUS_LABEL[v.status]}</Badge>
+                      <Badge tone={videoTone(v.status, v.error)}>{videoStatusLabel(v.status, v.error)}</Badge>
                     </Link>
                   </li>
                 );
@@ -158,6 +159,11 @@ export default async function OverviewPage() {
           <EventFeed events={events} channels={channels} compact />
         </Panel>
       </div>
+
+      <Panel>
+        <PanelHeader title="Claude" description="Research, scripts and fact-checks run on your Claude plan. Limits reset on their own." action={<ButtonLink href="/settings#claude" size="sm" variant="ghost">Details</ButtonLink>} />
+        <ClaudeUsageCard initial={services} />
+      </Panel>
 
       <Panel>
         <PanelHeader

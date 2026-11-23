@@ -133,6 +133,9 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
             sdir = work / "scenes"
             sdir.mkdir(exist_ok=True)
             style = ch.get("style") or {}
+            for s in script.scenes:            # resumed on a fresh machine: reuse drawings already paid for
+                if not (sdir / f"{s.id}.png").exists():
+                    _restore(f"{ch['slug']}/{video_id}/scenes/{s.id}.png", sdir / f"{s.id}.png")
             need = [s for s in script.scenes if not (sdir / f"{s.id}.png").exists()]
             if need:
                 _stage(video, name, f"Drawing {len(need)} scenes")
@@ -147,6 +150,10 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                           "image/png")
 
         elif name == "voice":
+            if not (work / "voice.mp3").exists() and video.get("audio_path"):
+                base = f"{ch['slug']}/{video_id}"
+                if _restore(f"{base}/words.json", work / "words.json"):
+                    _restore(f"{base}/voice.mp3", work / "voice.mp3")
             if not (work / "voice.mp3").exists():
                 _stage(video, name, "Recording the voiceover")
                 _voice_with_length_gate(video, ch, idea, work)
@@ -171,6 +178,17 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
           channel_id=ch["id"], video_id=video_id)
     shutil.rmtree(work, ignore_errors=True)
     return video
+
+
+def _restore(storage_path: str, dest: Path) -> bool:
+    """Copy a file this video already produced back from storage. False when it isn't there."""
+    try:
+        data = db.download("videos", storage_path)
+    except db.DBError:
+        return False
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    return True
 
 
 def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> None:

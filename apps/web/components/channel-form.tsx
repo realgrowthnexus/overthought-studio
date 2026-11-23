@@ -308,7 +308,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
   const canNext = step === 0 ? v.name.length > 1 && v.slug.length > 1 && v.niche.length > 1 : true;
   return (
     <div className="grid grid-cols-1 [&>*]:min-w-0 gap-8 lg:grid-cols-[200px_1fr]">
-      <ol className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1" aria-label="Steps">
+      <ol className="scroll-fade-x flex gap-2 overflow-x-auto lg:flex-col lg:gap-1" aria-label="Steps">
         {STEPS.map((s, i) => (
           <li key={s.id}>
             <button

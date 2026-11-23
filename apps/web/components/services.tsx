@@ -10,7 +10,7 @@ import {
 } from "@/lib/format";
 import { Lamp } from "@/components/ui/primitives";
 
-function useLiveServices(initial: Service[]) {
+export function useLiveServices(initial: Service[]) {
   const [services, setServices] = React.useState(initial);
   React.useEffect(() => setServices(initial), [initial]);
   React.useEffect(() => {
@@ -105,9 +105,12 @@ export function ServiceStrip({ initial }: { initial: Service[] }) {
   return (
     <ul className="grid grid-cols-1 gap-px overflow-hidden rounded-b-[var(--radius-lg)] bg-line sm:grid-cols-2 xl:grid-cols-3">
       {services.map((s) => {
-        const tone = serviceTone(s.status);
-        const bal = balanceText(s);
-        const r = ratio(s);
+        const limited = s.name === "anthropic" && (s.details as { limited?: boolean } | null)?.limited === true;
+        const tone = limited ? "warn" : serviceTone(s.status);
+        // on the Claude plan there is no money balance: an old API-credit number would only mislead
+        const onPlan = s.name === "anthropic" && (s.details as { backend?: string } | null)?.backend !== "api";
+        const bal = onPlan ? null : balanceText(s);
+        const r = onPlan ? null : ratio(s);
         return (
           <li key={s.name} className="flex flex-col gap-2 bg-elev px-5 py-4">
             <div className="flex items-center justify-between gap-3">
@@ -116,7 +119,7 @@ export function ServiceStrip({ initial }: { initial: Service[] }) {
                 <span className="text-[14px] font-medium text-ink">{SERVICE_LABEL[s.name]}</span>
               </div>
               <span className={cn("text-[12px]", tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : tone === "good" ? "text-good" : "text-ink-3")}>
-                {SERVICE_STATUS_LABEL[s.status]}
+                {limited ? "Limit reached" : s.name === "anthropic" && s.status === "unconfigured" ? "Not signed in" : SERVICE_STATUS_LABEL[s.status]}
               </span>
             </div>
             <p className="text-[12px] text-ink-3">{s.message || SERVICE_ROLE[s.name]}</p>

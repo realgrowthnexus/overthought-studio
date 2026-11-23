@@ -2,9 +2,9 @@
 
 Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realtime, storage).
 
-## Deploy on Vercel
-- Root directory: `apps/web` · Framework: Next.js · Node 22.
-- Environment variables (Production):
+## Deploy (VPS, Docker)
+Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Next.js, Node 22), on
+`127.0.0.1:3100` behind Caddy or Nginx. The installer writes these env vars to `/opt/overthought-studio/.env`:
 
 | Name | Value |
 |---|---|
@@ -15,12 +15,13 @@ Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realti
 | `APP_URL` | `https://studio.<your-domain>` (no trailing slash) |
 | `SETUP_TOKEN` | any long random string; used once at `/setup` |
 
-- Domain: add `studio.<your-domain>` in Vercel → Domains, then a CNAME to `cname.vercel-dns.com`.
+- Domain: an A record `studio` → the VPS IP. The installer sets up HTTPS.
 - Supabase → Authentication → URL configuration: Site URL = `APP_URL`. Turn **off** "Allow new users to sign up" (owner is created by `/setup` through the admin API).
 
 ## First run
 1. Open `/setup`, enter `SETUP_TOKEN`, your email and a password. Works only while no owner exists.
-2. Settings → API keys: paste Claude, ElevenLabs, RunPod, TikTok client key/secret.
+2. Claude: run `infra/connect-claude.sh` on the VPS once (signs in with the owner's Claude plan; no API key).
+   Settings → API keys: paste ElevenLabs, RunPod, TikTok client key/secret.
 3. TikTok accounts: follow the on-page guide (redirect URI, privacy and terms URLs are shown with copy buttons).
 
 ## Routes
@@ -32,7 +33,7 @@ Next.js 15 App Router · React 19 · Tailwind v4 · Supabase (auth, data, realti
 | `/analytics` | Trend chart, performance vs channel median, TikTok Studio CSV import |
 | `/reports` | Weekly reports |
 | `/accounts` | TikTok accounts, connect/disconnect, app setup guide |
-| `/settings` | Encrypted API keys, budgets, model, auto-publish, Claude credit, worker status |
+| `/settings` | Claude card (sign-in, 5-hour/weekly limits, pacing), encrypted API keys, budgets, model, auto-publish, worker status; API credit under "Advanced" |
 | `/logs` | Events and job queue (retry/cancel) |
 | `/privacy`, `/terms` | Public pages for TikTok app review |
 | `/api/tiktok/connect`, `/api/tiktok/callback` | Login Kit OAuth |

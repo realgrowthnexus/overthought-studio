@@ -1,6 +1,6 @@
 # Overthought Studio: setup guide (VPS-only)
 
-> ⚠ **Hosting is changing** (owner, 2026-11-18): Hostinger **Web App Hosting** replaces the VPS for the dashboard. The worker host is still to be decided. See `docs/BRAIN.md` §5. The VPS steps below stay valid for running the worker on a VPS.
+> **Decision (owner, 2026-11-19):** everything (dashboard + worker) runs on the Hostinger VPS "JUC Vps". Web App Hosting is NOT used.
 
 The setup happens once. After that the system runs itself.
 
@@ -36,29 +36,47 @@ Go to Supabase → project **overthought-studio** → **Authentication**:
 - **Sign In / Providers**: turn **Allow new users to sign up** OFF.
 - **URL Configuration**: set Site URL to `https://studio.getgrowthnexus.com`.
 
-## Step 3: Two keys to have ready
-1. **Supabase secret key**: Supabase → Project Settings → **API Keys** → Secret key (`sb_secret_...`).
-2. **GitHub read-only token**: github.com → Settings → Developer settings → **Fine-grained tokens** → Generate.
-   - Repository access: only `overthought-studio`.
-   - Permissions: **Contents: Read-only**.
-   - Expiry: 1 year.
+## Step 3: One key to have ready
+**Supabase secret key**: Supabase → Project Settings → **API Keys** → Secret key (`sb_secret_...`).
+(The repo is public, so no GitHub token is needed. If it is made private later, run the installer with
+`GITHUB_TOKEN=github_pat_... ` in front, using a fine-grained token with Contents: Read-only.)
 
 ## Step 4: Install on the VPS (about 10 minutes)
 1. Hostinger → VPS → **Browser terminal**. Log in as root.
-2. Paste the install command from your setup message.
-   - It asks for the two keys above. Typing is hidden.
+2. Paste this command:
+   `curl -fsSL https://raw.githubusercontent.com/realgrowthnexus/overthought-studio/main/infra/install.sh | bash`
+   - It asks for the Supabase secret key. Typing is hidden.
 3. Wait for the build to finish. At the end it prints:
    - the **one-time setup token**, used to create your login;
    - your **MASTER_KEY**. Save it in a password manager.
 4. Open `https://studio.getgrowthnexus.com/setup`, enter the setup token, and create your owner login.
    - Only one owner can ever be created.
+5. Run the health report and send the whole output to Claude. It contains no keys.
+   `/opt/overthought-studio/doctor.sh`
 
 **If ports 80/443 already belong to another panel** (Coolify, CapRover, Nginx Proxy Manager, Traefik…), the installer prints one line to add in that panel: `studio.getgrowthnexus.com → http://172.17.0.1:3100`.
 
-## Step 5: API keys (dashboard → Settings)
+## Step 5a: Connect Claude (once, 2 minutes, no API key)
+The studio runs Claude through **your Claude plan (Pro or Max)**, the same sign-in Claude Code uses. There is no API
+key, no credit and no per-use bill. On the VPS run:
+
+    sudo bash /opt/overthought-studio/src/infra/connect-claude.sh
+
+Open the link it prints, sign in with your Claude account, paste the code back, press Enter. That's it: the sign-in
+is saved encrypted and the dashboard's **Claude** card shows "Connected" with your 5-hour and weekly limits.
+
+- When a limit is reached, work **pauses and resumes on its own** after the reset. It is not an error.
+- If the weekly limit would run out early, the studio skips **evening** videos until the reset; morning videos keep
+  going.
+- The limit is shared with your own Claude chats on the same account.
+- Run the command again whenever the card says "Not signed in" (the sign-in lasts about a year).
+- Anthropic's terms allow your own Claude Code sign-in for your own scripts, and say plan limits assume ordinary
+  individual use. Keep the studio for your own use only.
+
+## Step 5b: Other API keys (dashboard → Settings)
 | Key | Where to get it | Notes |
 |---|---|---|
-| Anthropic (Claude) | console.anthropic.com → API Keys | Add credit under Billing, then type the balance into Settings so the dashboard can count it down |
+| Anthropic API key (optional) | console.anthropic.com → API Keys | **Not needed** — only if you ever switch from the Claude sign-in to pay-per-use |
 | ElevenLabs | elevenlabs.io → Developers → API Keys | Enable **Text to Speech**, **Voices: Read** and **User: Read**. User: Read is needed to show your balance |
 | RunPod | runpod.io → Settings → API Keys | |
 | TikTok client key and secret | Step 6 | |
@@ -104,3 +122,12 @@ The VPS checks GitHub every 10 minutes and rebuilds itself when the code changes
 
 ## When something stops
 The red bar at the top of the dashboard always says **what** stopped and **why**, for example "ElevenLabs quota used up". Work resumes **by itself** within 10 minutes of the fix, for example after a top-up.
+
+## Remove everything from the VPS
+Hostinger → VPS → **Browser terminal**, then:
+
+```bash
+sudo bash /opt/overthought-studio/src/infra/uninstall.sh
+```
+
+It removes only Overthought Studio (containers, auto-update, its site in the web server, `/opt/overthought-studio`). Your other apps keep running and Supabase data is not touched. A private copy of the settings file is kept at `/root/overthought-studio-env-backup`.

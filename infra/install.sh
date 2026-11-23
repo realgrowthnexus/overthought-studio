@@ -11,6 +11,7 @@ SUPABASE_URL=${SUPABASE_URL:-https://xkbgusqmdeocjwxaknjx.supabase.co}
 SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_YsB1YII7YQ3d1s3NRfs9MQ_1YzxWIfR}
 
 say()  { printf '\n\033[1;33m==> %s\033[0m\n' "$*"; }
+# shellcheck disable=SC2229,SC2163  # ask() reads into and exports the variable *named* by $v
 ask()  { local v="$1" p="$2"; if [ -z "${!v:-}" ]; then read -r -s -p "$p: " "$v" </dev/tty; echo; export "$v"; fi; }
 [ "$(id -u)" = 0 ] || { echo "Please run as root (sudo -i)"; exit 1; }
 
@@ -18,7 +19,15 @@ mkdir -p "$DIR"; cd "$DIR"; umask 077
 # keep existing secrets on re-run
 [ -f .env ] && set -a && . ./.env && set +a
 ask SUPABASE_SERVICE_ROLE_KEY "Supabase secret key (sb_secret_...)"
-ask GITHUB_TOKEN "GitHub read-only token (github_pat_...)"
+# browser terminals can add invisible characters to a paste; keys only use these characters
+SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY//$'\e[200~'/}; SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY//$'\e[201~'/}
+SUPABASE_SERVICE_ROLE_KEY=$(printf '%s' "$SUPABASE_SERVICE_ROLE_KEY" | tr -cd 'A-Za-z0-9_.-')
+case "$SUPABASE_SERVICE_ROLE_KEY" in
+  sb_secret_*|eyJ*) ;;
+  *) echo "That does not look like the Supabase secret key (it starts with sb_secret_). Run the installer again."; exit 1 ;;
+esac
+# The repo is public: a GitHub token is optional (only needed if the repo is made private later).
+GITHUB_TOKEN=${GITHUB_TOKEN:-}
 MASTER_KEY=${MASTER_KEY:-$(openssl rand -base64 32)}
 SETUP_TOKEN=${SETUP_TOKEN:-$(openssl rand -hex 16)}
 WORKER_ID=${WORKER_ID:-vps-$(hostname -s)}
@@ -29,7 +38,13 @@ command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
 docker compose version >/dev/null 2>&1 || { echo "Docker Compose v2 is required"; exit 1; }
 
 say "Getting the code"
-printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > .git-credentials
+# code is not secret: check it out world-readable so the non-root containers can read it
+umask 022
+if [ -n "$GITHUB_TOKEN" ]; then
+  printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" > .git-credentials
+else
+  : > .git-credentials
+fi
 if [ -d src/.git ]; then
   git -C src fetch -q --depth 1 origin main && git -C src reset -q --hard origin/main
 else
@@ -37,6 +52,10 @@ else
 fi
 git -C src config credential.helper "store --file=$DIR/.git-credentials"
 cp src/infra/docker-compose.yml docker-compose.yml
+install -m 700 src/infra/doctor.sh doctor.sh
+install -m 700 src/infra/caddy-attach.sh caddy-attach.sh
+chmod -R a+rX src
+umask 077
 
 say "Choosing how HTTPS is served"
 BRIDGE=$(ip -4 addr show docker0 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1); BRIDGE=${BRIDGE:-172.17.0.1}
@@ -83,6 +102,8 @@ git -C src fetch -q --depth 1 origin main && git -C src reset -q --hard origin/m
 new=$(git -C src rev-parse HEAD)
 if [ "$old" != "$new" ] || [ "${1:-}" = "--force" ]; then
   cp src/infra/docker-compose.yml docker-compose.yml
+  install -m 700 src/infra/doctor.sh doctor.sh
+  install -m 700 src/infra/caddy-attach.sh caddy-attach.sh
   docker compose build -q && docker compose up -d --remove-orphans
   docker image prune -f >/dev/null
   echo "$(date -Is) updated $old -> $new" >> update.log
@@ -120,6 +141,11 @@ NGX
     || echo "!! Certificate not issued yet — check that the DNS A record for $DOMAIN points to this VPS, then re-run this script."
 fi
 
+if [ "$MODE" = manual ]; then
+  say "Looking for another app's Caddy on ports 80/443"
+  if ./caddy-attach.sh "$DOMAIN" "$BRIDGE"; then MODE=attached; fi
+fi
+
 sleep 8
 docker compose ps
 say "Done"
@@ -133,8 +159,9 @@ echo
 echo "Create your owner login at https://$DOMAIN/setup with this one-time setup token:"
 echo "   $SETUP_TOKEN"
 echo
-echo "Your encryption key (MASTER_KEY) is saved in $DIR/.env — copy it somewhere safe (password manager):"
-echo "   $MASTER_KEY"
+echo "Do not share a screenshot of the token line. Your encryption key (MASTER_KEY) is saved in $DIR/.env;"
+echo "to back it up into a password manager, show it with:  grep MASTER_KEY $DIR/.env"
 echo
+echo "Health report (send the output to Claude, it contains no keys):  $DIR/doctor.sh"
 echo "Logs: cd $DIR && docker compose logs -f      Stop: cd $DIR && docker compose down"
 echo "New VPS later? Copy $DIR/.env to it, run this installer there, then 'docker compose down' on the old one."

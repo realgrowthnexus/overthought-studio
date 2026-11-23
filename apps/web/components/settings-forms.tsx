@@ -5,12 +5,13 @@ import type { GlobalSettings, SecretKey } from "@/lib/types";
 import { deleteSecret, saveSecret, setAnthropicCredit, updateSettings } from "@/lib/actions";
 import { useAction } from "@/components/use-action";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/primitives";
 import { Switch } from "@/components/ui/switch";
 import { relTime } from "@/lib/format";
 
 const KEYS: { key: SecretKey; label: string; hint: string; where: string }[] = [
-  { key: "anthropic_api_key", label: "Claude API key", hint: "Research, scripts, fact-checks and weekly reviews.", where: "console.anthropic.com → API keys" },
+  { key: "anthropic_api_key", label: "Claude API key (optional)", hint: "Not needed: the studio uses your Claude sign-in. Only for switching to pay-per-use.", where: "console.anthropic.com → API keys" },
   { key: "elevenlabs_api_key", label: "ElevenLabs API key", hint: "Voiceover. One voice per channel.", where: "elevenlabs.io → Developers → API keys" },
   { key: "runpod_api_key", label: "RunPod API key", hint: "Scene images (Flux). About $0.012 per image.", where: "runpod.io → Settings → API keys" },
   { key: "tiktok_client_key", label: "TikTok client key", hint: "From your TikTok developer app.", where: "developers.tiktok.com → your app" },
@@ -28,6 +29,7 @@ export function SecretsForm({ hints }: { hints: { key: string; hint: string | nu
 
 function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { hint: string | null; updated_at: string } }) {
   const [editing, setEditing] = React.useState(!stored);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [show, setShow] = React.useState(false);
   const { pending, run } = useAction();
@@ -79,7 +81,13 @@ function SecretRow({ meta, stored }: { meta: (typeof KEYS)[number]; stored?: { h
       ) : (
         <div className="mt-2 flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Replace</Button>
-          <Button size="sm" variant="quiet" loading={pending} onClick={() => run(() => deleteSecret(meta.key))}>Remove</Button>
+          <Button size="sm" variant="quiet" onClick={() => setConfirmOpen(true)}>Remove</Button>
+          <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} title={`Remove the ${meta.label}?`} description="Work that needs this key stops until you add a key again. The key is deleted, not hidden.">
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+              <Button variant="danger" loading={pending} onClick={() => run(() => deleteSecret(meta.key), { onOk: () => setConfirmOpen(false) })}>Remove key</Button>
+            </div>
+          </Dialog>
         </div>
       )}
     </li>

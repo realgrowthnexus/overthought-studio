@@ -10,7 +10,7 @@ import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
 import { VideoActions, CaptionEditor } from "@/components/video-actions";
 import { MarginNote } from "@/components/brand";
-import { IN_PROGRESS, SERVICE_LABEL, STATUS_LABEL, dateTime, duration, num, pct, usd, videoTone } from "@/lib/format";
+import { IN_PROGRESS, SERVICE_LABEL, dateTime, duration, num, pct, usd, videoStatusLabel, videoTone } from "@/lib/format";
 import type { ScriptBeat, ServiceName, Source } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Video" };
@@ -74,7 +74,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
         title={video.title || "Untitled idea"}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={videoTone(video.status)} dot live={inProgress}>{STATUS_LABEL[video.status]}</Badge>
+            <Badge tone={videoTone(video.status, video.error)} dot live={inProgress}>{videoStatusLabel(video.status, video.error)}</Badge>
             {video.duration_s ? <span>{duration(video.duration_s)}</span> : null}
             {video.script_version ? <span>· script v{video.script_version}</span> : null}
             {video.tiktok_url && (

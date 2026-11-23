@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import __version__, config, db, ops, pipeline, scheduler, spend
 from .log import event, log
-from .services import PermanentError, ServiceProblem, report_problem
+from .services import LimitReached, PermanentError, ServiceProblem, local_time, report_problem
 
 HEAVY = ["produce_video"]
 LIGHT = ["plan_channel", "research_ideas", "publish_video", "check_publish", "sync_stats", "import_stats",
@@ -81,6 +81,11 @@ def run_one(job: dict) -> None:
         res = handle(job)
         _finish(job, status="done", result=res or {}, last_error=None)
         log.info(f"job {job['id']} {job['type']} done in {time.time() - t0:.0f}s")
+    except LimitReached as p:
+        report_problem(p)
+        why = f"Claude limit reached — resumes at {local_time(p.resume_at)}"
+        _park(job, p.service, why, p.status, prod, count=False)
+        event(f"Paused '{job['type']}' — {why}", "warn", "services", channel_id=cid, video_id=vid)
     except ServiceProblem as p:
         report_problem(p)
         if int(job.get("waits") or 0) >= MAX_WAITS:
@@ -117,7 +122,7 @@ def run_one(job: dict) -> None:
                   channel_id=cid, video_id=vid)
 
 
-def _park(job: dict, service: str, reason: str, parked_status: str, prod: bool) -> None:
+def _park(job: dict, service: str, reason: str, parked_status: str, prod: bool, count: bool = True) -> None:
     vid, cid = job.get("video_id"), job.get("channel_id")
     prev = None
     if vid and prod:
@@ -125,7 +130,7 @@ def _park(job: dict, service: str, reason: str, parked_status: str, prod: bool) 
         prev = v["status"] if v and v["status"] != "blocked" else None
         db.update("videos", {"id": vid}, {"status": "blocked", "error": reason})
     _finish(job, status="waiting", waiting_on=service, last_error=reason, finished_at=None, locked_by=None,
-            locked_at=None, waits=int(job.get("waits") or 0) + 1, parked_status=parked_status,
+            locked_at=None, waits=int(job.get("waits") or 0) + (1 if count else 0), parked_status=parked_status,
             prev_video_status=prev or job.get("prev_video_status"))
     if cid:
         db.update("channels", {"id": cid}, {"blocked_reason": reason + (" — raise it in Settings" if service == "budget" else "")})
