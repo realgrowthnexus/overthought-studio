@@ -125,6 +125,7 @@ export interface WorkerHeartbeat {
 export interface GlobalSettings {
   paused: boolean; auto_publish: boolean; model: string; effort: string;
   daily_budget_usd: number; monthly_budget_usd: number; video_retention_days: number; report_email: string | null;
+  api_fallback?: boolean; api_fallback_daily_usd?: number;
 }
 
 export const SECRET_KEYS = [

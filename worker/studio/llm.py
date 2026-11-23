@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any, TypeVar
 
 import anthropic
 from pydantic import BaseModel
 
-from . import claude_cli, secrets, settings, spend, usage
-from .log import log
-from .services import NotConfigured, OutOfCredits, ServiceDown, set_status
+from . import claude_cli, db, secrets, settings, spend, usage
+from .log import event, log
+from .services import LimitReached, NotConfigured, OutOfCredits, ServiceDown, limit_active, report_problem, set_status
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -48,10 +49,45 @@ LIGHT_PURPOSES = {"scorecard", "smoke"}
 
 
 def backend() -> str:
-    """'subscription' (Claude Code signed in with the owner's Claude plan) unless an API key is saved AND opted in."""
+    """'subscription' (Claude Code signed in with the owner's Claude plan) unless an API key is saved AND opted in,
+    or the plan's usage limit is in force and the owner allowed a capped API-key fallback (see fallback_room)."""
     if settings.get().get("llm_backend") == "api" and secrets.get("anthropic_api_key"):
         return "api"
+    if _limited() and fallback_room():
+        return "api"
     return "subscription"
+
+
+def _limited() -> bool:
+    try:
+        return limit_active(db.select("services", {"name": "anthropic"}, single=True))
+    except Exception:
+        return False
+
+
+def fallback_spent_today() -> float:
+    """API-key spend during the last 24 h (subscription runs are recorded at $0, so this is fallback spend)."""
+    return spend.total_since(datetime.now(timezone.utc) - timedelta(hours=24), "anthropic")
+
+
+def fallback_room() -> bool:
+    """True when the owner switched on 'continue on the API key when the Claude limit is hit', a key is saved and
+    the daily fallback cap still has room. The cap is the hard stop: over it, work parks until the limit resets."""
+    s = settings.get()
+    if not s.get("api_fallback") or not secrets.get("anthropic_api_key"):
+        return False
+    cap = float(s.get("api_fallback_daily_usd") or 0)
+    return cap > 0 and fallback_spent_today() < cap
+
+
+def _fallback_or_raise(p: LimitReached, purpose: str, channel_id, video_id) -> None:
+    """The plan hit its limit mid-call: keep going on the API key if allowed, else park calmly (re-raise)."""
+    if not fallback_room():
+        raise p
+    report_problem(p)                                   # dashboard still shows the limit and its reset time
+    cap = float(settings.get().get("api_fallback_daily_usd") or 0)
+    event(f"Claude plan limit reached — continuing '{purpose}' on the API key (daily cap ${cap:.2f})", "warn",
+          "services", channel_id=channel_id, video_id=video_id)
 
 
 def _sub_model(purpose: str) -> str | None:
@@ -155,7 +191,8 @@ def _account(model: str, resp: Any, purpose: str, channel_id, video_id) -> float
     try:
         spend.record("anthropic", usd, units=getattr(resp.usage, "output_tokens", None), unit="output_tokens",
                      detail=purpose, channel_id=channel_id, video_id=video_id)
-        set_status("anthropic", "ok", None)
+        if not _limited():                              # on the fallback, keep showing the plan's limit
+            set_status("anthropic", "ok", None)
     except Exception as ex:
         log.warning(f"spend record failed: {ex}")
     return usd
@@ -173,11 +210,15 @@ def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effor
                max_tokens: int = 16000, channel_id=None, video_id=None) -> tuple[T, float]:
     """One call that returns a validated Pydantic object."""
     if backend() == "subscription":
-        out = _sub_run(prompt, system=system, schema=schema.model_json_schema(), tools=[], purpose=purpose,
-                       channel_id=channel_id, video_id=video_id)
-        if out.get("structured") is None:
-            raise RuntimeError(f"Claude returned no structured output for {purpose}")
-        return schema.model_validate(out["structured"]), 0.0
+        try:
+            out = _sub_run(prompt, system=system, schema=schema.model_json_schema(), tools=[], purpose=purpose,
+                           channel_id=channel_id, video_id=video_id)
+        except LimitReached as p:
+            _fallback_or_raise(p, purpose, channel_id, video_id)
+        else:
+            if out.get("structured") is None:
+                raise RuntimeError(f"Claude returned no structured output for {purpose}")
+            return schema.model_validate(out["structured"]), 0.0
     client = _get_client()
     model, default_effort = model_cfg()
     try:
@@ -203,9 +244,14 @@ def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effor
 def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, effort: str | None = None,
              channel_id=None, video_id=None) -> tuple[str, list[dict], float]:
     """Web-grounded research. Returns (text, citations[{url,title,cited_text}], usd)."""
+    out = None
     if backend() == "subscription":
-        out = _sub_run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
-                       tools=["WebSearch", "WebFetch"], purpose=purpose, channel_id=channel_id, video_id=video_id)
+        try:
+            out = _sub_run(prompt + RESEARCH_SUFFIX, system=system, schema=_Research.model_json_schema(),
+                           tools=["WebSearch", "WebFetch"], purpose=purpose, channel_id=channel_id, video_id=video_id)
+        except LimitReached as p:
+            _fallback_or_raise(p, purpose, channel_id, video_id)
+    if out is not None:
         if out.get("structured") is None:
             raise RuntimeError(f"Claude returned no structured research for {purpose} (will retry)")
         r = _Research.model_validate(out["structured"])

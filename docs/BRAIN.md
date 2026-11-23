@@ -43,6 +43,22 @@ Owner said "GO, tumhari salah theek hai" to this plan:
   yet; owner said they would connect it. Owner says DNS `studio` A record is done.
 - Owner wants to use a (testing) Claude account: after install run `infra/connect-claude.sh` and open the link in
   the browser signed in to that account. A `claude_oauth_token` from the earlier sign-in is still saved in Supabase.
+- **Account switching to dodge limits: REFUSED** (owner asked for auto-switching between Claude accounts when a limit
+  hits). Told them it breaks Anthropic's terms and risks banning both accounts. Moving the studio to a different
+  account once (testing → main) is fine: re-run `connect-claude.sh`. Owner wants the studio on another account of
+  theirs; steps given (Incognito window signed into that account → run connect-claude.sh → paste code).
+- **Capped API-key fallback (owner chose this, "keep 1")**: settings `api_fallback` (default off) +
+  `api_fallback_daily_usd` (default $2). `llm.backend()` returns "api" while the plan's limit is active and
+  `fallback_room()`; a LimitReached mid-call switches to the API if allowed (`_fallback_or_raise`), else parks as before.
+  Cap = rolling 24 h anthropic spend (subscription runs record $0). Dashboard shows the limit the whole time; parked
+  jobs re-queue when the fallback has room. Settings → "When the Claude limit is reached" switch + cap. Needs an API
+  key (Settings → Advanced) and credit at console.anthropic.com — not added yet. Tests: `tests/test_api_fallback.py`.
+- VPS install DONE 2026-11-23 19:36 UTC (backup .env restored → same MASTER_KEY; Claude sign-in "connected" but the
+  plan was at its limit; voice ok; RunPod unconfigured). **Open: https 502** — local :3100 is 200, so the other app's
+  Caddy (`juc-caddy-1`) can't reach `ots-web`; Step 3 command (network connect + checks) sent to the owner. After the
+  cause is confirmed, make it durable on OUR side (re-connect in update.sh/caddy-attach), never edit the juc app.
+- Separate product idea: owner wants a voice-over SaaS in a NEW repo/session; I gave a paste-ready prompt
+  (suggested repo name `narrato`). Not part of this repo.
 - Ideas not done yet: cheaper images (Flux schnell / reuse a scene library) could cut the $25/month further.
 
 ### 0.0 (2026-11-23): owner is taking it down and will redeploy step by step WITH you

@@ -530,7 +530,7 @@ def _resume_waiting() -> None:
         else:
             cur = st.get(svc)
             if j.get("parked_status") == "limited":
-                if svc in limited:
+                if svc in limited and not (svc == "anthropic" and llm.fallback_room()):
                     continue
                 cur = "ok"                           # the limit has reset
             # out-of-credits needs a real recovery ('ok'); a 'warning' would just fail again

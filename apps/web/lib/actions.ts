@@ -162,6 +162,8 @@ const settingsSchema = z.object({
   video_retention_days: z.coerce.number().int().min(3).max(365),
   report_email: z.string().email().or(z.literal("")).nullish(),
   auto_publish: z.boolean(),
+  api_fallback: z.boolean().default(false),
+  api_fallback_daily_usd: z.coerce.number().min(0).max(100).default(2),
 });
 
 export async function updateSettings(input: z.input<typeof settingsSchema>): Promise<ActionResult> {
@@ -171,6 +173,10 @@ export async function updateSettings(input: z.input<typeof settingsSchema>): Pro
     const value = { ...prev, ...parsed, report_email: parsed.report_email || null };
     const { error } = await serviceClient().from("settings").upsert({ key: "global", value });
     fail(error);
+    if (Boolean(prev.api_fallback) !== value.api_fallback) {
+      const cap = value.api_fallback_daily_usd.toFixed(2);
+      await logEvent(value.api_fallback ? "API-key fallback ON (max $" + cap + " a day)" : "API-key fallback switched off", { level: "warn" });
+    }
     if (prev.auto_publish !== value.auto_publish) {
       await logEvent(value.auto_publish ? "Auto-publish switched ON" : "Auto-publish switched off", { level: "warn" });
     }

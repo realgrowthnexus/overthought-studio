@@ -105,6 +105,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         run(() => updateSettings({
           model: s.model, effort: s.effort as "high", daily_budget_usd: s.daily_budget_usd, monthly_budget_usd: s.monthly_budget_usd,
           video_retention_days: s.video_retention_days, report_email: s.report_email ?? "", auto_publish: s.auto_publish,
+          api_fallback: Boolean(s.api_fallback), api_fallback_daily_usd: Number(s.api_fallback_daily_usd ?? 2),
         }));
       }}
     >
@@ -134,6 +135,22 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         <Field label="Weekly report email" htmlFor="email" hint="Needs a Resend key.">
           <Input id="email" type="email" value={s.report_email ?? ""} onChange={(e) => set("report_email", e.target.value)} placeholder="you@example.com" />
         </Field>
+      </div>
+      <div className="flex flex-col gap-4 rounded-[12px] border border-line p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[14px] font-medium text-ink">When the Claude limit is reached</p>
+            <p className="mt-0.5 max-w-[52ch] text-[12px] leading-relaxed text-ink-3">
+              Off: work pauses calmly and resumes after the reset (free). On: work continues on your Claude API key (pay per use) until the daily cap, then pauses. Needs an API key under Advanced.
+            </p>
+          </div>
+          <Switch label="Continue on the API key" checked={Boolean(s.api_fallback)} onCheckedChange={(v) => set("api_fallback", v)} />
+        </div>
+        {s.api_fallback && (
+          <Field label="Max API spend per day (USD)" htmlFor="fbcap" hint="Hard stop. Roughly $0.20–0.50 per video on the API; measured after the first videos.">
+            <Input id="fbcap" type="number" min={0} max={100} step="0.5" value={Number(s.api_fallback_daily_usd ?? 2)} onChange={(e) => set("api_fallback_daily_usd", Number(e.target.value))} />
+          </Field>
+        )}
       </div>
       <div className="flex items-start justify-between gap-4 rounded-[12px] border border-line p-4">
         <div>
