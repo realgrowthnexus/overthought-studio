@@ -11,6 +11,21 @@
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
 
+### 0.000 Session 5, later (2026-11-23): TikTok developer app, phase 1 = drafts only
+- Owner is filling the TikTok developer app form. Answers (description, scope text, demo-video script) are in
+  `assets/brand/tiktok/APP_FORM.md`; app icon + 5 channel profile pictures drawn in code by
+  `tools/brand/make_tiktok_art.cjs` → `assets/brand/tiktok/*.png` (re-run to regenerate).
+- Decision: first app review asks only for Login Kit + Upload to drafts. OAuth scopes are now
+  user.info.basic, user.info.profile, user.info.stats, video.list, video.upload (video.publish removed from
+  `api/tiktok/connect`; private/public posting modes are disabled in the channel form until then).
+- Later (phase 2): add video.publish with TikTok's per-post consent screen (creator nickname, privacy chosen by the
+  user with no default, comment/duet/stitch toggles, commercial-content disclosure, Music Usage Confirmation), then
+  apply for the Direct Post audit. Fully unattended public posting is not what TikTok's guidelines allow.
+- Owner asked how posting works with GenLogin: told them the studio posts via the official API (no browser), and
+  warned again against proxy/fake-US-location accounts. Dashboard login email = the owner's getgrowthnexus Gmail;
+  password unknown to us (hashed); no "forgot password" page yet — build one if they can't find it saved.
+- developers.tiktok.com is not reachable from the cloud sandbox (DNS blocked).
+
 ### 0.00 Session 5 (2026-11-23): free voice + Supabase free-plan storage
 Owner said "GO, tumhari salah theek hai" to this plan:
 - **ElevenLabs is gone** (owner: "itne paise nahi"). Voice = **Kokoro-82M** (Apache-2.0), CPU on the VPS, $0.

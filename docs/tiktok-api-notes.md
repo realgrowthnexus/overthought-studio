@@ -4,7 +4,9 @@
 - Token: POST https://open.tiktokapis.com/v2/oauth/token/ (x-www-form-urlencoded) client_key, client_secret, code, grant_type=authorization_code, redirect_uri
   -> access_token, expires_in, refresh_token, refresh_expires_in, open_id, scope. Refresh tokens ROTATE; read lifetimes from response.
 - Refresh: same endpoint, grant_type=refresh_token.
-- Scopes we need: user.info.basic,user.info.profile,user.info.stats,video.list,video.upload,video.publish
+- Scopes requested now (phase 1, first app review = drafts only): user.info.basic,user.info.profile,user.info.stats,video.list,video.upload
+  video.publish (Direct Post) comes later with a per-post consent screen (nickname, privacy picked by the user with no
+  default, comment/duet/stitch toggles, commercial-content disclosure, Music Usage Confirmation) + the Direct Post audit.
 - User info: GET /v2/user/info/?fields=open_id,avatar_url,display_name,username,is_verified,follower_count,following_count,likes_count,video_count
 - Creator info: POST /v2/post/publish/creator_info/query/ -> privacy_level_options, max_video_post_duration_sec, *_disabled
 - Direct post: POST /v2/post/publish/video/init/ {post_info:{title,privacy_level,disable_duet,disable_comment,disable_stitch,video_cover_timestamp_ms,brand_content_toggle,brand_organic_toggle,is_aigc}, source_info:{source:FILE_UPLOAD,video_size,chunk_size,total_chunk_count}}

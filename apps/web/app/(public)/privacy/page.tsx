@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <li><strong>user.info.basic, user.info.profile:</strong> account ID (open_id), display name, username, avatar and verification status, so we can show which account is connected.</li>
         <li><strong>user.info.stats:</strong> follower, following, like and video counts, to track channel growth.</li>
         <li><strong>video.list:</strong> the account’s public videos and their view, like, comment and share counts, to measure how each video performs.</li>
-        <li><strong>video.upload, video.publish:</strong> to send videos the owner has approved to the account’s drafts or post them, and to check their publishing status. We also read the account’s posting options (such as allowed privacy levels) before each post.</li>
+        <li><strong>video.upload (and video.publish once enabled):</strong> to send videos the owner has approved to the account’s TikTok drafts (or post them), and to check their publishing status. We also read the account’s posting options (such as allowed privacy levels) before each post.</li>
       </ul>
       <p>We don’t access direct messages, contacts, other users’ personal data or anything outside these scopes.</p>
 

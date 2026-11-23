@@ -38,7 +38,7 @@ export default async function AccountsPage() {
           <ol className="flex flex-col gap-4 px-5 pb-6 text-[14px] text-ink-2">
             {[
               <>Go to <a className="text-ink underline decoration-accent-mark decoration-2 underline-offset-4 transition-colors hover:decoration-ink" href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a>, sign in and create an app called <strong className="text-ink">Overthought Studio</strong>.</>,
-              <>Add the products <strong className="text-ink">Login Kit</strong> and <strong className="text-ink">Content Posting API</strong> (turn on Direct Post). Request the scopes user.info.basic, user.info.profile, user.info.stats, video.list, video.upload and video.publish.</>,
+              <>Add the products <strong className="text-ink">Login Kit</strong> and <strong className="text-ink">Content Posting API</strong> (Upload to drafts; leave Direct Post off for now). Keep exactly these scopes: user.info.basic, user.info.profile, user.info.stats, video.list and video.upload. Remove any other scope, or the review is delayed.</>,
               <>Use these URLs in the app form:
                 <div className="mt-3 grid min-w-0 grid-cols-1 gap-2">
                   <CopyField label="Redirect URI" value={`${base}/api/tiktok/callback`} />

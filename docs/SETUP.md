@@ -98,8 +98,9 @@ Keys are encrypted (AES-256-GCM) before they are saved. The dashboard never show
    - **Platform:** Web, at `https://studio.getgrowthnexus.com`. Verify the domain if asked.
 3. Add these products:
    - **Login Kit**, with redirect URI `https://studio.getgrowthnexus.com/api/tiktok/callback`
-   - **Content Posting API**. Turn on **Direct Post**.
-4. Add these scopes: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`, `video.upload`, `video.publish`.
+   - **Content Posting API** (Upload to drafts). Leave **Direct Post** off for the first review.
+4. Add these scopes: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`, `video.upload`. Leave Direct Post
+   (`video.publish`) off for the first review; remove any other scope (e.g. `video.manage`, `video.collab`).
 5. Paste the **Client key** and **Client secret** into dashboard → Settings.
 6. **Sandbox:** add your TikTok accounts as **target users**. Then connect each one in dashboard → **TikTok accounts**.
 7. **Submit for review.** After approval, apply for the **Content Posting API audit**. That audit unlocks public posting.

@@ -251,16 +251,17 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
           <div className="grid grid-cols-1 [&>*]:min-w-0 gap-3 sm:grid-cols-3">
             {([
               ["draft", "TikTok drafts", "Lands in the app's inbox. You tap Post. Works before TikTok approves your developer app."],
-              ["private", "Private post", "Posts as 'Only me'. Good for testing the full flow."],
-              ["public", "Public post", "Fully automatic. Needs TikTok's app audit and the global auto-publish switch."],
+              ["private", "Private post", "Posts as 'Only me'. Opens after TikTok approves Direct Post."],
+              ["public", "Public post", "Opens after TikTok approves Direct Post and its audit."],
             ] as const).map(([id, label, desc]) => (
               <button
                 key={id}
                 type="button"
                 aria-pressed={v.posting_mode === id}
+                disabled={id !== "draft" && v.posting_mode !== id}
                 onClick={() => set("posting_mode", id)}
                 className={cn(
-                  "rounded-[12px] border p-3.5 text-left transition-colors",
+                  "rounded-[12px] border p-3.5 text-left transition-colors disabled:opacity-55",
                   v.posting_mode === id ? "border-ink bg-elev-2" : "border-line hover:border-line-strong",
                 )}
               >

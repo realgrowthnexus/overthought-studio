@@ -8,7 +8,9 @@ import { OAUTH_CALLBACK_PATH, OAUTH_COOKIE, OAUTH_TTL_MS, stateBinding } from "@
 
 export const dynamic = "force-dynamic";
 
-const SCOPES = "user.info.basic,user.info.profile,user.info.stats,video.list,video.upload,video.publish";
+// Phase 1 (first app review): drafts only. video.publish (Direct Post) is added back together with TikTok's
+// per-post consent screen once the app is approved — requesting a scope the app lacks breaks the login.
+const SCOPES = "user.info.basic,user.info.profile,user.info.stats,video.list,video.upload";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function back(path: string) {
