@@ -7,6 +7,8 @@ It never touches the live project; `seed_demo.py` refuses any non-local Supabase
     python tools/demo/seed_demo.py        # demo data (idempotent)
     node tools/demo/login.cjs             # demo owner owner@demo.local, saves tools/demo/.state.json
     node tools/demo/ui-check.cjs          # layout / loading / console checks at 375 and 1280 px
+    node tools/demo/hover-check.cjs [--theme dark]   # every clickable: hand cursor + visible hover (0 problems expected)
+    node tools/demo/flow-check.cjs        # settings save, API fallback switch, channel voice, wizard steps
     python tools/demo/seed_demo.py red-bar on|off
 
 Stop: `cd tools/demo/.supabase && npx supabase@2 stop` and `pkill -f "next start -p 3000"`.

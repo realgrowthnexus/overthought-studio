@@ -37,7 +37,7 @@ export default async function AccountsPage() {
           <PanelHeader title="Set up your TikTok developer app first" description="A one-time job, about 15 minutes. TikTok reviews the app before public posting is allowed." />
           <ol className="flex flex-col gap-4 px-5 pb-6 text-[14px] text-ink-2">
             {[
-              <>Go to <a className="text-ink underline decoration-accent-mark decoration-2 underline-offset-4" href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a>, sign in and create an app called <strong className="text-ink">Overthought Studio</strong>.</>,
+              <>Go to <a className="text-ink underline decoration-accent-mark decoration-2 underline-offset-4 transition-colors hover:decoration-ink" href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer">developers.tiktok.com</a>, sign in and create an app called <strong className="text-ink">Overthought Studio</strong>.</>,
               <>Add the products <strong className="text-ink">Login Kit</strong> and <strong className="text-ink">Content Posting API</strong> (turn on Direct Post). Request the scopes user.info.basic, user.info.profile, user.info.stats, video.list, video.upload and video.publish.</>,
               <>Use these URLs in the app form:
                 <div className="mt-3 grid min-w-0 grid-cols-1 gap-2">
@@ -47,7 +47,7 @@ export default async function AccountsPage() {
                   <CopyField label="Website / domain to verify" value={base} />
                 </div>
               </>,
-              <>Copy the <strong className="text-ink">Client key</strong> and <strong className="text-ink">Client secret</strong> into <Link href="/settings#keys" className="text-ink underline decoration-accent-mark decoration-2 underline-offset-4">Settings → API keys</Link>.</>,
+              <>Copy the <strong className="text-ink">Client key</strong> and <strong className="text-ink">Client secret</strong> into <Link href="/settings#keys" className="text-ink underline decoration-accent-mark decoration-2 underline-offset-4 transition-colors hover:decoration-ink">Settings → API keys</Link>.</>,
               <>Come back here and press <strong className="text-ink">Connect account</strong> while logged in to the TikTok account in your browser.</>,
             ].map((step, i) => (
               <li key={i} className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-3">

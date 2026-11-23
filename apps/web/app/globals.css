@@ -21,7 +21,7 @@
   --ink-2: #45423c;
   --ink-3: #66615a;
   --accent: #ffd60a;
-  --accent-hover: #ffdf3d;
+  --accent-hover: #ebc300;
   --accent-ink: #1a1916;
   --accent-text: #7a5c00;
   --accent-soft: rgb(255 214 10 / 0.22);
@@ -61,7 +61,7 @@
   --ink-2: #d0c9bb;
   --ink-3: #a19a8d;
   --accent: #ffd60a;
-  --accent-hover: #ffe04a;
+  --accent-hover: #ffe566;
   --accent-ink: #141210;
   --accent-text: #ffd60a;
   --accent-soft: rgb(255 214 10 / 0.12);
@@ -123,39 +123,43 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-* {
-  border-color: var(--line);
-}
-
-html {
-  color-scheme: light;
-  /* anchors (/settings#keys) land below the sticky mobile header */
-  scroll-padding-top: 72px;
-  -webkit-text-size-adjust: 100%;
-  text-rendering: optimizeLegibility;
-}
-html.dark {
-  color-scheme: dark;
-}
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
+/* Base rules live in @layer base: Tailwind v4 utilities only win over LAYERED rules. Unlayered, `* { border-color }`
+   silently disabled every border-* / hover:border-* utility. */
+@layer base {
+  * {
+    border-color: var(--line);
   }
-}
-@media (min-width: 1024px) {
-  html {
-    scroll-padding-top: 24px;
-  }
-}
 
-body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100dvh;
+  html {
+    color-scheme: light;
+    /* anchors (/settings#keys) land below the sticky mobile header */
+    scroll-padding-top: 72px;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 24px;
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+  }
 }
 
 /* soft centre glow like the video frames, very faint */
@@ -173,15 +177,44 @@ body::before {
   opacity: 1;
 }
 
+/* Tailwind v4 dropped the pointer cursor on buttons: every clickable control shows the hand again,
+   disabled ones show "not allowed". */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="switch"]:not(:disabled),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="range"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  input[type="color"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 ::selection {
   background: var(--accent);
   color: var(--accent-ink);
 }
 
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: 6px;
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 6px;          /* layered: rounded-* utilities (pills, switches) keep their own shape */
+  }
 }
 
 /* Touch: grow the hit area of compact controls to 44px without changing how they look.

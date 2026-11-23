@@ -36,7 +36,7 @@ export function ChannelAccount({
         </div>
       ) : !appReady ? (
         <p className="rounded-[12px] border border-line bg-bg p-4 text-[13px] text-ink-2">
-          Add your TikTok developer app keys in <a href="/settings#keys" className="underline decoration-accent-mark decoration-2 underline-offset-4">Settings</a> first. Then you can connect the account here.
+          Add your TikTok developer app keys in <a href="/settings#keys" className="underline decoration-accent-mark decoration-2 underline-offset-4 transition-colors hover:decoration-ink">Settings</a> first. Then you can connect the account here.
         </p>
       ) : (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">

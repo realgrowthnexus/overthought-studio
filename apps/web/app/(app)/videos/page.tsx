@@ -50,7 +50,7 @@ export default async function VideosPage({ searchParams }: { searchParams: Promi
               aria-current={g.id === group.id ? "page" : undefined}
               className={cn(
                 "h-9 shrink-0 rounded-full border px-3.5 text-[13px] leading-[34px] transition-colors",
-                g.id === group.id ? "border-ink bg-ink text-bg" : "border-line text-ink-2 hover:border-line-strong",
+                g.id === group.id ? "border-ink bg-ink text-bg" : "border-line text-ink-2 hover:border-ink-3 hover:text-ink",
               )}
             >
               {g.label}

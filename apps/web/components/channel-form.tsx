@@ -198,7 +198,7 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
                   }}
                   className={cn(
                     "h-9 rounded-full border px-3.5 text-[13px] transition-colors",
-                    on ? "border-ink bg-ink text-bg" : "border-line text-ink-2 hover:border-line-strong",
+                    on ? "border-ink bg-ink text-bg hover:bg-ink-2" : "border-line text-ink-2 hover:border-ink-3 hover:text-ink",
                   )}
                 >
                   {h.label}
@@ -307,9 +307,10 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
             <button
               type="button"
               onClick={() => i <= step && setStep(i)}
+              disabled={i > step}
               className={cn(
-                "flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-[14px] whitespace-nowrap",
-                i === step ? "text-ink" : i < step ? "text-ink-2 hover:text-ink" : "text-ink-3",
+                "flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-[14px] whitespace-nowrap transition-colors duration-150",
+                i === step ? "text-ink" : i < step ? "text-ink-2 hover:bg-elev-2/60 hover:text-ink" : "text-ink-3 disabled:opacity-100",
               )}
               aria-current={i === step ? "step" : undefined}
             >

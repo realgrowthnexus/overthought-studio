@@ -59,6 +59,20 @@ Owner said "GO, tumhari salah theek hai" to this plan:
   cause is confirmed, make it durable on OUR side (re-connect in update.sh/caddy-attach), never edit the juc app.
 - Separate product idea: owner wants a voice-over SaaS in a NEW repo/session; I gave a paste-ready prompt
   (suggested repo name `narrato`). Not part of this repo.
+- **UI audit + polish (owner: "lax mat chhodo, production ready")** — root causes found and fixed:
+  - `globals.css` had `* { border-color }` and `:focus-visible { border-radius }` OUTSIDE `@layer base`. In Tailwind v4
+    unlayered rules beat utilities, so every `border-*` / `hover:border-*` utility silently did nothing (incl. the
+    WCAG `border-line-input` on form controls) and focused pills/switches turned square. Moved into `@layer base`.
+  - Tailwind v4 has no pointer cursor on buttons → a layered base rule gives every clickable the hand and disabled
+    ones "not-allowed".
+  - Primary hover was invisible (#ffd60a → #ffdf3d). Now darker in light (#ebc300), brighter in dark (#ffe566) + a
+    soft accent ring. Switches, logo, report cards, filter pills, chips, text links, wizard steps got hover states;
+    wizard future steps are `disabled`. Stale "Vercel" texts on /setup and Settings fixed; model labels shortened.
+  - New regression tools: `tools/demo/hover-check.cjs` (every clickable on 14 pages: cursor + visible hover; result
+    0 problems light and dark, 555 controls) and `tools/demo/flow-check.cjs` (settings + fallback persist, channel
+    voice + sample, wizard). `up.sh` now pulls Supabase images from public.ecr.aws (Docker Hub rate-limits); the env
+    allows `public.ecr.aws` + `d2glxqk2uabbnd.cloudfront.net` for that.
+  - Verified: worker 89 tests, web tsc/lint/9 tests, ui-check all pass, flow-check 8/8.
 - Ideas not done yet: cheaper images (Flux schnell / reuse a scene library) could cut the $25/month further.
 
 ### 0.0 (2026-11-23): owner is taking it down and will redeploy step by step WITH you

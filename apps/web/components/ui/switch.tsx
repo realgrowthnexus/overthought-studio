@@ -28,7 +28,8 @@ export function Switch({
       className={cn(
         "tap relative inline-flex shrink-0 cursor-pointer items-center rounded-full border p-[2px] transition-colors duration-200",
         w,
-        checked ? "border-transparent bg-accent" : "border-line-input bg-elev-2",
+        checked ? "border-transparent bg-accent hover:bg-accent-hover" : "border-line-input bg-elev-2 hover:border-ink-3 hover:bg-elev",
+        "hover:shadow-[0_0_0_4px_var(--accent-soft)]",
         "disabled:cursor-not-allowed disabled:opacity-50",
       )}
     >

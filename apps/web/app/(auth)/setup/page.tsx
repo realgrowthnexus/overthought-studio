@@ -13,7 +13,7 @@ export default async function SetupPage() {
     <>
       <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-ink">Create the owner account</h1>
       <p className="mt-1.5 mb-7 text-[14px] leading-relaxed text-ink-3">
-        This works once. Use the setup token from your Vercel environment variables (<code className="text-ink-2">SETUP_TOKEN</code>).
+        This works once. Use the one-time setup token the VPS installer printed (<code className="text-ink-2">SETUP_TOKEN</code> in /opt/overthought-studio/.env).
       </p>
       <SetupForm />
     </>

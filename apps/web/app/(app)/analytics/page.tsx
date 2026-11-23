@@ -65,15 +65,15 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <div className="inline-flex rounded-[10px] border border-line bg-bg p-0.5" role="group" aria-label="Range">
           {RANGES.map((d) => (
             <Link key={d} href={q({ days: String(d) })} aria-current={d === days ? "true" : undefined}
-              className={cn("h-8 rounded-[8px] px-3 text-[13px] leading-8", d === days ? "border border-line bg-elev text-ink shadow-sm" : "text-ink-3 hover:text-ink")}>
+              className={cn("h-8 rounded-[8px] px-3 text-[13px] leading-8 transition-colors", d === days ? "border border-line bg-elev text-ink shadow-sm" : "text-ink-3 hover:bg-elev-2/60 hover:text-ink")}>
               {d} days
             </Link>
           ))}
         </div>
         <span className="mx-1 h-5 w-px bg-line" aria-hidden />
-        <Link href={q({ channel: null })} className={cn("h-9 rounded-full px-3 text-[13px] leading-9", !channel ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>All channels</Link>
+        <Link href={q({ channel: null })} aria-current={!channel ? "true" : undefined} className={cn("h-9 rounded-full px-3 text-[13px] leading-9 transition-colors", !channel ? "bg-elev-2 text-ink" : "text-ink-3 hover:bg-elev-2/60 hover:text-ink")}>All channels</Link>
         {channels.map((c) => (
-          <Link key={c.id} href={q({ channel: c.slug })} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px]", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:text-ink")}>
+          <Link key={c.id} href={q({ channel: c.slug })} aria-current={channel?.id === c.id ? "true" : undefined} className={cn("inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] transition-colors", channel?.id === c.id ? "bg-elev-2 text-ink" : "text-ink-3 hover:bg-elev-2/60 hover:text-ink")}>
             <span className="size-2 rounded-full" style={{ background: c.color }} aria-hidden />{c.name}
           </Link>
         ))}

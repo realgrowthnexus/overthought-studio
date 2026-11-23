@@ -112,8 +112,8 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
       <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
         <Field label="Claude model" htmlFor="model" hint="Used for research, scripts and reviews.">
           <Select id="model" value={s.model} onChange={(e) => set("model", e.target.value)}>
-            <option value="claude-opus-5-5">Claude Opus 5.5 (best writing)</option>
-            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (half the cost)</option>
+            <option value="claude-opus-5-5">Opus 5.5 · best</option>
+            <option value="claude-sonnet-5-5">Sonnet 5.5 · half the cost</option>
           </Select>
         </Field>
         <Field label="Thinking effort" htmlFor="effort" hint="Higher is more careful and costs more.">
@@ -129,7 +129,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         <Field label="Monthly budget (USD)" htmlFor="monthly">
           <Input id="monthly" type="number" min={0} step="5" value={s.monthly_budget_usd} onChange={(e) => set("monthly_budget_usd", Number(e.target.value))} />
         </Field>
-        <Field label="Keep video files for (days)" htmlFor="retention" hint="Dashboard preview, kept this long after posting (7 keeps the free Supabase plan comfortable). The full-quality file lives on your server. Scripts and stats are kept forever.">
+        <Field label="Keep video files for (days)" htmlFor="retention" hint="After posting. 7 keeps the free Supabase plan comfortable. Scripts and stats stay forever.">
           <Input id="retention" type="number" min={3} value={s.video_retention_days} onChange={(e) => set("video_retention_days", Number(e.target.value))} />
         </Field>
         <Field label="Weekly report email" htmlFor="email" hint="Needs a Resend key.">

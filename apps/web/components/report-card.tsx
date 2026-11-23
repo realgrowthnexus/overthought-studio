@@ -10,7 +10,7 @@ export function ReportCard({ report, channelName, defaultOpen }: { report: Repor
   return (
     <Panel as="article" className="overflow-hidden">
       <details open={defaultOpen} className="group">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4 transition-colors duration-150 hover:bg-elev-2/50 [&::-webkit-details-marker]:hidden">
           <div>
             <h3 className="text-[15px] font-semibold text-ink">{report.title}</h3>
             <p className="mt-0.5 text-[12px] text-ink-3">
@@ -19,8 +19,8 @@ export function ReportCard({ report, channelName, defaultOpen }: { report: Repor
               {changes.length ? ` · ${changes.length} change${changes.length === 1 ? "" : "s"} made` : ""}
             </p>
           </div>
-          <span className="mt-1 text-[12px] text-ink-3 group-open:hidden">Show</span>
-          <span className="mt-1 hidden text-[12px] text-ink-3 group-open:inline">Hide</span>
+          <span className="mt-1 text-[12px] text-ink-3 underline-offset-4 group-open:hidden group-hover:text-ink group-hover:underline">Show</span>
+          <span className="mt-1 hidden text-[12px] text-ink-3 underline-offset-4 group-open:inline group-hover:text-ink group-hover:underline">Hide</span>
         </summary>
         <div className="border-t border-line px-5 py-4">
           {changes.length > 0 && (

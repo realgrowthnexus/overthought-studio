@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 DEMO=$ROOT/tools/demo
 SB=$DEMO/.supabase                      # scratch Supabase project (git-ignored)
-export SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io NO_PROXY=localhost,127.0.0.1 no_proxy=localhost,127.0.0.1
+export SUPABASE_INTERNAL_IMAGE_REGISTRY=${SUPABASE_INTERNAL_IMAGE_REGISTRY:-public.ecr.aws} NO_PROXY=localhost,127.0.0.1 no_proxy=localhost,127.0.0.1
 
 docker info >/dev/null 2>&1 || { (dockerd >/tmp/dockerd.log 2>&1 &); for _ in $(seq 30); do docker info >/dev/null 2>&1 && break; sleep 1; done; }
 

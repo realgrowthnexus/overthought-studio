@@ -29,7 +29,7 @@ export function Sidebar({ worker, email }: { worker: { tone: "good" | "bad" | "n
   const pathname = usePathname();
   return (
     <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-line bg-bg/80 px-3 py-5 backdrop-blur lg:flex">
-      <Link href="/" className="mb-7 px-2.5" aria-label="Overthought Studio home">
+      <Link href="/" className="mb-7 rounded-[10px] px-2.5 transition-opacity duration-150 hover:opacity-75" aria-label="Overthought Studio home">
         <Wordmark />
         <span className="mt-0.5 block text-[11px] tracking-wide text-ink-3">studio</span>
       </Link>
@@ -115,7 +115,7 @@ export function MobileNav({ email }: { email: string }) {
   return (
     <>
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-bg/85 px-4 backdrop-blur lg:hidden">
-        <Link href="/" aria-label="Overthought Studio home"><Wordmark size="sm" /></Link>
+        <Link href="/" aria-label="Overthought Studio home" className="rounded-[8px] transition-opacity duration-150 hover:opacity-75"><Wordmark size="sm" /></Link>
         <ThemeToggle />
       </header>
       <nav

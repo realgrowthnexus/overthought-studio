@@ -58,7 +58,8 @@ def render(out: Path) -> None:
     v = fakes.seed_video(w, ch)
     pipeline.produce(v["id"])
     out.mkdir(parents=True, exist_ok=True)
-    (out / "final.mp4").write_bytes(w.storage[f"videos/{ch['slug']}/{v['id']}/final.mp4"])
+    # the dashboard plays the small preview (the full file stays on the worker's disk)
+    (out / "final.mp4").write_bytes(w.storage[f"videos/{ch['slug']}/{v['id']}/preview.mp4"])
     (out / "thumb.jpg").write_bytes(w.storage[f"videos/{ch['slug']}/{v['id']}/thumb.jpg"])
     mp.undo()
 

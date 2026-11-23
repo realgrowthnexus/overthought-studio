@@ -27,7 +27,7 @@ export default async function SettingsPage() {
             />
             {!hasMasterKey() && (
               <p className="mx-5 mb-4 rounded-[10px] bg-bad-soft px-3 py-2 text-[13px] text-bad">
-                MASTER_KEY isn&apos;t set on the server, so keys can&apos;t be saved yet. Add it in Vercel → Settings → Environment Variables.
+                MASTER_KEY isn&apos;t set on the server, so keys can&apos;t be saved yet. Add it to /opt/overthought-studio/.env on the VPS (the installer does this), then restart.
               </p>
             )}
             <SecretsForm hints={hints} />
@@ -43,9 +43,9 @@ export default async function SettingsPage() {
             <ClaudeUsageCard initial={services} />
           </Panel>
           <details className="group rounded-[var(--radius-lg)]">
-            <summary className="tap cursor-pointer rounded-[10px] px-1 py-2 text-[13px] text-ink-3 hover:text-ink">Advanced: use an Anthropic API key instead</summary>
+            <summary className="tap cursor-pointer rounded-[10px] px-1 py-2 text-[13px] text-ink-3 hover:text-ink">Advanced: Claude API credit (only for the API key fallback)</summary>
           <Panel className="mt-2">
-            <PanelHeader title="Claude API credit" description="Only used if you switch the studio to an API key. Anthropic doesn't share your balance through the API: enter it after each top-up; the studio subtracts what it spends." />
+            <PanelHeader title="Claude API credit" description="Only used when work runs on your API key (the fallback when the Claude limit is reached). Anthropic doesn't share your balance through the API: enter it after each top-up; the studio subtracts what it spends." />
             <dl className="divide-y divide-line px-5">
               <KV k="Balance you entered" v={credit.balance_usd != null ? `${usd(credit.balance_usd)} · ${relTime(credit.set_at)}` : "Not set"} />
               <KV k="Spent since then" v={usd(spentSince)} />
