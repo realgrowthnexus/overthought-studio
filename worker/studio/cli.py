@@ -59,8 +59,7 @@ def smoke() -> dict:
     """Every external dependency once, each isolated so one failure never hides another."""
     res = {"supabase": _part(lambda: {"channels": len(db.select("channels", columns="slug"))}),
            "anthropic": _part(_anthropic),
-           "elevenlabs": _part(lambda: {"chars_left": (lambda s: int(s.get("character_limit") or 0)
-                                                       - int(s.get("character_count") or 0))(voice.subscription())}),
+           "voice": _part(voice.check),
            "runpod": _part(_runpod),
            "ffmpeg": _part(_ffmpeg)}
     res["usd"] = (res["anthropic"].get("usd") or 0) if res["anthropic"]["ok"] else 0

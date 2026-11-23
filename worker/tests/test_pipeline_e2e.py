@@ -17,7 +17,7 @@ def world(monkeypatch, tmp_path):
 
 
 def _final(w, ch, vid) -> bytes:
-    return w.storage[f"videos/{ch['slug']}/{vid}/final.mp4"]
+    return pipeline.library_path(vid).read_bytes()
 
 
 def test_produce_reaches_ready_and_video_is_over_60s(world):
@@ -28,7 +28,14 @@ def test_produce_reaches_ready_and_video_is_over_60s(world):
     vs = next(s for s in info["streams"] if s["codec_type"] == "video")
     assert float(info["format"]["duration"]) > 61
     assert (vs["codec_name"], vs["width"], vs["height"], vs["r_frame_rate"]) == ("h264", 1080, 1920, "30/1")
-    assert f"videos/{world.ch['slug']}/{v['id']}/thumb.jpg" in world.storage
+    base = f"videos/{world.ch['slug']}/{v['id']}"
+    assert f"{base}/thumb.jpg" in world.storage
+    assert f"{base}/final.mp4" not in world.storage                   # full file stays on the VPS disk
+    pv = probe(world.storage[f"{base}/preview.mp4"])
+    pvs = next(s for s in pv["streams"] if s["codec_type"] == "video")
+    assert (pvs["width"], pvs["height"]) == (540, 960) and float(pv["format"]["duration"]) > 61
+    assert len(world.storage[f"{base}/preview.mp4"]) < len(_final(world, world.ch, v["id"]))
+    assert out["video_path"] == f"{world.ch['slug']}/{v['id']}/preview.mp4"
     assert out["cost_usd"] > 0
 
 
@@ -63,11 +70,11 @@ def test_out_of_credits_parks_job(world):
     job = world.insert("jobs", {"type": "produce_video", "status": "running", "attempts": 1, "max_attempts": 3,
                                 "payload": {"video_id": v["id"]}, "video_id": v["id"],
                                 "channel_id": world.ch["id"]})[0]
-    world.fail_next["elevenlabs"] = OutOfCredits("elevenlabs", "quota used up")
+    world.fail_next["runpod"] = OutOfCredits("runpod", "RunPod balance is empty")
     main.run_one(job)
     j = world.select("jobs", {"id": job["id"]}, single=True)
-    assert (j["status"], j["waiting_on"]) == ("waiting", "elevenlabs")
-    assert world.select("services", {"name": "elevenlabs"}, single=True)["status"] == "out_of_credits"
+    assert (j["status"], j["waiting_on"]) == ("waiting", "runpod")
+    assert world.select("services", {"name": "runpod"}, single=True)["status"] == "out_of_credits"
     assert world.select("videos", {"id": v["id"]}, single=True)["status"] == "blocked"
 
 

@@ -23,6 +23,12 @@ WORKDIR /app
 COPY worker/requirements.txt worker/requirements.txt
 RUN pip install --no-cache-dir -r worker/requirements.txt
 
+# Free voice: Kokoro-82M (Apache-2.0), the "timestamped" ONNX export (it also returns per-phoneme durations, which
+# give the captions exact word timings). Pinned by revision + sha256 so a changed upstream file can never slip in.
+ENV STUDIO_KOKORO_DIR=/opt/kokoro STUDIO_TTS_THREADS=3
+COPY worker/fetch_models.py /tmp/fetch_models.py
+RUN python /tmp/fetch_models.py && rm /tmp/fetch_models.py
+
 COPY assets/style/fonts assets/style/fonts
 COPY worker/studio worker/studio
 

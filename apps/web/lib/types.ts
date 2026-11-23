@@ -8,7 +8,7 @@ export type VideoStatus =
   | "ready" | "approved" | "scheduled" | "uploading" | "sent_to_drafts" | "posted"
   | "rejected" | "failed" | "blocked";
 
-export type ServiceName = "anthropic" | "elevenlabs" | "runpod" | "tiktok" | "storage" | "worker";
+export type ServiceName = "anthropic" | "voice" | "runpod" | "tiktok" | "storage" | "worker";
 export type ServiceStatus = "ok" | "warning" | "down" | "out_of_credits" | "unconfigured";
 export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled" | "waiting";
 export type EventLevel = "debug" | "info" | "warn" | "error" | "success";
@@ -18,8 +18,7 @@ export interface ChannelStyle {
   body_font?: string; key_font?: string; figure_prompt?: string; seed?: number; bug_text?: string;
 }
 export interface ChannelVoice {
-  provider?: string; voice_id?: string; model_id?: string;
-  stability?: number; similarity_boost?: number; style?: number; speed?: number;
+  provider?: string; voice?: string; speed?: number;
 }
 export interface Pillar { name: string; weight: number }
 export interface ChannelContent {
@@ -129,7 +128,7 @@ export interface GlobalSettings {
 }
 
 export const SECRET_KEYS = [
-  "anthropic_api_key", "elevenlabs_api_key", "runpod_api_key",
+  "anthropic_api_key", "runpod_api_key",
   "tiktok_client_key", "tiktok_client_secret", "resend_api_key",
 ] as const;
 export type SecretKey = (typeof SECRET_KEYS)[number];

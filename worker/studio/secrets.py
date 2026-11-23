@@ -8,7 +8,6 @@ from .log import log
 _ENV = {
     "anthropic_api_key": "ANTHROPIC_API_KEY",
     "claude_oauth_token": "CLAUDE_CODE_OAUTH_TOKEN",
-    "elevenlabs_api_key": "ELEVENLABS_API_KEY",
     "runpod_api_key": "RUNPOD_API_KEY",
     "tiktok_client_key": "TIKTOK_CLIENT_KEY",
     "tiktok_client_secret": "TIKTOK_CLIENT_SECRET",

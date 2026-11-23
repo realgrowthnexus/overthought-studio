@@ -114,7 +114,7 @@ def clear() -> None:
 def services_ok() -> None:
     vals = {
         "anthropic": dict(message="Estimated $18.40 left", balance=18.4, balance_unit="usd", balance_limit=25),
-        "elevenlabs": dict(message=None, balance=74200, balance_unit="chars", balance_limit=100000),
+        "voice": dict(message=None, balance=12, balance_unit="voices"),
         "runpod": dict(message=None, balance=12.3, balance_unit="usd"),
         "tiktok": dict(message="1 account connected"),
         "storage": dict(message=None),
@@ -126,12 +126,12 @@ def services_ok() -> None:
 
 def set_red_bar(on: bool) -> None:
     if on:
-        db.update("services", {"name": "elevenlabs"}, {
+        db.update("services", {"name": "runpod"}, {
             "status": "out_of_credits", "balance": 0, "checked_at": iso(NOW),
-            "message": "ElevenLabs quota used up. Top up at elevenlabs.io → Subscription. Work resumes automatically."})
+            "message": "RunPod balance is empty. Add funds at runpod.io → Billing. Work resumes automatically."})
     else:
-        db.update("services", {"name": "elevenlabs"}, {"status": "ok", "message": None, "balance": 74200,
-                                                       "checked_at": iso(NOW)})
+        db.update("services", {"name": "runpod"}, {"status": "ok", "message": None, "balance": 12.3,
+                                                   "checked_at": iso(NOW)})
 
 
 def heartbeat() -> None:
@@ -203,7 +203,7 @@ def run(render_dir: Path) -> dict[str, int]:
           ("error", "jobs", f"produce_video failed permanently: {failed['error'][:120]}", failed, 95),
           ("success", "publish", f"Sent to TikTok drafts: {POSTED[0][0]}", None, 60 * 24 * 6),
           ("info", "stats", "Stats synced for 5 videos", None, 40),
-          ("success", "services", "elevenlabs is now ok", None, 60 * 5),
+          ("success", "services", "runpod is now ok", None, 60 * 5),
           ("warn", "budget", "Daily spend is at 80% of the $15 budget", None, 60 * 20),
           ("info", "review", "Weekly review: pillar mix updated, testing question hooks", None, 60 * 24 * 3),
           ("info", "worker", "Worker demo-worker started (v1.0.0)", None, 60 * 26)]
@@ -219,9 +219,9 @@ def run(render_dir: Path) -> dict[str, int]:
                           "changes": [{"what": "hook weights", "from": "even", "to": "you-callout 1.3"}]})
     db.insert("spend", [{"service": s, "amount_usd": a, "detail": "demo", "channel_id": ch["id"],
                          "created_at": iso(NOW - timedelta(days=d))}
-                        for d in range(1, 15) for s, a in (("anthropic", 0.48), ("elevenlabs", 0.25), ("runpod", 0.08))])
+                        for d in range(1, 15) for s, a in (("anthropic", 0.48), ("runpod", 0.08))])
     from studio import crypto
-    for key in ("anthropic_api_key", "elevenlabs_api_key", "runpod_api_key"):   # fake keys so Settings looks set up
+    for key in ("anthropic_api_key", "runpod_api_key"):   # fake keys so Settings looks set up
         fake = f"sk-demo-not-a-real-key-{key[:4]}"
         db.insert("secrets", {"key": key, "ciphertext": crypto.encrypt(fake), "hint": fake[-4:]},
                   upsert=True, on_conflict="key")

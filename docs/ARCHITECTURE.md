@@ -20,9 +20,9 @@ The dashboard never talks to the worker directly. Both read/write Supabase:
 Encryption: AES-256-GCM. `MASTER_KEY` env = 32 random bytes, base64. Web and worker containers share it via `/opt/overthought-studio/.env`.
 Ciphertext format: `v1:` + base64( iv[12] || ciphertext || tag[16] ).
 (Node: `createCipheriv('aes-256-gcm')`, append `getAuthTag()`. Python: `cryptography` AESGCM, which already returns ct||tag.)
-Keys: `anthropic_api_key`, `elevenlabs_api_key`, `runpod_api_key`, `tiktok_client_key`, `tiktok_client_secret`, `resend_api_key`.
+Keys: `claude_oauth_token`, `anthropic_api_key` (optional), `runpod_api_key`, `tiktok_client_key`, `tiktok_client_secret`, `resend_api_key`.
 TikTok tokens in `tiktok_accounts.access_token_enc/refresh_token_enc` use the same format.
-Worker falls back to env vars `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `RUNPOD_API_KEY`, … if a secret row is missing.
+Worker falls back to env vars `ANTHROPIC_API_KEY`, `RUNPOD_API_KEY`, … if a secret row is missing.
 
 ## Job types (`jobs.type`)
 | type | payload | who enqueues |
@@ -40,7 +40,7 @@ Worker falls back to env vars `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `RUNPOD
 | `backup_db` | `{}` | scheduler daily 04:00 UTC |
 | `cleanup_storage` | `{}` | scheduler daily |
 
-`jobs.status='waiting'` + `waiting_on='elevenlabs'` means the job is parked because that service is out of credits
+`jobs.status='waiting'` + `waiting_on='runpod'` means the job is parked because that service is out of credits
 or down; the worker re-queues it automatically when `services.status` returns to `ok`.
 
 ## Video lifecycle (`videos.status`)
@@ -52,14 +52,20 @@ Side states: `rejected`, `failed` (error text), `blocked` (dependency down, see 
 `public` = direct post PUBLIC_TO_EVERYONE (requires audited TikTok app). Global `settings.global.auto_publish`
 must be true AND channel `require_approval=false` for zero-touch public posting.
 
-## Storage (bucket `videos`, private)
-`{channel_slug}/{video_id}/final.mp4`, `thumb.jpg`, `voice.mp3`, `scenes/{n}.jpg`. Dashboard plays via signed URLs.
+## Storage
+Supabase bucket `videos` (private): `{channel_slug}/{video_id}/preview.mp4` (540×960, ~3 MB, dashboard player via signed
+URL), `thumb.jpg`, `voice.mp3`, `words.json`, `scenes/{n}.png`. The **full-quality `final.mp4` lives on the VPS** in the
+worker's `work` volume (`/data/work/library/{video_id}.mp4`); publishing reads it from there (no Supabase egress). If it
+is missing, `pipeline.final_video` renders it again from the saved scenes + voice (free, deterministic).
+Cleanup (daily): 1 day after posting → voice/words/scenes removed; `video_retention_days` (default 7) after posting →
+preview removed; disk copy removed 2 days after posting. Thumbnails, rows and stats stay. This keeps the free plan
+(1 GB storage, 5 GB egress/month) comfortable at 10 videos/day.
 Bucket `backups`: `db/{yyyy-mm-dd}.json.gz` (nightly logical export of all public tables except secrets ciphertext is included — still encrypted).
 
 ## Service status (`services`)
 `anthropic` — no balance API; worker sums `spend` and compares with `settings.anthropic_credit.balance_usd` (owner enters
 after top-up). Any `credit balance is too low` error → `out_of_credits`.
-`elevenlabs` — `GET /v1/user/subscription` → `character_count/character_limit`; quota errors → `out_of_credits`.
+`voice` — Kokoro-82M runs inside the worker (free, no key); health = the model files load. Missing files → `unconfigured`.
 `runpod` — GraphQL `myself { clientBalance }`; `balance < 0.5` → `warning`, insufficient funds → `out_of_credits`.
 `tiktok` — app keys present + account tokens valid. `storage` — bucket usage. `worker` — heartbeat age.
 
@@ -68,8 +74,7 @@ after top-up). Any `credit balance is too low` error → `out_of_credits`.
 style:   { "preset": "charcoal", "bg": "#111111", "ink": "#F6F1E6", "accent": "#FFD60A",
            "body_font": "Kalam-Bold.ttf", "key_font": "CaveatBrush-Regular.ttf",
            "figure_prompt": "classic stick figure made of single thin white lines…", "seed": 7, "bug_text": "overthought" }
-voice:   { "provider": "elevenlabs", "voice_id": "…", "model_id": "eleven_multilingual_v2",
-           "stability": 0.45, "similarity_boost": 0.8, "style": 0.15, "speed": 1.0 }
+voice:   { "provider": "kokoro", "voice": "am_michael+am_fenrir", "speed": 1.0 }   // "a+b" blends two voices
 content: { "audience": "US, 16–34", "tone": "…", "pillars": [{"name":"Why you do that","weight":0.7}, …],
            "hook_styles": ["you-callout","myth-bust","number","question","pov"], "hashtags_core": ["#psychology"],
            "rules": ["Every claim cites a real study", …], "banned": ["medical advice"] }

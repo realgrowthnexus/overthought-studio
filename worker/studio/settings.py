@@ -4,7 +4,7 @@ import time
 from . import db
 
 DEFAULTS = {"paused": False, "auto_publish": False, "model": "claude-opus-5-5", "effort": "high",
-            "daily_budget_usd": 15, "monthly_budget_usd": 300, "video_retention_days": 21, "report_email": None}
+            "daily_budget_usd": 15, "monthly_budget_usd": 300, "video_retention_days": 7, "report_email": None}
 _cache: dict[str, tuple[float, dict]] = {}
 
 

@@ -73,11 +73,13 @@ is saved encrypted and the dashboard's **Claude** card shows "Connected" with yo
 - Anthropic's terms allow your own Claude Code sign-in for your own scripts, and say plan limits assume ordinary
   individual use. Keep the studio for your own use only.
 
+**Voice:** free. Kokoro (open-source, Apache-2.0) runs inside the worker on your VPS: no key, no bill, no limit.
+Pick each channel's voice in Channel → Settings → Look & voice (you can listen to every voice there).
+
 ## Step 5b: Other API keys (dashboard → Settings)
 | Key | Where to get it | Notes |
 |---|---|---|
 | Anthropic API key (optional) | console.anthropic.com → API Keys | **Not needed** — only if you ever switch from the Claude sign-in to pay-per-use |
-| ElevenLabs | elevenlabs.io → Developers → API Keys | Enable **Text to Speech**, **Voices: Read** and **User: Read**. User: Read is needed to show your balance |
 | RunPod | runpod.io → Settings → API Keys | |
 | TikTok client key and secret | Step 6 | |
 | Resend (optional) | resend.com | Emails the weekly report |
@@ -121,7 +123,7 @@ The VPS checks GitHub every 10 minutes and rebuilds itself when the code changes
 - Force an update: `/opt/overthought-studio/update.sh --force`
 
 ## When something stops
-The red bar at the top of the dashboard always says **what** stopped and **why**, for example "ElevenLabs quota used up". Work resumes **by itself** within 10 minutes of the fix, for example after a top-up.
+The red bar at the top of the dashboard always says **what** stopped and **why**, for example "RunPod balance is empty". Work resumes **by itself** within 10 minutes of the fix, for example after a top-up.
 
 ## Remove everything from the VPS
 Hostinger → VPS → **Browser terminal**, then:

@@ -55,7 +55,7 @@ export default function PrivacyPage() {
 
       <h2>Other services we use</h2>
       <p>
-        To make videos we use AI services for writing (Anthropic), images (RunPod) and voice (ElevenLabs). These services receive the video
+        To make videos we use AI services for writing (Anthropic) and images (RunPod); the voiceover is generated on our own server. These services receive the video
         topic and script only, never TikTok account data.
       </p>
 

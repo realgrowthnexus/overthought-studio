@@ -1,5 +1,23 @@
 import type { ChannelStyle } from "@/lib/types";
 
+/** Free Kokoro voices (run on the VPS). Keep in sync with worker/studio/voice.py CATALOG. */
+export const VOICES: { id: string; label: string }[] = [
+  { id: "am_michael+am_fenrir", label: "Male · deep, warm" },
+  { id: "am_fenrir", label: "Male · deep" },
+  { id: "am_michael", label: "Male · clear" },
+  { id: "am_onyx", label: "Male · low, calm" },
+  { id: "am_puck", label: "Male · energetic" },
+  { id: "bm_george", label: "Male · British storyteller" },
+  { id: "af_heart", label: "Female · warm" },
+  { id: "af_bella", label: "Female · confident" },
+  { id: "af_kore", label: "Female · calm, deep" },
+  { id: "af_aoede", label: "Female · soft" },
+  { id: "bf_emma", label: "Female · British" },
+  { id: "af_heart+af_bella", label: "Female · rich blend" },
+];
+export const DEFAULT_VOICE = "am_michael+am_fenrir";
+export const voiceSample = (id: string) => `/voices/${id.replace("+", "_")}.mp3`;
+
 const FIGURE =
   "classic stick figure made of single thin white lines: circle head, one straight line body, two line arms, two line legs, on pure black background, flat minimal hand-drawn vector, monochrome white lines only, no shading, no text, no letters";
 

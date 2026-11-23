@@ -9,22 +9,12 @@ from PIL import Image, ImageDraw
 from studio import config, content, crypto
 from studio.images import to_palette
 from studio.render import compose, drawon, music
-from studio.voice import words_from_alignment
 
 
 def test_crypto_roundtrip_and_format():
     tok = crypto.encrypt("sk-test-123")
     assert tok.startswith("v1:")
     assert crypto.decrypt(tok) == "sk-test-123"
-
-
-def test_words_from_alignment():
-    text = "Hi there, you."
-    starts = [i * 0.1 for i in range(len(text))]
-    ends = [s + 0.08 for s in starts]
-    ws = words_from_alignment(list(text), starts, ends)
-    assert [w.text for w in ws] == ["Hi", "there,", "you."]
-    assert ws[1].start == starts[3]
 
 
 def _script(n_beats=4):

@@ -34,8 +34,10 @@ export async function getAnthropicCredit(): Promise<{ balance_usd: number | null
 
 export const getServices = cache(async (): Promise<Service[]> => {
   const { data } = await (await db()).from("services").select("*");
-  const order = ["anthropic", "elevenlabs", "runpod", "tiktok", "storage", "worker"];
-  return ((data ?? []) as Service[]).sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  const order = ["anthropic", "voice", "runpod", "tiktok", "storage", "worker"];
+  return ((data ?? []) as Service[])
+    .filter((s) => order.includes(s.name))            // retired services (e.g. ElevenLabs) never show
+    .sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
 });
 
 export const getWorkers = cache(async (): Promise<WorkerHeartbeat[]> => {

@@ -52,6 +52,6 @@ def test_seed_has_full_lifecycle(seeded):
 def test_red_bar_toggle(seeded):
     seed_demo = seeded[0]
     seed_demo.set_red_bar(True)
-    assert seed_demo.db.select("services", {"name": "elevenlabs"}, single=True)["status"] == "out_of_credits"
+    assert seed_demo.db.select("services", {"name": "runpod"}, single=True)["status"] == "out_of_credits"
     seed_demo.set_red_bar(False)
-    assert seed_demo.db.select("services", {"name": "elevenlabs"}, single=True)["status"] == "ok"
+    assert seed_demo.db.select("services", {"name": "runpod"}, single=True)["status"] == "ok"

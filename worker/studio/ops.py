@@ -124,7 +124,8 @@ def publish_video(video_id: str) -> dict:
         return {"skipped": "already claimed"}
     pid = None
     try:
-        data = db.download("videos", v["video_path"])
+        from . import pipeline
+        data = pipeline.final_video(v, ch)
         pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True)
         db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
                                                "publish_status": {"mode": mode}})
@@ -431,23 +432,10 @@ def _health_claude_subscription() -> str:
     return "ok"
 
 
-def _health_elevenlabs() -> str:
-    try:
-        sub = voice.subscription()
-    except NotConfigured as p:
-        if "permission" in p.message and secrets.get("elevenlabs_api_key"):
-            set_status("elevenlabs", "warning", "Key works for voice but cannot read your balance — enable the "
-                       "'User: Read' permission on the ElevenLabs API key.")
-            return "warning"
-        raise
-    used, lim = int(sub.get("character_count") or 0), int(sub.get("character_limit") or 0)
-    left = lim - used
-    st = "ok" if left > 6000 else ("warning" if left > 1500 else "out_of_credits")
-    reset = sub.get("next_character_count_reset_unix")
-    msg = None if st == "ok" else f"{left:,} characters left (~{left // 1400} videos)." + (
-        f" Resets {datetime.fromtimestamp(reset, timezone.utc):%b %d}." if reset else "")
-    set_status("elevenlabs", st, msg, balance=left, unit="chars", limit=lim, details={"tier": sub.get("tier")})
-    return st
+def _health_voice() -> str:
+    info = voice.health()
+    set_status("voice", "ok", None, balance=info["voices"], unit="voices")
+    return "ok"
 
 
 def _health_runpod() -> str:
@@ -500,7 +488,7 @@ def _health_storage() -> str:
 def health_check() -> dict:
     out: dict = {}
     try:
-        for name, fn in (("anthropic", _health_anthropic), ("elevenlabs", _health_elevenlabs),
+        for name, fn in (("anthropic", _health_anthropic), ("voice", _health_voice),
                          ("runpod", _health_runpod), ("tiktok", _health_tiktok), ("storage", _health_storage)):
             _section(name, fn, out)
     finally:
@@ -634,23 +622,52 @@ def _sweep_local(days: int = 3) -> int:
     return n
 
 
+def _storage_paths(base: str, *, everything: bool) -> list[str]:
+    paths = [f"{base}/voice.mp3", f"{base}/words.json"] + [f"{base}/scenes/{o['name']}"
+                                                         for o in db.list_objects("videos", f"{base}/scenes/")]
+    if everything:
+        paths += [f"{base}/final.mp4", f"{base}/preview.mp4"]
+    return paths
+
+
+def _sweep_library(keep_days_after_post: int = 2) -> int:
+    """Full-quality files on the VPS: drop them once the video is posted (plus a little slack), rejected or gone."""
+    from . import pipeline
+    lib = pipeline.library_path("x").parent
+    files = list(lib.glob("*.mp4")) if lib.exists() else []
+    n, cutoff = 0, now() - timedelta(days=keep_days_after_post)
+    for f in files:
+        row = db.select("videos", {"id": f.stem}, single=True, columns="id,status,posted_at")
+        posted = datetime.fromisoformat(row["posted_at"]) if row and row.get("posted_at") else None
+        if not row or row["status"] == "rejected" or (posted and posted < cutoff):
+            f.unlink(missing_ok=True)
+            n += 1
+    for f in lib.glob("*.part") if lib.exists() else []:
+        f.unlink(missing_ok=True)
+    return n
+
+
 def cleanup_storage() -> dict:
-    days = int(settings.get().get("video_retention_days") or 21)
+    """Keep Supabase inside the free plan: after posting, the re-render inputs go after 1 day and the preview
+    after `video_retention_days` (default 7). Thumbnails and all rows/stats stay."""
+    days = int(settings.get().get("video_retention_days") or 7)
     cutoff = (now() - timedelta(days=days)).isoformat()
+    n = 0
+    for v in db.select("videos", {"posted_at": ("lt", (now() - timedelta(days=1)).isoformat()),
+                                  "audio_path": ("not.is", "null")}):
+        ch = db.select("channels", {"id": v["channel_id"]}, single=True, columns="slug")
+        db.remove("videos", _storage_paths(f"{ch['slug']}/{v['id']}", everything=False))
+        db.update("videos", {"id": v["id"]}, {"audio_path": None})
     old = db.select("videos", {"posted_at": ("lt", cutoff), "video_path": ("not.is", "null")})
     rejected = db.select("videos", {"status": "rejected", "updated_at": ("lt", (now() - timedelta(days=3)).isoformat()),
                                     "video_path": ("not.is", "null")})
-    n = 0
     for v in old + rejected:
         ch = db.select("channels", {"id": v["channel_id"]}, single=True, columns="slug")
-        base = f"{ch['slug']}/{v['id']}"
-        paths = [f"{base}/final.mp4", f"{base}/voice.mp3"] + [f"{base}/scenes/{o['name']}"
-                                                             for o in db.list_objects("videos", f"{base}/scenes/")]
-        db.remove("videos", paths)
+        db.remove("videos", _storage_paths(f"{ch['slug']}/{v['id']}", everything=True))
         db.update("videos", {"id": v["id"]}, {"video_path": None, "audio_path": None})
         n += 1
     # old events / finished jobs
     db.delete("events", {"created_at": ("lt", (now() - timedelta(days=60)).isoformat())})
     db.delete("jobs", {"status": ("in", ["done", "cancelled"]), "finished_at": ("lt", (now() - timedelta(days=14)).isoformat())})
     db.delete("oauth_states", {"created_at": ("lt", (now() - timedelta(hours=1)).isoformat())})
-    return {"videos_cleaned": n, "local_dirs_removed": _sweep_local()}
+    return {"videos_cleaned": n, "local_dirs_removed": _sweep_local(), "library_files_removed": _sweep_library()}

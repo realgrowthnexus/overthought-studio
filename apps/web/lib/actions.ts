@@ -259,9 +259,9 @@ const channelSchema = z.object({
     bug_text: z.string().max(40).optional(),
   }).passthrough(), 8_000),
   voice: jsonCap(z.object({
-    provider: z.string().max(40).optional(), voice_id: z.string().max(80).optional(), model_id: z.string().max(80).optional(),
-    stability: z.coerce.number().min(0).max(1).optional(), similarity_boost: z.coerce.number().min(0).max(1).optional(),
-    style: z.coerce.number().min(0).max(1).optional(), speed: z.coerce.number().min(0.7).max(1.3).optional(),
+    provider: z.literal("kokoro").optional(),
+    voice: z.string().regex(/^[a-z]{2}_[a-z]+(\+[a-z]{2}_[a-z]+)?$/, "Pick a voice from the list").optional(),
+    speed: z.coerce.number().min(0.7).max(1.3).optional(),
   }).passthrough(), 4_000),
   content: jsonCap(z.object({
     audience: z.string().max(400).optional(), tone: z.string().max(600).optional(),

@@ -8,7 +8,7 @@ from .log import event
 
 FIX_HINTS = {
     "anthropic": "Top up credits at console.anthropic.com → Billing (only when using an API key instead of the Claude sign-in).",
-    "elevenlabs": "Top up or upgrade at elevenlabs.io → Subscription. Work resumes automatically.",
+    "voice": "The free voice engine (Kokoro) runs inside the worker. Run doctor.sh; a worker rebuild usually fixes it.",
     "runpod": "Add funds at runpod.io → Billing. Work resumes automatically.",
     "tiktok": "Reconnect the TikTok account in Accounts, or check the TikTok app keys in Settings.",
     "storage": "Supabase storage is full or unreachable — lower retention days or upgrade the Supabase plan.",
@@ -72,7 +72,10 @@ def set_status(name: str, status: str, message: str | None = None, *, balance=No
         vals["balance_limit"] = limit
     if details is not None:
         vals["details"] = details
-    db.update("services", {"name": name}, vals)
+    if prev:
+        db.update("services", {"name": name}, vals)
+    else:                                   # e.g. 'voice' before migration 0004 ran: create the row
+        db.insert("services", {"name": name, **vals}, upsert=True, on_conflict="name")
     if prev.get("status") != status:
         lvl = "success" if status == "ok" else ("warn" if status in ("warning", "unconfigured") else "error")
         msg = f"{name} is now {status.replace('_', ' ')}" + (f" — {message}" if message else "")
@@ -81,7 +84,7 @@ def set_status(name: str, status: str, message: str | None = None, *, balance=No
 
 SETUP_HINTS = {
     "anthropic": "Sign in to Claude: on the VPS run  sudo bash /opt/overthought-studio/src/infra/connect-claude.sh",
-    "elevenlabs": "Add your ElevenLabs API key in Settings → API keys (enable the 'Text to Speech' and 'User: Read' permissions).",
+    "voice": "The voice model files are missing from the worker image. Run: /opt/overthought-studio/update.sh --force",
     "runpod": "Add your RunPod API key in Settings → API keys.",
     "tiktok": "Add the TikTok app keys in Settings, then connect the account in Accounts.",
 }

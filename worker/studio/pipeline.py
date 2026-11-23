@@ -65,6 +65,7 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                  "factcheck": dict(factcheck=None)}.get(from_stage, {})
         if STAGES.index(from_stage) <= STAGES.index("render"):
             clear.update(video_path=None, thumb_path=None, duration_s=None)
+            library_path(video_id).unlink(missing_ok=True)
         if STAGES.index(from_stage) <= STAGES.index("visuals"):
             shutil.rmtree(work / "scenes", ignore_errors=True)
         if STAGES.index(from_stage) <= STAGES.index("voice"):
@@ -161,12 +162,17 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
         elif name == "render":
             _stage(video, name, "Animating and editing the video")
             out = _render(video, ch, work)
-            _upd(video_id, progress=94, stage_detail="Uploading the final video")
+            _upd(video_id, progress=94, stage_detail="Saving the video and uploading a preview")
             base = f"{ch['slug']}/{video_id}"
-            db.upload("videos", f"{base}/final.mp4", Path(out["path"]).read_bytes(), "video/mp4")
+            # Full-quality file stays on the VPS disk (free, and publishing reads it without Supabase egress);
+            # Supabase only gets a small preview for the dashboard player, so the free plan's 1 GB lasts.
+            _keep_final(video_id, Path(out["path"]))
+            preview = work / "preview.mp4"
+            make_preview(Path(out["path"]), preview)
+            db.upload("videos", f"{base}/preview.mp4", preview.read_bytes(), "video/mp4")
             db.upload("videos", f"{base}/thumb.jpg", Path(out["thumb"]).read_bytes(), "image/jpeg")
             script = content.Script.model_validate(video["script"])
-            video.update(_upd(video_id, video_path=f"{base}/final.mp4", thumb_path=f"{base}/thumb.jpg",
+            video.update(_upd(video_id, video_path=f"{base}/preview.mp4", thumb_path=f"{base}/thumb.jpg",
                               audio_path=f"{base}/voice.mp3", duration_s=round(out["probe"]["duration"], 2),
                               file_size=out["probe"]["size"], caption=video.get("caption") or script.caption))
 
@@ -178,6 +184,49 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
           channel_id=ch["id"], video_id=video_id)
     shutil.rmtree(work, ignore_errors=True)
     return video
+
+
+def library_path(video_id: str) -> Path:
+    """Where the full-quality final.mp4 lives on the VPS (the persistent `work` volume)."""
+    return config.WORK / "library" / f"{video_id}.mp4"
+
+
+def _keep_final(video_id: str, src: Path) -> Path:
+    dst = library_path(video_id)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_suffix(".part")
+    shutil.copyfile(src, tmp)
+    tmp.replace(dst)                      # atomic: a half-copied file is never picked up for publishing
+    return dst
+
+
+def make_preview(src: Path, dst: Path) -> None:
+    """540×960 preview for the dashboard player (~3 MB for 90 s)."""
+    p = subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(src), "-vf", "scale=540:-2",
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", str(dst)],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError("Preview encode failed: " + p.stderr[-400:])
+
+
+def final_video(video: dict, ch: dict) -> bytes:
+    """The full-quality file for TikTok. Normally on disk; if the disk copy is gone (new VPS, cleanup), it is
+    rendered again from the saved scenes + voice — free and deterministic — instead of failing the post."""
+    lib = library_path(video["id"])
+    if lib.exists():
+        return lib.read_bytes()
+    if (video.get("video_path") or "").endswith("/final.mp4"):        # videos made before the preview change
+        return db.download("videos", video["video_path"])
+    event(f"{video.get('title') or 'Video'}: full-quality file not on disk, rendering it again", "warn", "publish",
+          channel_id=ch["id"], video_id=video["id"])
+    work = config.WORK / "videos" / video["id"]
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        out = _render(video, ch, work)
+        return _keep_final(video["id"], Path(out["path"])).read_bytes()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def _restore(storage_path: str, dest: Path) -> bool:

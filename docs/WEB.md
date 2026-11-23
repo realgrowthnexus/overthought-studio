@@ -21,7 +21,7 @@ Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Nex
 ## First run
 1. Open `/setup`, enter `SETUP_TOKEN`, your email and a password. Works only while no owner exists.
 2. Claude: run `infra/connect-claude.sh` on the VPS once (signs in with the owner's Claude plan; no API key).
-   Settings → API keys: paste ElevenLabs, RunPod, TikTok client key/secret.
+   Settings → API keys: paste RunPod and the TikTok client key/secret. (The voice is free and needs no key.)
 3. TikTok accounts: follow the on-page guide (redirect URI, privacy and terms URLs are shown with copy buttons).
 
 ## Routes

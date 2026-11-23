@@ -90,7 +90,7 @@ const CASES = [
       try { await dlg.waitFor({ timeout: 1500 }); } catch { return 'Remove deleted the key with no confirmation'; }
       const text = await dlg.innerText();
       await p.getByRole('button', { name: 'Cancel' }).last().click();
-      return /Claude|ElevenLabs|RunPod|TikTok|Resend/.test(text) ? null : 'confirmation does not name the key';
+      return /Claude|RunPod|TikTok|Resend/.test(text) ? null : 'confirmation does not name the key';
     },
   },
   {

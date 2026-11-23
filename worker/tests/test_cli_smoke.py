@@ -15,7 +15,7 @@ def _healthy_except_anthropic(monkeypatch, tmp_path):
         raise NotConfigured("anthropic", "No Anthropic API key saved")
 
     monkeypatch.setattr(llm, "ping", no_key)
-    monkeypatch.setattr(voice, "subscription", lambda: {"character_count": 10, "character_limit": 100000})
+    monkeypatch.setattr(voice, "check", lambda: {"seconds": 1.9, "words": 4})
     monkeypatch.setattr(ops, "_health_runpod", lambda: "balance $12.40")
     return w
 
@@ -26,7 +26,7 @@ def test_smoke_reports_each_part_independently(monkeypatch, tmp_path):
     assert result["anthropic"]["ok"] is False
     assert "No Anthropic API key saved" in result["anthropic"]["error"]
     assert result["supabase"]["ok"] is True and result["supabase"]["channels"] == 1
-    assert result["elevenlabs"]["ok"] is True and result["runpod"]["ok"] is True
+    assert result["voice"]["ok"] is True and result["runpod"]["ok"] is True
     assert result["ffmpeg"]["ok"] is True
 
 

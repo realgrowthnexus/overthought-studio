@@ -1,4 +1,4 @@
-"""In-memory stand-ins for Supabase, Claude, RunPod and ElevenLabs so the real pipeline can run offline."""
+"""In-memory stand-ins for Supabase, Claude, RunPod and the voice engine so the real pipeline can run offline."""
 from __future__ import annotations
 
 import collections
@@ -108,6 +108,10 @@ class FakeWorld:
         except KeyError:
             raise db.DBError(f"GET /storage/v1/object/{bucket}/{path} -> 400 not found") from None
 
+    def list_objects(self, bucket, prefix="", limit=1000):
+        pre = f"{bucket}/{prefix}"
+        return [{"name": k[len(pre):], "id": k} for k in sorted(self.storage) if k.startswith(pre) and "/" not in k[len(pre):]]
+
     def remove(self, bucket, paths):
         for p in paths:
             self.storage.pop(f"{bucket}/{p}", None)
@@ -153,8 +157,8 @@ class FakeWorld:
         return im, 0.01
 
     def synthesize(self, text, voice_cfg, *, channel_id=None, video_id=None):
-        self.calls["elevenlabs"] += 1
-        self._maybe_fail("elevenlabs")
+        self.calls["voice"] += 1
+        self._maybe_fail("voice")
         words, t = [], 0.0
         for w in text.split():
             words.append(Word(w, round(t, 3), round(t + 0.3, 3)))
@@ -164,7 +168,7 @@ class FakeWorld:
             p = Path(d) / "v.mp3"
             subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
                             "-t", f"{dur:.2f}", "-q:a", "9", str(p)], check=True)
-            return p.read_bytes(), words, 0.04
+            return p.read_bytes(), words, 0.0
 
 
 def _beat(i: int, kind: str, n_scenes: int, words: int = 19) -> content.Beat:
@@ -205,7 +209,7 @@ def seed_channel(w: FakeWorld) -> dict:
     ch = copy.deepcopy(seed.CHANNELS[0])
     ch.update(id=str(uuid.uuid4()), require_approval=True, min_seconds=65, max_seconds=95, status="active")
     w.tables["channels"].append(ch)
-    for name in ("anthropic", "elevenlabs", "runpod", "tiktok", "storage", "worker"):
+    for name in ("anthropic", "voice", "runpod", "tiktok", "storage", "worker"):
         w.tables["services"].append({"name": name, "status": "ok"})
     return ch
 
@@ -217,7 +221,7 @@ def seed_video(w: FakeWorld, ch: dict) -> dict:
 
 def install(monkeypatch, work_dir: Path) -> FakeWorld:
     w = FakeWorld()
-    for name in ("select", "insert", "update", "delete", "rpc", "upload", "download", "remove"):
+    for name in ("select", "insert", "update", "delete", "rpc", "upload", "download", "remove", "list_objects"):
         monkeypatch.setattr(db, name, getattr(w, name))
     monkeypatch.setattr(llm, "structured", w.structured)
     monkeypatch.setattr(llm, "research", w.research)

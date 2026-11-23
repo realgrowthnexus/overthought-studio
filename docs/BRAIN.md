@@ -3,7 +3,7 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-23, session 4. **FRESH-START handoff** (see §0.0 first).
+> Last updated: 2026-11-23, session 5. Read §0.00 first, then §0.0.
 
 ## 0. START HERE (next Claude)
 1. Read this whole file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md`, `docs/SETUP.md`, `docs/tiktok-api-notes.md`.
@@ -11,7 +11,40 @@
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
 
-### 0.0 LATEST (2026-11-23): owner is taking it down and will redeploy step by step WITH you
+### 0.00 Session 5 (2026-11-23): free voice + Supabase free-plan storage
+Owner said "GO, tumhari salah theek hai" to this plan:
+- **ElevenLabs is gone** (owner: "itne paise nahi"). Voice = **Kokoro-82M** (Apache-2.0), CPU on the VPS, $0.
+  - `worker/studio/voice.py`: the `onnx-community/Kokoro-82M-v1.0-ONNX-timestamped` export (outputs `durations`), each
+    word phonemized separately so word → token spans are exact; sentence by sentence (≤500 tokens); "a+b" blends voices.
+    Measured: RTF ≈ 0.3 on 4 CPUs (90 s audio ≈ 27 s), Whisper heard 52–53/53 words, first-word timing within 30 ms of
+    the energy onset (Whisper itself is ~190 ms early — don't "correct" for it).
+  - Model files are fetched at image build by `worker/fetch_models.py` (HF revision `dd4401a9…` + GitHub release
+    `model-files-v1.0`, both sha256-pinned) into `/opt/kokoro`. Deps `kokoro-onnx==0.6.1`, `onnxruntime==1.32.0`.
+  - Voices (owner accepted my picks): overthought `am_michael+am_fenrir`, money-brain `am_onyx`, tiny-history
+    `bm_george`, how-it-works `af_heart`, myth-busted `af_bella`. 12-voice catalog in `voice.CATALOG` and
+    `apps/web/lib/presets.ts` VOICES (keep in sync); samples in `apps/web/public/voices/`; channel form has a picker +
+    speed slider + player. Service row `elevenlabs` → `voice`.
+- **Storage fits Supabase FREE plan** (org "realgrowthnexus" is on free: 1 GB storage, 5 GB egress). The old preview video
+  used 36 MB (final.mp4 32.6 MB) → 10/day would have filled 1 GB in 3 days. Now: full `final.mp4` on the VPS
+  (`/data/work/library/{id}.mp4`, `pipeline.library_path`), Supabase gets `preview.mp4` (540×960, CRF 28), publish reads
+  the disk copy (`pipeline.final_video`, re-renders from saved scenes+voice if missing). Cleanup: re-render inputs 1 day
+  after posting, preview after `video_retention_days` (now default **7**), disk copy 2 days after posting.
+- **Migration `0004_free_voice.sql`** (services row, channel voices, drop ElevenLabs key, retention 7). **Not applied
+  yet as of this note**: the Supabase connector asked the owner for approval and timed out. Apply it (connector
+  `apply_migration` or SQL editor). Code is safe without it (worker creates the `voice` row; dashboard hides
+  `elevenlabs`; channels fall back to the default voice).
+- **Cost (owner asked):** per video was $0.64 ($0.55 voice + $0.084 for 7 Flux images). Now ≈ **$0.084**. 10 videos/day ≈
+  **$25/month RunPod** + Claude plan. Claude Pro likely carries ~3–6 videos/day; 10/day probably needs Max — measure
+  with the Claude card after the first real videos. VPS already paid, Supabase free, TikTok free.
+- New cloud env for this repo: **`overthought-studio` (env_01GR3mSLKRLQ9GMKkGifsahm)**, hosts: HF + CDN, Supabase, studio
+  domain, Hostinger MCP, RunPod, GitHub releases. (The env id in §0.4 is from the owner's other account.)
+- Supabase connector is connected (full access, owner-approved). **Hostinger connector was NOT visible** to the session
+  yet; owner said they would connect it. Owner says DNS `studio` A record is done.
+- Owner wants to use a (testing) Claude account: after install run `infra/connect-claude.sh` and open the link in
+  the browser signed in to that account. A `claude_oauth_token` from the earlier sign-in is still saved in Supabase.
+- Ideas not done yet: cheaper images (Flux schnell / reuse a scene library) could cut the $25/month further.
+
+### 0.0 (2026-11-23): owner is taking it down and will redeploy step by step WITH you
 - Owner: "project 1 zip file mein do, main khud dubara deploy karunga tumhare saath taaki mujhe samajh aaye; baaki
   VPS se ya jahan bhi hai har jagah se clean karo."
 - Delivered: one zip of the whole repo (code + docs + git history, no secrets) with `START-HERE.txt`.
@@ -42,14 +75,14 @@
   pushed; **not yet connected** — the dashboard's Claude card says "Not signed in" until the owner runs the sign-in
   script (§0.2). Details §0.3.
 - **No Claude-powered video has ever run end to end.** The only real video is the hand-written doorway preview (§3).
-- Keys NOT added yet (owner: "keys skip, video zaroori"): ElevenLabs, RunPod. Nothing is being billed.
+- Keys NOT added yet: RunPod. Nothing is being billed. (ElevenLabs was dropped in session 5.)
 
 ### 0.2 What the owner still has to do (walk them through it, one step at a time)
 1. On the VPS (Hostinger Browser terminal): `sudo bash /opt/overthought-studio/src/infra/connect-claude.sh` — open
    the link, sign in to Claude, paste the code back. The script captures the token itself; card then says Connected.
    If anything fails: `sudo bash /opt/overthought-studio/src/infra/doctor.sh` and ask for the output (no secrets in it).
 2. Supabase → Auth settings: turn OFF public sign-ups; set Site URL to `https://studio.getgrowthnexus.com`.
-3. Dashboard → Settings: ElevenLabs key **with User: Read** permission, RunPod key.
+3. Dashboard → Settings: RunPod key. (No ElevenLabs any more — voice is free, §0.00.)
 4. Delete the Supabase access token named `claude-demo` (api.supabase.com) — not needed any more.
 5. Change the VPS root password (it was pasted in chat once). Delete the stray empty Supabase project in the
    "hellowickettravels" org.
@@ -156,13 +189,13 @@ A self-running studio for **5 US TikTok channels** targeting the **Creator Rewar
 
 Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 after the app is live**):
 
-| slug | name | accent | ElevenLabs voice |
+| slug | name | accent | Kokoro voice |
 |---|---|---|---|
-| overthought | Overthought: why your brain does that (37 seed ideas) | #FFD60A | Chris `iP95p4xoKVk53GoZ742B` |
-| money-brain | Money Brain | #3DDC97 | Eric `cjVigY5qzO86Huf0OWal` |
-| tiny-history | Tiny History | #FF7A59 | Brian `nPczCjzI2devNBz1zQrb` |
-| how-it-works | How It Works | #4CC9F0 | River `SAz9YHcvj6GT2YYXdXww` |
-| myth-busted | Myth Busted | #FF4D6D | Sarah `EXAVITQu4vr4xnSDxMaL` |
+| overthought | Overthought: why your brain does that (37 seed ideas) | #FFD60A | `am_michael+am_fenrir` (deep warm male) |
+| money-brain | Money Brain | #3DDC97 | `am_onyx` (low calm male) |
+| tiny-history | Tiny History | #FF7A59 | `bm_george` (British male) |
+| how-it-works | How It Works | #4CC9F0 | `af_heart` (warm female) |
+| myth-busted | Myth Busted | #FF4D6D | `af_bella` (confident female) |
 
 ## 3. What exists (all on `main` of `realgrowthnexus/overthought-studio`)
 - **`apps/web`:** Next.js 15.5 dashboard (App Router, React 19, Tailwind v4, Supabase SSR, `output: "standalone"`).
@@ -183,20 +216,20 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   - Scheduler: a 1-minute tick that keeps the buffer full, assigns slots, and runs periodic jobs once per period
     via `once_key`.
   - Pipeline (`pipeline.py`): research (Claude + web_search) → script (structured output) → scorecard, rewriting
-    below 8/10 → fact-check, which is permanent-fail if it fails twice → RunPod Flux scenes → ElevenLabs voice with
-    word timings and a length gate → render.
+    below 8/10 → fact-check, which is permanent-fail if it fails twice → RunPod Flux scenes → Kokoro voice (free, on
+    the VPS) with word timings and a length gate → render.
   - Render (`render/`): draw-on lines, accent pop, push-in, word captions, synthesized music bed, safe zones, loop
     crossfade. Output is H.264 1080×1920 at 30 fps, rendered in a subprocess.
   - Ops (`ops.py`):
     - publishing through the official Content Posting API, in draft, private or public mode;
     - stats sync, plus Studio CSV/XLSX import;
     - weekly review;
-    - health and credit checks for Anthropic, ElevenLabs, RunPod, TikTok and storage, with auto-resume;
+    - health and credit checks for Claude, the voice engine, RunPod, TikTok and storage, with auto-resume;
     - budget caps, a circuit breaker, nightly backups to the Supabase `backups` bucket, and cleanup.
   - Hardened by a 25-item code audit. 75 tests (`cd worker && python -m pytest -q -p no:cacheprovider`).
   - Needs **ffmpeg, about 3 CPU cores, about 4–6 GB RAM, and a long-running process**.
 - **Supabase:** project `overthought-studio`, ref **`xkbgusqmdeocjwxaknjx`**, us-east-1, org "realgrowthnexus".
-  - Migrations 0001–0003 applied.
+  - Migrations 0001–0003 applied; 0004 written in session 5 (see §0.00 for whether it is applied).
   - Storage buckets: `videos`, `backups`.
   - The dashboard and worker never talk directly; they share DB tables (`jobs`, `videos`, `channels`, `services`,
     `events`, `spend`, `settings`, `secrets`).
@@ -221,8 +254,6 @@ Channels (seeded, all PAUSED; the owner wants to **discuss niches for 2–5 afte
   - Outbound SSH is blocked.
   - Anthropic hosts can't be proxy-injected.
   - Docker builds in the sandbox need the proxy CA (temporary Dockerfile variant only).
-- The ElevenLabs key saved in the cloud env lacks `user_read`, so it can't read the balance. The owner should create
-  a key with User: Read.
 - `docs/SETUP.md` describes the VPS flow, incl. Step 5a "Connect Claude". Remove everything: `infra/uninstall.sh`.
 - The 5-hour Claude limit is expected to hit sometimes; that is a calm pause, not an error (owner agreed).
 

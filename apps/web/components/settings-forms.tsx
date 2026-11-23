@@ -12,7 +12,6 @@ import { relTime } from "@/lib/format";
 
 const KEYS: { key: SecretKey; label: string; hint: string; where: string }[] = [
   { key: "anthropic_api_key", label: "Claude API key (optional)", hint: "Not needed: the studio uses your Claude sign-in. Only for switching to pay-per-use.", where: "console.anthropic.com → API keys" },
-  { key: "elevenlabs_api_key", label: "ElevenLabs API key", hint: "Voiceover. One voice per channel.", where: "elevenlabs.io → Developers → API keys" },
   { key: "runpod_api_key", label: "RunPod API key", hint: "Scene images (Flux). About $0.012 per image.", where: "runpod.io → Settings → API keys" },
   { key: "tiktok_client_key", label: "TikTok client key", hint: "From your TikTok developer app.", where: "developers.tiktok.com → your app" },
   { key: "tiktok_client_secret", label: "TikTok client secret", hint: "From the same app page.", where: "developers.tiktok.com → your app" },
@@ -129,7 +128,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         <Field label="Monthly budget (USD)" htmlFor="monthly">
           <Input id="monthly" type="number" min={0} step="5" value={s.monthly_budget_usd} onChange={(e) => set("monthly_budget_usd", Number(e.target.value))} />
         </Field>
-        <Field label="Keep video files for (days)" htmlFor="retention" hint="After posting. Scripts and stats are kept forever.">
+        <Field label="Keep video files for (days)" htmlFor="retention" hint="Dashboard preview, kept this long after posting (7 keeps the free Supabase plan comfortable). The full-quality file lives on your server. Scripts and stats are kept forever.">
           <Input id="retention" type="number" min={3} value={s.video_retention_days} onChange={(e) => set("video_retention_days", Number(e.target.value))} />
         </Field>
         <Field label="Weekly report email" htmlFor="email" hint="Needs a Resend key.">

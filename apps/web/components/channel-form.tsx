@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, Plus, Trash2, X } from "lucide-react";
 import type { Channel, Pillar } from "@/lib/types";
 import { createChannel, updateChannel, type ChannelInput } from "@/lib/actions";
-import { HOOK_STYLES, STYLE_PRESETS, TIMEZONES } from "@/lib/presets";
+import { DEFAULT_VOICE, HOOK_STYLES, STYLE_PRESETS, TIMEZONES, VOICES, voiceSample } from "@/lib/presets";
 import { useAction } from "@/components/use-action";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/primitives";
@@ -31,7 +31,7 @@ function initial(ch?: Channel): ChannelInput {
     min_seconds: ch?.min_seconds ?? 65,
     max_seconds: ch?.max_seconds ?? 95,
     style: { ...preset.style, ...(ch?.style ?? {}) },
-    voice: { provider: "elevenlabs", model_id: "eleven_multilingual_v2", stability: 0.45, similarity_boost: 0.8, style: 0.15, speed: 1, ...(ch?.voice ?? {}) },
+    voice: ch?.voice?.provider === "kokoro" ? { speed: 1, ...ch.voice, provider: "kokoro" as const } : { provider: "kokoro" as const, voice: DEFAULT_VOICE, speed: 1 },
     content: {
       audience: "US, English, ages 16–34",
       tone: "Calm, warm, slightly amused — a smart friend at 2 a.m.",
@@ -157,25 +157,18 @@ export function ChannelForm({ mode, channel }: { mode: Mode; channel?: Channel }
           <Textarea id="fig" rows={3} value={v.style?.figure_prompt ?? ""} onChange={(e) => setNested("style", { figure_prompt: e.target.value })} />
         </Field>
         <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 border-t border-line pt-5 sm:grid-cols-3">
-          <Field label="ElevenLabs voice ID" htmlFor="voice" className="sm:col-span-2" hint="Find it in ElevenLabs → Voices → ⋯ → Copy voice ID. One voice per channel, never changed.">
-            <Input id="voice" className="font-mono" value={v.voice?.voice_id ?? ""} placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" onChange={(e) => setNested("voice", { voice_id: e.target.value.trim() })} />
-          </Field>
-          <Field label="Voice model" htmlFor="vmodel">
-            <Select id="vmodel" value={v.voice?.model_id ?? "eleven_multilingual_v2"} onChange={(e) => setNested("voice", { model_id: e.target.value })}>
-              <option value="eleven_multilingual_v2">Multilingual v2 (best quality)</option>
-              <option value="eleven_turbo_v2_5">Turbo v2.5 (cheaper)</option>
-              <option value="eleven_flash_v2_5">Flash v2.5 (cheapest)</option>
+          <Field label="Voice" htmlFor="voice" className="sm:col-span-2" hint="Free voice that runs on your server: no key, no bill. Keep one voice per channel so viewers recognise it.">
+            <Select id="voice" value={v.voice?.voice ?? DEFAULT_VOICE} onChange={(e) => setNested("voice", { provider: "kokoro", voice: e.target.value })}>
+              {VOICES.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </Select>
           </Field>
-          {([
-            ["stability", "Stability", "Lower sounds more expressive"],
-            ["similarity_boost", "Similarity", "How close to the original voice"],
-            ["style", "Style", "Keep low for a calm read"],
-          ] as const).map(([k, label, hint]) => (
-            <Field key={k} label={`${label} · ${Number(v.voice?.[k] ?? 0).toFixed(2)}`} htmlFor={k} hint={hint}>
-              <input id={k} type="range" min={0} max={1} step={0.05} value={Number(v.voice?.[k] ?? 0)} onChange={(e) => setNested("voice", { [k]: Number(e.target.value) })} className="accent-[var(--accent)]" />
-            </Field>
-          ))}
+          <Field label={`Speed · ${Number(v.voice?.speed ?? 1).toFixed(2)}×`} htmlFor="vspeed" hint="1.00 is natural. Slightly faster suits energetic channels.">
+            <input id="vspeed" type="range" min={0.85} max={1.15} step={0.01} value={Number(v.voice?.speed ?? 1)} onChange={(e) => setNested("voice", { speed: Number(e.target.value) })} className="accent-[var(--accent)]" />
+          </Field>
+          <div className="sm:col-span-3">
+            <p className="mb-2 text-sm text-ink-2">Listen to this voice</p>
+            <audio key={v.voice?.voice ?? DEFAULT_VOICE} controls preload="none" className="w-full max-w-md" src={voiceSample(v.voice?.voice ?? DEFAULT_VOICE)} />
+          </div>
         </div>
       </div>
     ),

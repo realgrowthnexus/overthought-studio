@@ -90,12 +90,12 @@ export function videoTone(s: VideoStatus, error?: string | null): Tone {
 }
 
 export const SERVICE_LABEL: Record<ServiceName, string> = {
-  anthropic: "Claude", elevenlabs: "ElevenLabs", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
+  anthropic: "Claude", voice: "Voice", runpod: "RunPod", tiktok: "TikTok", storage: "Storage", worker: "Worker",
 };
 
 export const SERVICE_ROLE: Record<ServiceName, string> = {
   anthropic: "Research, scripts and fact-checks",
-  elevenlabs: "Voiceover",
+  voice: "Voiceover (free, on your server)",
   runpod: "Scene images",
   tiktok: "Posting and stats",
   storage: "Videos and backups",
@@ -120,11 +120,12 @@ export function serviceFix(name: ServiceName, status: ServiceStatus): { text: st
     if (name === "worker") return { text: "Install the worker on your VPS — see the setup guide.", href: "/settings#worker" };
     if (name === "tiktok") return { text: "Add your TikTok app keys, then connect an account.", href: "/accounts" };
     if (name === "anthropic") return { text: "Sign in to Claude once on the VPS — Settings shows the command.", href: "/settings#claude" };
+    if (name === "voice") return { text: "The voice model is missing from the worker. On the VPS run: /opt/overthought-studio/update.sh --force", href: "/settings#worker" };
     return { text: `Add your ${SERVICE_LABEL[name]} API key in Settings.`, ...settings };
   }
   if (status === "out_of_credits") {
     const where: Partial<Record<ServiceName, string>> = {
-      anthropic: "console.anthropic.com → Billing", elevenlabs: "elevenlabs.io → Subscription", runpod: "runpod.io → Billing",
+      anthropic: "console.anthropic.com → Billing", runpod: "runpod.io → Billing",
     };
     return { text: `Top up at ${where[name] ?? SERVICE_LABEL[name]}. Paused work resumes on its own once credit is back.`, ...settings };
   }
