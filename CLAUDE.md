@@ -4,7 +4,7 @@
 - who the owner is and how to talk to them (Roman Urdu or simple English, never Hindi or Devanagari);
 - every decision made so far;
 - the current state, IDs and next steps;
-- the **fresh-start redeploy plan** (owner redeploys step by step with you; dashboard on Hostinger Web App Hosting, worker host to decide).
+- the **open hosting decision** (Hostinger Web App Hosting replaces the VPS).
 
 You own this project end to end. Continue exactly where the last session stopped.
 
