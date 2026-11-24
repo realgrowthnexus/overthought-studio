@@ -8,7 +8,9 @@ import signal
 import shutil
 import subprocess
 import sys
+import time
 import zlib
+from typing import Callable
 from pathlib import Path
 
 from . import config, content, db, images, spend, voice
@@ -65,7 +67,10 @@ def _source_label(s: dict) -> str:
     return f"→ {s['researcher']} · {s['year']}"
 
 
-def produce(video_id: str, from_stage: str | None = None) -> dict:
+def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | None = None,
+            on_cleared: Callable[[], None] | None = None) -> dict:
+    """Run the line for one video. `stop_after` (test runs) ends after that stage without counting as a failure.
+    `on_cleared` is called once the redo of `from_stage` has wiped its outputs, so retries don't wipe again."""
     video = db.select("videos", {"id": video_id}, single=True)
     if not video:
         raise RuntimeError(f"video {video_id} not found")
@@ -90,8 +95,12 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
             (work / "voice.mp3").unlink(missing_ok=True)
             (work / "words.json").unlink(missing_ok=True)
         video.update(_upd(video_id, approval=None, **clear))
+        if on_cleared:
+            on_cleared()
 
+    secs: dict[str, float] = {}
     for name in STAGES[start:]:
+        t0 = time.monotonic()
         if name == "research" and not video.get("research"):
             _stage(video, name, "Researching the topic and the original study")
             res, usd = content.research_topic(ch, idea, video_id=video_id)
@@ -198,13 +207,28 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                               audio_path=f"{base}/voice.mp3", duration_s=round(out["probe"]["duration"], 2),
                               file_size=out["probe"]["size"], caption=video.get("caption") or script.caption))
 
+        secs[name] = round(time.monotonic() - t0, 1)
+        if stop_after == name:
+            return _stop_test(video, ch, name, secs)
+
     approved = not ch.get("require_approval", True)
     video.update(_upd(video_id, status="approved" if approved else "ready", progress=100, stage_detail=None,
                       approval=None if approved else "pending", error=None))
     event(f"Ready: {video['title']} ({video.get('duration_s')}s, ${video.get('cost_usd', 0):.2f})"
           + ("" if approved else " — waiting for your approval"), "success", "pipeline",
-          channel_id=ch["id"], video_id=video_id)
+          channel_id=ch["id"], video_id=video_id, data={"seconds": secs})
     shutil.rmtree(work, ignore_errors=True)
+    return video
+
+
+def _stop_test(video: dict, ch: dict, stage: str, secs: dict) -> dict:
+    """A test run ends here: parked as 'rejected' so it never posts, never blocks the channel, never trips the
+    failure breaker."""
+    video.update(_upd(video["id"], status="rejected", approval="rejected", progress=PROGRESS[stage],
+                      rejection_note=f"Test run: stopped after {stage}", stage_detail=f"Test stopped after {stage}",
+                      error=None))
+    event(f"Test run stopped after {stage}: " + ", ".join(f"{k} {v:.0f}s" for k, v in secs.items()), "info",
+          "pipeline", channel_id=ch["id"], video_id=video["id"], data={"seconds": secs})
     return video
 
 

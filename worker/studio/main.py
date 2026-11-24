@@ -25,9 +25,13 @@ def handle(job: dict) -> dict | None:
     p = job.get("payload") or {}
     t = job["type"]
     if t == "produce_video":
-        return {"video": pipeline.produce(p["video_id"], p.get("from_stage"))["id"]}
+        def cleared() -> None:              # a redo wipes its stage once; retries and resumes continue from there
+            rest = {k: v for k, v in p.items() if k != "from_stage"}
+            db.update("jobs", {"id": job["id"]}, {"payload": rest})
+        return {"video": pipeline.produce(p["video_id"], p.get("from_stage"), stop_after=p.get("stop_after"),
+                                          on_cleared=cleared)["id"]}
     if t == "plan_channel":
-        return ops.plan_channel(p["channel_id"], bool(p.get("force")))
+        return ops.plan_channel(p["channel_id"], bool(p.get("force")), stop_after=p.get("stop_after"))
     if t == "research_ideas":
         return ops.research_ideas(p["channel_id"], int(p.get("count", 12)))
     if t == "publish_video":

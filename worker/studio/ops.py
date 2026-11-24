@@ -37,7 +37,7 @@ def enqueue(type_: str, payload: dict | None = None, *, dedupe: str | None = Non
 
 
 # ------------------------------------------------------------------ planning
-def plan_channel(channel_id: str, force: bool = False) -> dict:
+def plan_channel(channel_id: str, force: bool = False, stop_after: str | None = None) -> dict:
     ch = db.select("channels", {"id": channel_id}, single=True)
     if not ch:
         raise PermanentError("channel not found")
@@ -61,7 +61,8 @@ def plan_channel(channel_id: str, force: bool = False) -> dict:
                 continue
             raise
         db.update("ideas", {"id": best["id"]}, {"status": "queued"})
-        enqueue("produce_video", {"video_id": v["id"]}, dedupe=f"produce:{v['id']}", channel_id=channel_id,
+        payload = {"video_id": v["id"], **({"stop_after": stop_after} if stop_after else {})}
+        enqueue("produce_video", payload, dedupe=f"produce:{v['id']}", channel_id=channel_id,
                 video_id=v["id"], priority=4)
         event(f"Planned a new video: {best['title']}", "info", "planner", channel_id=channel_id, video_id=v["id"])
         return {"video_id": v["id"], "idea": best["title"]}
