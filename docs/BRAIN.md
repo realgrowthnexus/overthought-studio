@@ -11,6 +11,22 @@
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
 
+### 0.0000 PAUSED by owner (2026-11-24): pick up here
+Owner said "save progress, stop everything, I will continue later". State at pause:
+- All code is on `main` (last: b1278a4 fact-check severity). VPS auto-deploys from main. Demo copy is stopped.
+- Retry job 21537 (video `da3da7f5-95be-4a06-ab88-146eddfc66be`, "In Labs, Roughly Two-Thirds Miss Their Own
+  Name", from_stage factcheck, run_after 2026-11-24 00:36 UTC) was left queued: first check in the DB whether it
+  passed fact-check and reached "ready". Also check the doorway video (was at voice stage after a length rewrite).
+- Owner turned Auto-publish ON (2026-11-23 23:46). Posting mode is still "draft" and the sandbox only allows
+  private, so nothing goes public. Do not switch to public without asking.
+- Owner still has to: (1) record the REAL sandbox demo (Snipping Tool: login → TikTok accounts → connect
+  @callaletheia → Publish now → show the draft in the TikTok app); the captioned product walkthrough
+  `assets/brand/tiktok/demo-walkthrough.mp4` is only a helper, not the review video. (2) Submit app review with
+  Direct Post OFF and the 5 scopes (text in `assets/brand/tiktok/APP_FORM.md`). (3) Keep RunPod auto-pay OFF.
+- Open small items: `/voices/*.mp3` 307 in middleware; "Forgot password" page if the owner lost the password;
+  make the Caddy↔ots-web network link survive restarts; phase 2 Direct Post consent screen + audit; niches for
+  channels 2–5.
+
 ### 0.000 Session 5, later (2026-11-23): TikTok developer app, phase 1 = drafts only
 - Owner is filling the TikTok developer app form. Answers (description, scope text, demo-video script) are in
   `assets/brand/tiktok/APP_FORM.md`; app icon + 5 channel profile pictures drawn in code by
