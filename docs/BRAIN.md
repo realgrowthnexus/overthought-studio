@@ -25,6 +25,14 @@
   warned again against proxy/fake-US-location accounts. Dashboard login email = the owner's getgrowthnexus Gmail;
   password unknown to us (hashed); no "forgot password" page yet — build one if they can't find it saved.
 - developers.tiktok.com is not reachable from the cloud sandbox (DNS blocked).
+- RunPod hard monthly cap (owner: "$100 max, never more"): setting `runpod_monthly_cap_usd` (default 100, Settings
+  page). Counts max(our per-image ledger, real RunPod balance drops seen by the 10-min health check; top-ups
+  ignored) — `spend.runpod_slot()` refuses an image before calling RunPod, jobs park on "budget" and resume on the
+  1st or when the cap is raised. Our per-image price (0.012) is an unverified fallback: RunPod output has no
+  "cost" field — the balance meter is the source of truth. Owner told to keep RunPod auto-pay OFF.
+- 2026-11-23: sandbox connect works (@callaletheia, 5 scopes); first video uploaded to TikTok drafts; Claude
+  sign-in OK; RunPod key added. Next: owner records the real sandbox demo → submit app review.
+
 
 ### 0.00 Session 5 (2026-11-23): free voice + Supabase free-plan storage
 Owner said "GO, tumhari salah theek hai" to this plan:

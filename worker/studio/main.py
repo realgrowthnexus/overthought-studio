@@ -81,6 +81,10 @@ def run_one(job: dict) -> None:
         res = handle(job)
         _finish(job, status="done", result=res or {}, last_error=None)
         log.info(f"job {job['id']} {job['type']} done in {time.time() - t0:.0f}s")
+    except spend.BudgetReached as b:
+        _park(job, "budget", str(b), "waiting", prod)
+        event(f"{b}; production paused. Raise the cap in Settings if you want more this month", "warn", "budget",
+              channel_id=cid, video_id=vid)
     except LimitReached as p:
         report_problem(p)
         why = f"Claude limit reached — resumes at {local_time(p.resume_at)}"

@@ -453,6 +453,7 @@ def _health_runpod() -> str:
     if me is None:
         raise RuntimeError(f"RunPod balance unavailable (HTTP {r.status_code})")
     bal = float(me.get("clientBalance") or 0)
+    spend.observe_runpod_balance(bal)
     st = "ok" if bal > 2 else ("warning" if bal > 0.3 else "out_of_credits")
     set_status("runpod", st, None if st == "ok" else f"${bal:.2f} left (~{int(bal / 0.1)} videos). Add funds at runpod.io",
                balance=round(bal, 2), unit="usd")

@@ -106,6 +106,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
           model: s.model, effort: s.effort as "high", daily_budget_usd: s.daily_budget_usd, monthly_budget_usd: s.monthly_budget_usd,
           video_retention_days: s.video_retention_days, report_email: s.report_email ?? "", auto_publish: s.auto_publish,
           api_fallback: Boolean(s.api_fallback), api_fallback_daily_usd: Number(s.api_fallback_daily_usd ?? 2),
+          runpod_monthly_cap_usd: Number(s.runpod_monthly_cap_usd ?? 100),
         }));
       }}
     >
@@ -128,6 +129,9 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
         </Field>
         <Field label="Monthly budget (USD)" htmlFor="monthly">
           <Input id="monthly" type="number" min={0} step="5" value={s.monthly_budget_usd} onChange={(e) => set("monthly_budget_usd", Number(e.target.value))} />
+        </Field>
+        <Field label="RunPod hard cap per month (USD)" htmlFor="rpcap" hint="Images stop for the rest of the month at this amount. Counted from RunPod's real balance, not an estimate. 0 = no cap.">
+          <Input id="rpcap" type="number" min={0} max={1000} step="5" value={Number(s.runpod_monthly_cap_usd ?? 100)} onChange={(e) => set("runpod_monthly_cap_usd", Number(e.target.value))} />
         </Field>
         <Field label="Keep video files for (days)" htmlFor="retention" hint="After posting. 7 keeps the free Supabase plan comfortable. Scripts and stats stay forever.">
           <Input id="retention" type="number" min={3} value={s.video_retention_days} onChange={(e) => set("video_retention_days", Number(e.target.value))} />

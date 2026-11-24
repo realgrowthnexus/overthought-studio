@@ -164,6 +164,7 @@ const settingsSchema = z.object({
   auto_publish: z.boolean(),
   api_fallback: z.boolean().default(false),
   api_fallback_daily_usd: z.coerce.number().min(0).max(100).default(2),
+  runpod_monthly_cap_usd: z.coerce.number().min(0).max(1000).default(100),
 });
 
 export async function updateSettings(input: z.input<typeof settingsSchema>): Promise<ActionResult> {

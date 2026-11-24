@@ -44,6 +44,12 @@ def _fail(r: httpx.Response) -> Exception:
 
 def generate(description: str, *, seed: int = 7, figure_prompt: str | None = None, channel_id=None,
              video_id=None) -> tuple[Image.Image, float]:
+    with spend.runpod_slot():                 # hard monthly cap (Settings) — raises BudgetReached
+        return _generate(description, seed=seed, figure_prompt=figure_prompt, channel_id=channel_id, video_id=video_id)
+
+
+def _generate(description: str, *, seed: int, figure_prompt: str | None, channel_id, video_id
+              ) -> tuple[Image.Image, float]:
     prompt = (figure_prompt or DEFAULT_FIGURE) + description
     body = {"input": {"prompt": prompt, "num_inference_steps": 28, "guidance": 3.5, "seed": int(seed),
                       "width": 1024, "height": 1024}}
