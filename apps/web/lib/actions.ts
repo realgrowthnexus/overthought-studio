@@ -298,7 +298,12 @@ export async function updateChannel(id: string, input: ChannelInput): Promise<Ac
   return guard(async () => {
     uuid.parse(id);
     const c = channelSchema.parse(input);
-    const { error } = await serviceClient().from("channels").update(c).eq("id", id);
+    // The worker learns the voice's real pace (voice.wps / wps_n) from every recording; a form save keeps it.
+    const { data: cur } = await serviceClient().from("channels").select("voice").eq("id", id).single();
+    const learned = (cur?.voice ?? {}) as Record<string, unknown>;
+    const voice = { ...(c.voice ?? {}), wps: learned.wps, wps_n: learned.wps_n };
+    if (voice.wps === undefined) { delete voice.wps; delete voice.wps_n; }
+    const { error } = await serviceClient().from("channels").update({ ...c, voice }).eq("id", id);
     if (error?.code === "23505") return { ok: false, error: "That slug is taken — pick another." };
     fail(error);
     await logEvent(`Channel settings saved: ${c.name}`, { channel_id: id });

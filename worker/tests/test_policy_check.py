@@ -56,7 +56,7 @@ def test_old_factcheck_shape_counts_as_done():
 
 def test_length_rewrite_uses_policy_check(world):
     assert not hasattr(content, "FactCheck") and not hasattr(content, "fact_check")
-    world.voice_seconds = [120.0]
+    world.voice_seconds = [130.0, 130.0]            # too long even after the speed nudge
     v = seed_video(world, world.ch)
     pipeline.produce(v["id"], stop_after="voice")
     assert world.schemas.count("PolicyCheck") == 2           # the check, then the re-check after the length edit

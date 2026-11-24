@@ -344,37 +344,67 @@ def _restore(storage_path: str, dest: Path) -> bool:
     return True
 
 
+SPEED_MIN, SPEED_MAX = 0.92, 1.10
+
+
+def _learn_wps(ch: dict, words: int, seconds: float, speed: float) -> None:
+    """Running average (last ~5 voices) of this channel's real pace at speed 1.0, so scripts get the right length."""
+    if words < 30 or seconds <= 0:
+        return
+    cur = db.select("channels", {"id": ch["id"]}, single=True, columns="voice") or {}
+    v = dict(cur.get("voice") or ch.get("voice") or {})
+    x = words / seconds / max(0.5, speed)
+    n = int(v.get("wps_n") or 0)
+    avg = float(v.get("wps") or x)
+    avg = x if n == 0 else avg + (x - avg) / min(n + 1, 5)
+    v.update(wps=round(avg, 4), wps_n=min(n + 1, 5) if n < 5 else 5)
+    db.update("channels", {"id": ch["id"]}, {"voice": v})
+    ch["voice"] = v
+
+
 def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> None:
+    """Fit the voice into the channel's window: measured pace → speed nudge (free) → one narration rewrite (rare)."""
     script = content.Script.model_validate(video["script"])
     min_s = max(HARD_MIN_SECONDS, float(ch.get("min_seconds") or 65))
     max_s = float(ch.get("max_seconds") or 95) + 8
-    for attempt in range(3):
-        audio, words, usd = voice.synthesize(content.spoken_text(script), ch.get("voice") or {},
-                                             channel_id=ch["id"], video_id=video["id"])
+    target = (min_s + max_s - 8) / 2
+    base = dict(ch.get("voice") or {})
+    base_speed = float(base.get("speed") or 1.0)
+
+    def synth(sc: content.Script, speed: float):
+        cfg = {**base, "speed": round(speed, 3)}
+        audio, words, usd = voice.synthesize(content.spoken_text(sc), cfg, channel_id=ch["id"], video_id=video["id"])
         _add_cost(video, "voice", usd)
         dur = (words[-1].end if words else 0) + 0.7
-        if min_s <= dur <= max_s or attempt == 2:
-            break
+        _learn_wps(ch, len(words), dur, speed)
+        return audio, words, dur
+
+    audio, words, dur = synth(script, base_speed)
+    if not min_s <= dur <= max_s:                       # 1) speed nudge, no rewrite
+        speed = base_speed * min(SPEED_MAX, max(SPEED_MIN, dur / target))
+        _upd(video["id"], stage_detail=f"Voice was {dur:.0f}s — adjusting the speaking speed")
+        audio, words, dur = synth(script, speed)
+    if not min_s <= dur <= max_s:                       # 2) one narration rewrite, scenes kept
         wc = content.word_count(script)
-        target = int(wc * ((min_s + 4) / dur)) if dur < min_s else int(wc * ((max_s - 6) / dur))
+        goal = int(wc * target / dur)
         verb = "LENGTHEN" if dur < min_s else "SHORTEN"
-        _upd(video["id"], stage_detail=f"Voice was {dur:.0f}s — adjusting script length")
-        event(f"Voice length {dur:.1f}s outside {min_s:.0f}-{max_s:.0f}s; rewriting to ~{target} words", "warn",
-              "pipeline", channel_id=ch["id"], video_id=video["id"])
+        event(f"Voice length {dur:.1f}s outside {min_s:.0f}-{max_s:.0f}s even after a speed change; rewriting to ~{goal} words",
+              "warn", "pipeline", channel_id=ch["id"], video_id=video["id"])
+        _upd(video["id"], stage_detail=f"Voice was {dur:.0f}s — adjusting the script length")
         script, usd = content.write_script(
             ch, idea, video["research"], hook_style=(video.get("experiment") or {}).get("hook_style", "you-callout"),
-            feedback=[f"{verb} the narration to about {target} words total (currently {wc}). Keep every fact identical, "
-                      f"keep the hook and loop line. Add depth (an extra example or detail from the research), never filler. "
-                      f"Keep the scenes list EXACTLY as it is and only use existing scene ids."],
+            feedback=[f"{verb} the narration to about {goal} words total (currently {wc}). Keep every fact, the hook and "
+                      f"loop line. Add depth from the research, never filler. Keep the scenes list EXACTLY as it is "
+                      f"and only use existing scene ids."],
             previous=script.model_dump(), video_id=video["id"])
         _add_cost(video, "script", usd)
-        # the drawings already exist: keep the original scenes, clamp beats to them
         old_scenes = content.Script.model_validate(video["script"]).scenes
         ids = {sc.id for sc in old_scenes}
         script.scenes = old_scenes
         for b in script.beats:
             if b.scene_id not in ids:
                 b.scene_id = old_scenes[0].id
+        script = content.keep_found_sources(script, (video.get("research") or {}).get("citations") or [])
         # any rewrite must pass the content check again before it can be voiced
         _upd(video["id"], stage_detail="Re-checking the script after the length edit")
         fc, usd = content.policy_check(ch, script, video_id=video["id"])
@@ -383,14 +413,15 @@ def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> No
             raise PermanentError("Content check failed after the length edit: "
                                  + "; ".join(p.issue for p in fc.problems)[:400])
         video.update(_upd(video["id"], script=script.model_dump(), factcheck=fc.model_dump()))
+        audio, words, dur = synth(script, base_speed)
     if dur < HARD_MIN_SECONDS:
         raise RuntimeError(f"Voiceover is only {dur:.1f}s; Creator Rewards needs > 60s")
     (work / "voice.mp3").write_bytes(audio)
     (work / "words.json").write_text(json.dumps([[w.text, w.start, w.end] for w in words]))
-    base = f"{ch['slug']}/{video['id']}"
-    db.upload("videos", f"{base}/voice.mp3", audio, "audio/mpeg")
-    db.upload("videos", f"{base}/words.json", (work / "words.json").read_bytes(), "application/json")
-    _upd(video["id"], audio_path=f"{base}/voice.mp3")
+    base_path = f"{ch['slug']}/{video['id']}"
+    db.upload("videos", f"{base_path}/voice.mp3", audio, "audio/mpeg")
+    db.upload("videos", f"{base_path}/words.json", (work / "words.json").read_bytes(), "application/json")
+    _upd(video["id"], audio_path=f"{base_path}/voice.mp3")
 
 
 def _beat_times(script: content.Script, words: list[list]) -> list[tuple[float, float]]:

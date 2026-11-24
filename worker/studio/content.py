@@ -158,9 +158,15 @@ DEFAULT_WPS = 2.1        # Kokoro, measured: ~230 words came out as 110 s (sente
 HARD_FLOOR_S = 61
 
 
+def effective_wps(ch: dict) -> float:
+    """Measured words/second at speed 1.0 (learned from real voices), times the channel's speed setting."""
+    v = ch.get("voice") or {}
+    return float(v.get("wps") or DEFAULT_WPS) * float(v.get("speed") or 1.0)
+
+
 def word_range(ch: dict) -> tuple[int, int]:
     """Narration words that land the video in the middle of the channel's length range, never under 61 s."""
-    wps = float((ch.get("voice") or {}).get("wps") or DEFAULT_WPS)
+    wps = effective_wps(ch)
     min_s, max_s = float(ch.get("min_seconds") or 65), float(ch.get("max_seconds") or 95)
     target = (min_s + max_s) / 2 * wps
     lo = max(round(target * 0.92), math.ceil(max(HARD_FLOOR_S, min_s) * wps))
@@ -335,7 +341,7 @@ CAPTION: {script.caption} {' '.join(script.hashtags)}"""
 
 def length_problem(script: Script, ch: dict) -> str | None:
     """Estimated spoken length below the floor (Creator Rewards needs > 60 s)."""
-    wps = float((ch.get("voice") or {}).get("wps") or DEFAULT_WPS)
+    wps = effective_wps(ch)
     floor = HARD_FLOOR_S                       # the voice stage fits the channel's own range later
     est = word_count(script) / wps
     if est < floor:
