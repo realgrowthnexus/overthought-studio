@@ -28,7 +28,7 @@ class ProposedAction(BaseModel):
     label: str = Field(description="Short button text in the owner's language, e.g. 'Overthought pause karein'")
     channel_id: Optional[str] = None
     video_id: Optional[str] = None
-    job_id: Optional[int] = None
+    job_id: Optional[int | str] = None
     when_iso: Optional[str] = Field(default=None, description="For set_post_time: ISO 8601 with offset, in the future")
 
 
