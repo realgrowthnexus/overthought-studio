@@ -27,8 +27,8 @@ Worker falls back to env vars `ANTHROPIC_API_KEY`, `RUNPOD_API_KEY`, … if a se
 ## Job types (`jobs.type`)
 | type | payload | who enqueues |
 |---|---|---|
-| `plan_channel` | `{channel_id, force?}` | scheduler (keeps buffer full) / dashboard "Make a video now" |
-| `produce_video` | `{video_id, from_stage?}` | plan_channel / dashboard "Regenerate" |
+| `plan_channel` | `{channel_id, force?, stop_after?}` | scheduler (keeps buffer full) / dashboard "Make a video now" |
+| `produce_video` | `{video_id, from_stage?, stop_after?}` | plan_channel / dashboard "Regenerate" |
 | `research_ideas` | `{channel_id, count?}` | scheduler when idea bank < 10 / dashboard |
 | `publish_video` | `{video_id}` | scheduler at slot time / dashboard "Publish now" |
 | `check_publish` | `{video_id}` | publish_video (polls status) |
@@ -47,6 +47,22 @@ or down; the worker re-queues it automatically when `services.status` returns to
 `queued → researching → scripting → fact_checking → visuals → voice → rendering → ready`
 → (`require_approval` ? wait for dashboard approve → `approved`) → `scheduled` → `uploading` → `sent_to_drafts` | `posted`
 Side states: `rejected`, `failed` (error text), `blocked` (dependency down, see `channels.blocked_reason`).
+
+Production rules (session 6):
+- Claude always runs Sonnet at medium effort (`llm.MODEL_ALIAS/API_MODEL/EFFORT`).
+- Research is one call (about 3–4 searches). The script is one call, with the writer's own `self_review` stored as
+  `videos.scorecard`. There is no external scoring loop.
+- Code checks the script's structure and length (`content.script_problems`), with one repair pass. Length target:
+  `content.word_range` = the channel midpoint × `voice.wps` (default 2.1).
+- Only sources whose URL the research returned are kept (`keep_found_sources`). The on-screen label is
+  `→ Researcher · Year`.
+- `stop_after` (test runs) ends after that stage and parks the video as `rejected` with "Test stopped after …".
+  Stage timings go into `events.data.seconds`.
+- `from_stage` is removed from the job payload once applied, so a retry never redoes it.
+- Planner breaker: 3 failed videos after `max(now-24h, channels.failures_forgiven_at)`. Only Start/Resume writes
+  `failures_forgiven_at`. The breaker clears itself once the count drops.
+- Failed videos give their idea back (`ideas.fail_count`; the idea is retired after 2). Orphaned production videos
+  (no live job, quiet for 15 min) are failed by `ops.sweep_stuck_videos`.
 
 `posting_mode`: `draft` = inbox upload (user taps Publish in TikTok), `private` = direct post SELF_ONLY,
 `public` = direct post PUBLIC_TO_EVERYONE (requires audited TikTok app). Global `settings.global.auto_publish`
