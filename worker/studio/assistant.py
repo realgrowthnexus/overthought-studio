@@ -101,7 +101,7 @@ def _exists(table: str, id_) -> bool:
 def validate_actions(actions: list[ProposedAction]) -> list[dict]:
     """Keep whitelisted actions that point at real rows; drop everything else."""
     out = []
-    for a in actions[:3]:
+    for a in actions[:10]:
         if a.type not in NEEDS:
             continue
         need = NEEDS[a.type]
@@ -116,7 +116,7 @@ def validate_actions(actions: list[ProposedAction]) -> list[dict]:
                 ok = False
         if ok:
             out.append(a.model_dump(exclude_none=True))
-    return out
+    return out[:3]
 
 
 def _history(pending_id) -> list[dict]:
