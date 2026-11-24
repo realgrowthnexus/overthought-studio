@@ -51,6 +51,23 @@ def _ok(r: httpx.Response) -> httpx.Response:
     return r
 
 
+def _poll(c: httpx.Client, job: str, tries: int = 4) -> dict:
+    """Status of a submitted job; short network blips are retried with the SAME job id (never pay twice).
+    Still failing → cancel it (best effort) and park as ServiceDown."""
+    for i in range(tries):
+        try:
+            return _ok(c.get(STATUS + job, headers=_headers())).json()
+        except httpx.TransportError as e:
+            if i == tries - 1:
+                try:
+                    c.post(CANCEL + job, headers=_headers())
+                except httpx.HTTPError:
+                    pass
+                raise ServiceDown("runpod", f"Lost contact with RunPod while waiting for an image: {e}") from e
+            time.sleep(3)
+    raise AssertionError("unreachable")
+
+
 def generate(description: str, *, seed: int = 7, figure_prompt: str | None = None, channel_id=None,
              video_id=None) -> tuple[Image.Image, float]:
     with spend.runpod_slot():                 # hard monthly cap (Settings) — raises BudgetReached
@@ -66,10 +83,12 @@ def _generate(description: str, *, seed: int, figure_prompt: str | None, channel
         try:
             d = _ok(c.post(ENDPOINT, json=body, headers=_headers())).json()
             job = d.get("id")
+            if not job:
+                raise ServiceDown("runpod", f"RunPod did not return a job id: {str(d)[:200]}")
             t0 = time.time()
             while d.get("status") in ("IN_QUEUE", "IN_PROGRESS") and time.time() - t0 < WAIT_S:
                 time.sleep(2)
-                d = _ok(c.get(STATUS + job, headers=_headers())).json()
+                d = _poll(c, job)
             if d.get("status") in ("IN_QUEUE", "IN_PROGRESS"):
                 try:   # stop paying for a job we no longer wait for
                     c.post(CANCEL + job, headers=_headers())

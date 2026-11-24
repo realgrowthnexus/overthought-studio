@@ -60,3 +60,18 @@ def test_length_rewrite_uses_policy_check(world):
     v = seed_video(world, world.ch)
     pipeline.produce(v["id"], stop_after="voice")
     assert world.schemas.count("PolicyCheck") == 2           # the check, then the re-check after the length edit
+
+
+def test_length_floor_is_61_seconds():
+    s = clean_script()
+    for b in s.beats:
+        b.narration = " ".join(["word"] * 14)            # 140 words ≈ 66.7 s at 2.1 w/s
+    assert content.length_problem(s, {"min_seconds": 70, "max_seconds": 90, "voice": {}}) is None
+    for b in s.beats:
+        b.narration = " ".join(["word"] * 12)            # 120 words ≈ 57 s
+    assert content.length_problem(s, {"min_seconds": 70, "max_seconds": 90, "voice": {}})
+
+
+def test_only_listed_problems_block():
+    assert content.PolicyCheck(passed=False, tone_ok=False, graphic_ok=True, policy_ok=True, problems=[],
+                               summary="meh").ok()

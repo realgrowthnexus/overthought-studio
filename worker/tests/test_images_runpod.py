@@ -68,3 +68,20 @@ def test_image_download_error_is_service_down(rp):
     with pytest.raises(ServiceDown):
         images.generate("a stick figure")
     assert seen[0].url.path.endswith("/run") and len(seen) == 2
+
+
+def test_poll_blip_is_retried_with_the_same_job(rp):
+    state = {"n": 0}
+
+    def h(req):
+        if req.url.path.endswith("/run"):
+            return httpx.Response(200, json={"id": "j1", "status": "IN_QUEUE"})
+        if "/status/" in req.url.path:
+            state["n"] += 1
+            if state["n"] == 1:
+                raise httpx.ReadTimeout("blip")
+            return httpx.Response(200, json={"id": "j1", "status": "COMPLETED", "output": {"image_url": "https://img.example/x.png"}})
+        return httpx.Response(200, content=PNG.getvalue())
+    seen = rp(h)
+    images.generate("a stick figure")
+    assert sum(r.url.path.endswith("/run") for r in seen) == 1

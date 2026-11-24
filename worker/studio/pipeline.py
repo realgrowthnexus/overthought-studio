@@ -114,6 +114,7 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
     work.mkdir(parents=True, exist_ok=True)
 
     start = STAGES.index(from_stage) if from_stage in STAGES else 0
+    redo_visuals = bool(from_stage) and STAGES.index(from_stage) <= STAGES.index("visuals")
     if from_stage:
         # wipe outputs of the stage being redone and everything after it
         clear = {"research": dict(research=None, script=None, scorecard=None, factcheck=None),
@@ -179,7 +180,7 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
             sdir = work / "scenes"
             sdir.mkdir(exist_ok=True)
             for s in script.scenes:            # resumed on a fresh machine: reuse drawings already paid for
-                if not (sdir / f"{s.id}.png").exists():
+                if not redo_visuals and not (sdir / f"{s.id}.png").exists():
                     _restore(f"{ch['slug']}/{video_id}/scenes/{s.id}.png", sdir / f"{s.id}.png")
             need = [s for s in script.scenes if not (sdir / f"{s.id}.png").exists()]
             if need:
@@ -314,8 +315,8 @@ def _draw_scenes(video: dict, ch: dict, scenes: list, sdir: Path) -> None:
                 f.result()
             except BaseException as e:      # keep waiting for the rest so their work is saved
                 errors.append(e)
-    if errors:
-        raise errors[0]
+    if errors:      # a budget stop or a service outage parks the job; prefer it over a plain retryable error
+        raise next((e for e in errors if isinstance(e, (spend.BudgetReached, ServiceProblem))), errors[0])
 
 
 def _remove_stored(prefix: str | None, fallback: list[str]) -> None:

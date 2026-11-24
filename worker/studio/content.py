@@ -94,7 +94,8 @@ class PolicyCheck(BaseModel):
     summary: str
 
     def ok(self) -> bool:
-        return self.passed and not self.problems
+        """Only a listed problem (with its fix) can block a video."""
+        return not self.problems
 
 
 class Idea(BaseModel):
@@ -320,7 +321,8 @@ Report a problem ONLY for:
 3. TikTok Community Guidelines: dangerous acts or challenges, advice that could harm health or money (e.g. telling
    people to stop medication, guaranteed returns), hate or harassment, content unsafe for minors, misleading claims
    about elections or public health emergencies.
-Everyday psychology, studies, numbers and names are fine. If nothing is wrong, passed=true and problems=[].
+Everyday psychology, studies, numbers and names are fine. List only problems that truly break one of the 3 rules
+above — never wording, accuracy, sourcing or style nitpicks. If nothing is wrong, passed=true and problems=[].
 
 NARRATION:
 {narration}
@@ -334,7 +336,7 @@ CAPTION: {script.caption} {' '.join(script.hashtags)}"""
 def length_problem(script: Script, ch: dict) -> str | None:
     """Estimated spoken length below the floor (Creator Rewards needs > 60 s)."""
     wps = float((ch.get("voice") or {}).get("wps") or DEFAULT_WPS)
-    floor = max(HARD_FLOOR_S, float(ch.get("min_seconds") or 65))
+    floor = HARD_FLOOR_S                       # the voice stage fits the channel's own range later
     est = word_count(script) / wps
     if est < floor:
         lo, _ = word_range(ch)

@@ -78,3 +78,31 @@ def test_redo_from_voice_records_new_voice(world):
     pipeline.produce(v["id"], "voice", stop_after="voice")
     assert world.calls["voice"] == 2 * n
     assert world.select("videos", {"id": v["id"]}, single=True)["audio_path"]      # set again by the new voice
+
+
+def test_redo_draws_new_scenes_even_if_the_storage_delete_fails(world, monkeypatch):
+    v = seed_video(world, world.ch)
+    pipeline.produce(v["id"], stop_after="visuals")
+    n = world.calls["runpod"]
+
+    def broken(*a, **k):
+        raise RuntimeError("storage blip")
+    monkeypatch.setattr(pipeline.db, "remove", broken)
+    pipeline.produce(v["id"], "script", stop_after="visuals")
+    assert world.calls["runpod"] == 2 * n
+
+
+def test_a_service_problem_wins_over_a_plain_error(world, monkeypatch):
+    from studio.services import ServiceDown
+    _five_scenes(world)
+
+    def gen(description, **k):
+        if "scene 0" in description:
+            raise RuntimeError("cold start")
+        if "scene 1" in description:
+            raise ServiceDown("runpod", "down")
+        return world.generate(description, **k)
+    monkeypatch.setattr(pipeline.images, "generate", gen)
+    v = seed_video(world, world.ch)
+    with pytest.raises(ServiceDown):
+        pipeline.produce(v["id"], stop_after="visuals")
