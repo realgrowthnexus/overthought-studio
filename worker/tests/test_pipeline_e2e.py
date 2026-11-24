@@ -88,3 +88,15 @@ def test_factcheck_fails_twice_is_permanent(world):
     vid = world.select("videos", {"id": v["id"]}, single=True)
     assert vid["status"] == "failed" and vid["error"].startswith("Fact-check failed")
     assert world.select("jobs", {"id": job["id"]}, single=True)["status"] == "failed"
+
+
+def test_factcheck_minor_notes_never_block(world):
+    world.factcheck_minor = ("Institution is MIT, not Imperial College",)
+    v = seed_video(world, world.ch)
+    job = world.insert("jobs", {"type": "produce_video", "status": "running", "attempts": 1, "max_attempts": 3,
+                                "payload": {"video_id": v["id"]}, "video_id": v["id"],
+                                "channel_id": world.ch["id"]})[0]
+    main.run_one(job)
+    vid = world.select("videos", {"id": v["id"]}, single=True)
+    assert vid["status"] not in ("failed", "fact_checking"), vid.get("error")
+    assert vid["factcheck"]["minor"] and not vid["factcheck"]["blocking"]

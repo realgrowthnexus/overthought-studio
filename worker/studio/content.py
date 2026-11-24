@@ -88,7 +88,18 @@ class FactCheck(BaseModel):
     citations_valid: bool = Field(description="Every on-screen source (researcher, institution, year) is real and correct")
     passes: bool = Field(description="True only if nothing is unsupported and every partly_supported/contested claim is framed honestly")
     required_changes: list[str]
+    blocking: list[str] = Field(default_factory=list, description=(
+        "ONLY issues that would leave a viewer believing something false or harmful: a wrong/invented number or finding, "
+        "a study that does not exist, a myth stated as fact, an over-claim that changes the meaning, or anything breaking "
+        "TikTok's rules (harmful misinformation, dangerous health/medical/financial advice). Each item = the exact fix."))
+    minor: list[str] = Field(default_factory=list, description=(
+        "Everything else: affiliation/institution details, paper-title wording, author-list formatting, small wording "
+        "that does not change the meaning, things that merely 'could be verified further'. These never block a video."))
     summary: str
+
+    def ok(self) -> bool:
+        """A video may continue when nothing blocking is left (minor notes are fixed when cheap, never block)."""
+        return not self.blocking
 
 
 class Idea(BaseModel):
@@ -242,8 +253,13 @@ Write your findings as a clear claim-by-claim review."""
     text, cites, usd1 = llm.research("You are a meticulous science fact-checker for a popular-psychology channel.",
                                      prompt, purpose="factcheck_research", max_searches=10, effort="high",
                                      channel_id=ch["id"], video_id=video_id)
-    parse_prompt = f"""Convert this fact-check review into the structured verdict. passes=true only if no claim is
-unsupported, citations are valid, and contested items are framed honestly in the script.
+    parse_prompt = f"""Convert this fact-check review into the structured verdict.
+Sort EVERY issue into exactly one list:
+- blocking: the viewer would come away believing something false or harmful (wrong or invented number/finding,
+  non-existent study, myth stated as fact, meaning-changing over-claim, or a TikTok rule problem such as harmful
+  misinformation or dangerous health/medical/financial advice).
+- minor: institution/affiliation details, paper titles, author-list formatting, tiny wording, "could verify further".
+passes=true when blocking is empty. required_changes = blocking + minor (exact fixes).
 
 REVIEW:
 {text[:16000]}

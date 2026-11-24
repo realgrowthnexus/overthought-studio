@@ -24,6 +24,14 @@ MIN_SCORE = 8.0
 HARD_MIN_SECONDS = 61.0
 
 
+def _fc_done(fc: dict | None) -> bool:
+    if not fc:
+        return False
+    if "blocking" in fc:
+        return not fc["blocking"]
+    return bool(fc.get("passes"))
+
+
 def _upd(vid: str, **vals) -> dict:
     rows = db.update("videos", {"id": vid}, vals)
     return rows[0] if rows else {}
@@ -104,19 +112,21 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                               caption=script.caption, hashtags=script.hashtags,
                               experiment={"hook_style": hook_style}))
 
-        elif name == "factcheck" and not (video.get("factcheck") or {}).get("passes"):
+        elif name == "factcheck" and not _fc_done(video.get("factcheck")):
             _stage(video, name, "Fact-checking every claim and source")
             script = content.Script.model_validate(video["script"])
             fc = None
             for rnd in range(3):
                 fc, usd = content.fact_check(ch, script, video_id=video_id)
                 _add_cost(video, "factcheck", usd)
-                if fc.passes and fc.citations_valid:
-                    break
-                if rnd == 2:
+                if fc.ok() or rnd == 2:
                     break
                 _upd(video_id, stage_detail="Fixing claims flagged by the fact-check")
-                fixes = fc.required_changes + [f"{c.claim} → {c.fix}" for c in fc.claims if c.fix]
+                fixes = fc.blocking + fc.minor + [f"{c.claim} → {c.fix}" for c in fc.claims if c.fix]
+                if rnd == 1:      # last try: drop what could not be confirmed instead of re-wording it again
+                    fixes.append("REMOVE any claim, number or detail above that you cannot support exactly from the "
+                                 "research notes; on-screen sources may show just 'Researcher · Year' when the "
+                                 "institution is uncertain. A shorter true script beats a detailed doubtful one.")
                 script, usd = content.write_script(ch, idea, video["research"],
                                                    hook_style=(video.get("experiment") or {}).get("hook_style", "you-callout"),
                                                    feedback=["ACCURACY FIXES (mandatory): " + f for f in fixes],
@@ -126,8 +136,11 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
                                   hashtags=script.hashtags))
             assert fc is not None
             video.update(_upd(video_id, factcheck=fc.model_dump()))
-            if not (fc.passes and fc.citations_valid):
-                raise PermanentError("Fact-check failed after 2 rewrites: " + "; ".join(fc.required_changes)[:500])
+            if not fc.ok():
+                raise PermanentError("Fact-check failed after 2 rewrites: " + "; ".join(fc.blocking)[:500])
+            if fc.minor:
+                event(f"Fact-check passed with {len(fc.minor)} minor note(s) (not blocking)", "info", "pipeline",
+                      channel_id=ch["id"], video_id=video_id)
 
         elif name == "visuals":
             script = content.Script.model_validate(video["script"])
@@ -275,8 +288,8 @@ def _voice_with_length_gate(video: dict, ch: dict, idea: dict, work: Path) -> No
         _upd(video["id"], stage_detail="Re-checking facts after the length edit")
         fc, usd = content.fact_check(ch, script, video_id=video["id"])
         _add_cost(video, "factcheck", usd)
-        if not (fc.passes and fc.citations_valid):
-            raise PermanentError("Length-adjusted script failed the fact-check: " + "; ".join(fc.required_changes)[:400])
+        if not fc.ok():
+            raise PermanentError("Length-adjusted script failed the fact-check: " + "; ".join(fc.blocking)[:400])
         video.update(_upd(video["id"], script=script.model_dump(), factcheck=fc.model_dump()))
     if dur < HARD_MIN_SECONDS:
         raise RuntimeError(f"Voiceover is only {dur:.1f}s; Creator Rewards needs > 60s")

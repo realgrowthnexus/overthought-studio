@@ -30,6 +30,9 @@
   ignored) — `spend.runpod_slot()` refuses an image before calling RunPod, jobs park on "budget" and resume on the
   1st or when the cap is raised. Our per-image price (0.012) is an unverified fallback: RunPod output has no
   "cost" field — the balance meter is the source of truth. Owner told to keep RunPod auto-pay OFF.
+- Fact-check (2026-11-24): videos failed on nitpicks (affiliation, paper title). Now FactCheck has `blocking`
+  (false/harmful claims, TikTok misinformation rules) vs `minor` (never blocks). Last rewrite round removes
+  unconfirmable details instead of re-wording. Gate = `fc.ok()` (no blocking).
 - 2026-11-23: sandbox connect works (@callaletheia, 5 scopes); first video uploaded to TikTok drafts; Claude
   sign-in OK; RunPod key added. Next: owner records the real sandbox demo → submit app review.
 

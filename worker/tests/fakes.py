@@ -57,6 +57,7 @@ class FakeWorld:
     fail_next: dict[str, Exception] = field(default_factory=dict)
     script_factory: object = None          # (ch, idea) -> content.Script
     factcheck_passes: bool = True
+    factcheck_minor: tuple = ()
 
     # ------------------------------------------------------------- db
     def select(self, table, where=None, *, columns="*", order=None, limit=None, single=False):
@@ -135,7 +136,8 @@ class FakeWorld:
             ok = self.factcheck_passes
             return content.FactCheck(claims=[], citations_valid=ok, passes=ok,
                                      required_changes=[] if ok else ["The 25% figure is not in the paper"],
-                                     summary="fake"), 0.01
+                                     blocking=[] if ok else ["The 25% figure is not in the paper"],
+                                     minor=list(self.factcheck_minor), summary="fake"), 0.01
         raise NotImplementedError(schema)
 
     def research(self, system, prompt, *, purpose, max_searches=8, effort=None, channel_id=None, video_id=None):
