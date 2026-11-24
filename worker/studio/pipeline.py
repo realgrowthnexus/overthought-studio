@@ -8,9 +8,11 @@ import signal
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import zlib
 from typing import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import config, content, db, images, spend, voice
@@ -120,11 +122,15 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
         if STAGES.index(from_stage) <= STAGES.index("render"):
             clear.update(video_path=None, thumb_path=None, duration_s=None)
             library_path(video_id).unlink(missing_ok=True)
+        base = f"{ch['slug']}/{video_id}"
         if STAGES.index(from_stage) <= STAGES.index("visuals"):
             shutil.rmtree(work / "scenes", ignore_errors=True)
+            _remove_stored(f"{base}/scenes/", [f"{base}/scenes/{i}.png" for i in range(12)])
         if STAGES.index(from_stage) <= STAGES.index("voice"):
             (work / "voice.mp3").unlink(missing_ok=True)
             (work / "words.json").unlink(missing_ok=True)
+            _remove_stored(None, [f"{base}/voice.mp3", f"{base}/words.json"])
+            clear["audio_path"] = None
         video.update(_upd(video_id, approval=None, **clear))
         if on_cleared:
             on_cleared()
@@ -172,22 +178,13 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
             script = content.Script.model_validate(video["script"])
             sdir = work / "scenes"
             sdir.mkdir(exist_ok=True)
-            style = ch.get("style") or {}
             for s in script.scenes:            # resumed on a fresh machine: reuse drawings already paid for
                 if not (sdir / f"{s.id}.png").exists():
                     _restore(f"{ch['slug']}/{video_id}/scenes/{s.id}.png", sdir / f"{s.id}.png")
             need = [s for s in script.scenes if not (sdir / f"{s.id}.png").exists()]
             if need:
                 _stage(video, name, f"Drawing {len(need)} scenes")
-            for i, s in enumerate(need):
-                _upd(video_id, stage_detail=f"Drawing scene {i + 1} of {len(need)}")
-                img, usd = images.generate(s.description + ", props drawn as simple white outlines, no symbols",
-                                           seed=int(style.get("seed", 7)) + s.id, figure_prompt=style.get("figure_prompt"),
-                                           channel_id=ch["id"], video_id=video_id)
-                img.save(sdir / f"{s.id}.png")
-                _add_cost(video, "images", usd)
-                db.upload("videos", f"{ch['slug']}/{video_id}/scenes/{s.id}.png", (sdir / f"{s.id}.png").read_bytes(),
-                          "image/png")
+                _draw_scenes(video, ch, need, sdir)
 
         elif name == "voice":
             if not (work / "voice.mp3").exists() and video.get("audio_path"):
@@ -283,6 +280,56 @@ def final_video(video: dict, ch: dict) -> bytes:
         return _keep_final(video["id"], Path(out["path"])).read_bytes()
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+SCENE_WORKERS = 4
+
+
+def _scene_prompt(description: str) -> str:
+    return description.rstrip(". ") + ", props drawn as simple white outlines, no symbols, no text"
+
+
+def _draw_scenes(video: dict, ch: dict, scenes: list, sdir: Path) -> None:
+    """Draw scenes on RunPod in parallel (≤4). Each finished scene is saved and uploaded at once, so a failure
+    of one never costs the others; the first error is raised after all have finished."""
+    style = ch.get("style") or {}
+    lock = threading.Lock()
+    done = {"n": 0}
+
+    def one(s) -> None:
+        img, usd = images.generate(_scene_prompt(s.description), seed=int(style.get("seed", 7)) + s.id,
+                                   figure_prompt=style.get("figure_prompt"), channel_id=ch["id"], video_id=video["id"])
+        img.save(sdir / f"{s.id}.png")
+        db.upload("videos", f"{ch['slug']}/{video['id']}/scenes/{s.id}.png", (sdir / f"{s.id}.png").read_bytes(),
+                  "image/png")
+        with lock:
+            _add_cost(video, "images", usd)
+            done["n"] += 1
+            _upd(video["id"], stage_detail=f"Drawing scenes ({done['n']} of {len(scenes)} done)")
+
+    errors = []
+    with ThreadPoolExecutor(max_workers=min(SCENE_WORKERS, len(scenes))) as pool:
+        for f in [pool.submit(one, s) for s in scenes]:
+            try:
+                f.result()
+            except BaseException as e:      # keep waiting for the rest so their work is saved
+                errors.append(e)
+    if errors:
+        raise errors[0]
+
+
+def _remove_stored(prefix: str | None, fallback: list[str]) -> None:
+    """Delete a redone stage's files from storage so a resume never restores the old ones."""
+    paths = list(fallback)
+    if prefix:
+        try:
+            paths += [prefix + o["name"] for o in db.list_objects("videos", prefix) if o.get("name")]
+        except Exception as e:
+            log.info(f"list {prefix}: {e}")
+    try:
+        db.remove("videos", sorted(set(paths)))
+    except Exception as e:
+        log.warning(f"could not remove old files: {e}")
 
 
 def _restore(storage_path: str, dest: Path) -> bool:
