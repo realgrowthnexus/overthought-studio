@@ -101,7 +101,20 @@ continues keeps the same quality bar and understanding, and works from the spec,
     - the breaker message flickers;
     - the orphan text says "worker restarted" even after a cancel.
   - Possible tuning later: scripts still carry some soft hedges ("It's a theory, not proven").
-- [ ] NEXT: **Phase 2 plan** (new check + visuals + A6/A7), then Phase 3, then Features.
+- [~] **Phase 2** (plan `docs/superpowers/plans/2026-11-24-phase2-check-visuals.md`, owner: "GOAHEAD AND FINISH PHASE 2"):
+  - Code done, worker v1.2.0:
+    - light check replaces the fact-check;
+    - parallel scenes;
+    - a redo deletes old files (A6);
+    - RunPod uses `/run` + polling, and network errors park the job (A7).
+  - Next:
+    1. Opus review → fixes;
+    2. merge to main;
+    3. VPS shows v1.2.0;
+    4. 2× `plan_channel {force, stop_after:"visuals"}`;
+    5. check the images.
+  - The studio STAYS paused until Phase 3 is verified.
+- [ ] Then Phase 3 (voice length fit + render + publish bugs A8–A10), then Features.
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
   was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.

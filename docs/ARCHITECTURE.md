@@ -56,6 +56,14 @@ Production rules (session 6):
   `content.word_range` = the channel midpoint × `voice.wps` (default 2.1).
 - Only sources whose URL the research returned are kept (`keep_found_sources`). The on-screen label is
   `→ Researcher · Year`.
+- Phase 2: the `factcheck` stage is now a light content check (`content.policy_check`). It is one Sonnet call with
+  no web tools, covering tone, graphic content and TikTok rules, plus a code-side length floor
+  (`content.length_problem`). It never checks facts or citations. One fix round and one re-check; still blocked →
+  failed ("Content check failed…"). The result is stored in `videos.factcheck` as `{passed, tone_ok, graphic_ok,
+  policy_ok, problems[], summary}`.
+- Scenes are drawn 4 at a time (`pipeline._draw_scenes`), and each one is uploaded as soon as it is ready. A redo
+  deletes that stage's stored scenes/voice (`_remove_stored`). RunPod uses async `/run` + status polling, and any
+  network error is `ServiceDown` (the job is parked).
 - `stop_after` (test runs) ends after that stage and parks the video as `rejected` with "Test stopped after …".
   Stage timings go into `events.data.seconds`.
 - `from_stage` is removed from the job payload once applied, so a retry never redoes it.
