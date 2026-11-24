@@ -20,7 +20,6 @@ STAGES = ["research", "script", "factcheck", "visuals", "voice", "render"]
 STATUS_OF = {"research": "researching", "script": "scripting", "factcheck": "fact_checking", "visuals": "visuals",
              "voice": "voice", "render": "rendering"}
 PROGRESS = {"research": 8, "script": 25, "factcheck": 40, "visuals": 55, "voice": 70, "render": 82}
-MIN_SCORE = 8.0
 HARD_MIN_SECONDS = 61.0
 
 
@@ -51,8 +50,19 @@ def _stage(video: dict, name: str, detail: str) -> None:
           video_id=video["id"])
 
 
+def _blocking_problems(script: content.Script, ch: dict) -> list[str]:
+    """After the repair pass: structure must be right; length may be up to 15% outside the target (the voice
+    stage fits the rest)."""
+    lo, hi = content.word_range(ch)
+    wc = content.word_count(script)
+    left = [p for p in content.script_problems(script, ch) if "words" not in p]
+    if not 0.85 * lo <= wc <= 1.15 * hi:
+        left.append(f"The narration is {wc} words; it must be about {lo}-{hi}.")
+    return left
+
+
 def _source_label(s: dict) -> str:
-    return f"→ {s['researcher']} · {s['institution']} · {s['year']}"
+    return f"→ {s['researcher']} · {s['year']}"
 
 
 def produce(video_id: str, from_stage: str | None = None) -> dict:
@@ -91,22 +101,21 @@ def produce(video_id: str, from_stage: str | None = None) -> dict:
         elif name == "script" and not video.get("script"):
             _stage(video, name, "Writing the script")
             hook_style = content.pick_hook_style(ch)
+            cites = (video.get("research") or {}).get("citations") or []
             script, usd = content.write_script(ch, idea, video["research"], hook_style=hook_style, video_id=video_id)
             _add_cost(video, "script", usd)
-            card = None
-            for rnd in range(3):
-                card, usd = content.score_script(ch, script, video_id=video_id)
-                _add_cost(video, "script", usd)
-                weak = min(card.hook, card.curiosity_gap, card.emotional_connection, card.loop)
-                if card.overall >= MIN_SCORE and weak >= 7:
-                    break
-                if rnd == 2:
-                    break
-                _upd(video_id, stage_detail=f"Rewriting script (score {card.overall:.1f}/10)")
+            script = content.keep_found_sources(script, cites)
+            problems = content.script_problems(script, ch)
+            if problems:                       # one repair pass with the exact problems, then accept or retry later
+                _upd(video_id, stage_detail="Fixing the script's structure and length")
                 script, usd = content.write_script(ch, idea, video["research"], hook_style=hook_style,
-                                                   feedback=card.fixes + [f"Biggest risk: {card.biggest_risk}"],
-                                                   previous=script.model_dump(), video_id=video_id)
+                                                   feedback=problems, previous=script.model_dump(), video_id=video_id)
                 _add_cost(video, "script", usd)
+                script = content.keep_found_sources(script, cites)
+                left = _blocking_problems(script, ch)
+                if left:
+                    raise RuntimeError("Script still has problems after one fix: " + " ".join(left)[:400])
+            card = script.self_review
             video.update(_upd(video_id, script=script.model_dump(), scorecard=card.model_dump() if card else None,
                               title=script.title, script_version=(video.get("script_version") or 0) + 1,
                               caption=script.caption, hashtags=script.hashtags,

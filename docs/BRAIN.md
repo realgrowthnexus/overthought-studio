@@ -3,7 +3,7 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-23, session 5. Read §0.00 first, then §0.0.
+> Last updated: 2026-11-24, session 6. Read §0.00000 (current work) first, then the older sections.
 
 ## 0. START HERE (next Claude)
 1. Read this whole file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md`, `docs/SETUP.md`, `docs/tiktok-api-notes.md`.
@@ -11,7 +11,104 @@
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
 
-### 0.0000 PAUSED by owner (2026-11-24): pick up here
+### 0.00000 SESSION 6 (2026-11-24): THE CURRENT WORK. Read this first.
+The owner handed the project over completely ("tum main ho meri jagah pe, take charge, take responsibility"). They
+want the production line 100% working and ready to use. The owner may switch Claude accounts mid-work. Whoever
+continues keeps the same quality bar and understanding, and works from the spec, the plan and this section.
+
+**What the owner asked for, in their words, summarised:**
+- **Phases.** Audit first, then fix the video line in phases. Never start the next phase until the current one works:
+  audit → plan → execute → verify/test → only then the next phase.
+  - **Phase 1:** create → research → script. Fast (about 1–2 min, like Claude would do it in chat). No strict or
+    hard-coded rules.
+  - **Phase 2:** check → visuals plan → images.
+  - **Phase 3:** voice → render → ready.
+- **The check is light.** It covers only three things:
+  - the content is educational or motivating and not too graphic;
+  - the video is longer than 1 minute;
+  - nothing violates TikTok policy.
+  - **No more checking of names, places, institutions or citations.** The old web-search fact-check is removed in
+    Phase 2.
+- **Claude is fixed to Sonnet (the `sonnet` alias) at medium effort.** Never higher.
+- **Features, after the phases:**
+  - edit a video's post time, title, caption and cover;
+  - channels page as a 3-column card grid with an Edit button;
+  - an AI assistant bottom-left that uses the same Claude sign-in, knows all app state (RunPod balance, jobs,
+    errors…), and **can do things on command**. Owner: "agar perfectly handle kar sakte ho". Design: every action
+    is a button, and it runs only after the owner clicks "Yes".
+- The owner approved all of this ("haan"), and also: "mazeed dekho, aur kuch mile to woh bhi kar dena".
+
+**Documents (the binding contract, read both):**
+- Spec: `docs/superpowers/specs/2026-11-24-production-line-design.md`. It holds every finding, decision and calls I
+  made: §6 approaches, §7.4b audit bugs A1–A11, §7.6 decisions after the builder check.
+- Phase 1 plan: `docs/superpowers/plans/2026-11-24-phase1-research-script.md` (Tasks 1–7). Phases 2, 3 and the
+  features each get their own plan, written only after the previous phase is verified on the VPS.
+- Workflow: superpowers brainstorming → spec → writing-plans → executing-plans inline (TDD per task) → an Opus
+  whole-branch review → one fix pass. The execution ledger is in git-ignored
+  `.superpowers/sdd/2026-11-24-phase1-research-script/progress.md`. **It is lost in a new container**, so the
+  progress list below is the record.
+
+**Why it was broken (root causes found in the audit):**
+- **Claude time.** 8–10 min per video: the scorecard loop ran up to 3×, and the web-search fact-check ran up to 3×
+  (about 75 s each).
+- **The fact-check failed videos on nitpicks** and made scripts hedge every line.
+- **Settings said Sonnet/medium, but the subscription path ignored it.** It ran the plan default, and the
+  fact-check ran on "high".
+- **The word target assumed 2.6 words/s, but Kokoro really speaks about 2.1.** Scripts came out about 110 s, the
+  pipeline rewrote them, the rewrite was fact-checked again, and the video failed.
+- **Scenes are drawn one by one.**
+- **Dashboard gaps.** The `scheduleVideo` action has no UI. Title and cover can't be edited. Channel edit is hidden.
+- **11 more bugs (A1–A11 in the spec):**
+  - stale voice/scene files are restored on a redo;
+  - `from_stage` is re-applied on every retry;
+  - videos stay stuck after a worker crash;
+  - the breaker is forgiven by any row update;
+  - planner spam when there are no ideas;
+  - ideas burnt by failures;
+  - RunPod network errors are not parked;
+  - render hangs for 60 min on an OOM;
+  - the TikTok rate-limit retry is dropped (re-posts every minute);
+  - a failing publish loops forever;
+  - the scheduler overwrites manual times.
+
+**TikTok facts that shape the features:**
+- A draft (inbox) upload sends only the file, so the caption and cover are set by the owner in the TikTok app.
+- The API's cover can only be a frame timestamp.
+- So the Cover feature is a frame picker. Draft mode shows "Copy caption".
+
+**Progress (update after every task):**
+- [x] Spec + builder check + deep audit, approved by the owner.
+- [x] Phase 1 plan written.
+- [x] P1 Task 1: Sonnet + `--effort medium` on every path. `llm.MODEL_ALIAS/API_MODEL/EFFORT`; Settings shows the
+  model read-only. CLI 2.1.329 supports `--effort` (verified).
+- [x] P1 Task 2: migration `0005_phase1.sql` written. **NOT applied yet.** It is applied in Task 7 with the
+  Supabase connector.
+- [~] P1 Task 3: lean research (about 3–4 searches) and one-pass script with `self_review`, plus
+  `content.word_range` / `script_problems` / `keep_found_sources`. The label is `→ Researcher · Year`; fakes now use
+  2.1 w/s. Code is written, its own tests pass, and the full e2e run was in progress.
+  - Ruling: a bad scene id is auto-fixed, not blocking.
+- [ ] P1 Tasks 4–7: `stop_after` hook + A1; breaker / no-ideas (A3, A4) + the Resume button; idea release / sweeper
+  / startup reset (A2, A5); deploy:
+  1. apply 0005;
+  2. set global `paused=true` so normal videos don't hit the old fact-check before Phase 2;
+  3. push to main;
+  4. wait for "Worker started (v1.1.0)";
+  5. 3× `plan_channel {force:true, stop_after:"script"}`;
+  6. check timings and scripts;
+  7. update the owner.
+- [ ] Phase 2, Phase 3, Features (each: plan → TDD → VPS verify).
+
+**Working rules for this session:**
+- Develop on branch `claude/quirky-franklin-tiqm5r`. Merge to `main` only at a verified phase boundary: `main`
+  deploys itself to the VPS.
+- Claude steps can only run on the VPS (the MASTER_KEY is there). Verify with test jobs inserted through the
+  Supabase connector, and watch `events` (`data.seconds`).
+- Owner updates are short, in Roman Urdu. Don't wait for their reply between phases. Stop only for destructive,
+  security-sensitive or money-surprising actions.
+
+### 0.0000 PAUSED by owner (2026-11-24), superseded by §0.00000 above
+State before session 6. All 3 Claude videos failed: 94f47cae, a11f686f, da3da7f5. The planner tripped "3 failed in
+24h".
 Owner said "save progress, stop everything, I will continue later". State at pause:
 - All code is on `main` (last: b1278a4 fact-check severity). VPS auto-deploys from main. Demo copy is stopped.
 - Retry job 21537 (video `da3da7f5-95be-4a06-ab88-146eddfc66be`, "In Labs, Roughly Two-Thirds Miss Their Own

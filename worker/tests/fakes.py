@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 from studio import config, content, db, images, llm, pipeline, settings, voice
 from studio.voice import Word
 
-WORDS_PER_SECOND = 2.6
+WORDS_PER_SECOND = 2.1          # Kokoro's measured pace
 
 
 def _match(row: dict, where: dict | None) -> bool:
@@ -143,7 +143,9 @@ class FakeWorld:
     def research(self, system, prompt, *, purpose, max_searches=8, effort=None, channel_id=None, video_id=None):
         self.calls["claude"] += 1
         self._maybe_fail("anthropic")
-        return "Radvansky, Notre Dame, 2011: walking through doorways increases forgetting.", [], 0.2
+        return ("Radvansky, Notre Dame, 2011: walking through doorways increases forgetting.",
+                [{"url": "https://doi.org/10.1080/17470218.2011.571267", "title": "Radvansky 2011", "cited_text": ""}],
+                0.2)
 
     def generate(self, description, *, seed=7, figure_prompt=None, channel_id=None, video_id=None):
         self.calls["runpod"] += 1
@@ -173,7 +175,7 @@ class FakeWorld:
             return p.read_bytes(), words, 0.0
 
 
-def _beat(i: int, kind: str, n_scenes: int, words: int = 19) -> content.Beat:
+def _beat(i: int, kind: str, n_scenes: int, words: int = 17) -> content.Beat:
     return content.Beat(kind=kind, narration=" ".join(f"word{i}x{j}" for j in range(words)) + ".",
                         onscreen=[content.TextPart(text="your brain ", kind="ink"),
                                   content.TextPart(text="forgets", kind="key")],
@@ -185,7 +187,7 @@ KINDS = ["hook", "open_loop", "question", "story", "study", "twist", "story", "f
 
 
 def clean_script() -> content.Script:
-    """10 beats × 20 words ≈ 77 s of narration at 2.6 words/s."""
+    """10 beats × 17 words = 170 words ≈ 81 s at 2.1 words/s (inside word_range of the seed channel)."""
     return content.Script(
         title="Why doorways make you forget", hook_line="Walking through a door erases your memory",
         hook_style="you-callout", beats=[_beat(i, k, 4) for i, k in enumerate(KINDS)],
