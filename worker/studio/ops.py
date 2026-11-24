@@ -153,6 +153,7 @@ def research_ideas(channel_id: str, count: int = 12) -> dict:
 
 # ------------------------------------------------------------------ publishing
 PUBLISHABLE = ["approved", "scheduled", "ready"]
+PUBLISH_MAX_FAILS = 3
 
 
 def publish_video(video_id: str) -> dict:
@@ -202,10 +203,20 @@ def publish_video(video_id: str) -> dict:
             raise NotConfigured("tiktok", f"TikTok rejected the account token ({e.code}) — reconnect it in Accounts")
         if e.code in ("spam_risk_too_many_posts", "spam_risk_too_many_pending_share", "reached_active_user_cap",
                       "rate_limit_exceeded"):
-            enqueue("publish_video", {"video_id": video_id}, dedupe=f"publish:{video_id}",
-                    run_after=now() + timedelta(hours=3), channel_id=ch["id"], video_id=video_id)
+            # move the post itself 3h later (an extra job would collide with this one's dedupe key and be dropped)
+            later = now() + timedelta(hours=3)
+            db.update("videos", {"id": video_id}, {"status": "scheduled", "scheduled_for": later.isoformat(),
+                                                   "stage_detail": "TikTok asked us to slow down — trying again in 3 hours"})
             event(f"TikTok limit hit ({e.code}); retrying in 3h", "warn", "publish", channel_id=ch["id"], video_id=video_id)
             return {"retry": e.code}
+        fails = int((v.get("publish_status") or {}).get("failures") or 0) + 1
+        if fails >= PUBLISH_MAX_FAILS:
+            msg = f"Publishing failed {fails} times (last: {e}). Check the TikTok account, then approve the video again."
+            db.update("videos", {"id": video_id}, {"status": "failed", "error": msg[:1000],
+                                                   "publish_status": {**(v.get("publish_status") or {}), "failures": fails}})
+            event(msg, "error", "publish", channel_id=ch["id"], video_id=video_id)
+            raise PermanentError(msg) from e
+        db.update("videos", {"id": video_id}, {"publish_status": {**(v.get("publish_status") or {}), "failures": fails}})
         raise
     except BaseException:
         if pid is None:          # nothing reached TikTok → safe to try again later
