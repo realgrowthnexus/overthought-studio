@@ -49,3 +49,25 @@ def test_third_publish_failure_fails_the_video(world, monkeypatch):
         main.run_one(_job(world))
     v = world.select("videos", {"id": world.v["id"]}, single=True)
     assert v["status"] == "failed" and v["error"].startswith("Publishing failed 3 times")
+
+
+def test_network_failures_count_too(world, monkeypatch):
+    import httpx
+
+    def post(*a, **k):
+        raise httpx.ConnectError("no route to TikTok")
+    monkeypatch.setattr(tiktok, "post_video", post)
+    for _ in range(3):
+        world.update("videos", {"id": world.v["id"]}, {"status": "scheduled"})
+        main.run_one(_job(world))
+    assert world.select("videos", {"id": world.v["id"]}, single=True)["status"] == "failed"
+
+
+def test_approving_again_resets_the_count(world, monkeypatch):
+    monkeypatch.setattr(tiktok, "post_video", _raise("internal_error"))
+    world.update("videos", {"id": world.v["id"]}, {"approved_at": "2026-11-01T00:00:00+00:00",
+                                                   "publish_status": {"failures": 3, "since": "2026-11-01T00:00:00+00:00"}})
+    world.update("videos", {"id": world.v["id"]}, {"status": "scheduled", "approved_at": "2026-11-24T00:00:00+00:00"})
+    main.run_one(_job(world))
+    v = world.select("videos", {"id": world.v["id"]}, single=True)
+    assert v["status"] == "scheduled" and v["publish_status"]["failures"] == 1

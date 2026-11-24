@@ -209,23 +209,35 @@ def publish_video(video_id: str) -> dict:
                                                    "stage_detail": "TikTok asked us to slow down — trying again in 3 hours"})
             event(f"TikTok limit hit ({e.code}); retrying in 3h", "warn", "publish", channel_id=ch["id"], video_id=video_id)
             return {"retry": e.code}
-        fails = int((v.get("publish_status") or {}).get("failures") or 0) + 1
-        if fails >= PUBLISH_MAX_FAILS:
-            msg = f"Publishing failed {fails} times (last: {e}). Check the TikTok account, then approve the video again."
-            db.update("videos", {"id": video_id}, {"status": "failed", "error": msg[:1000],
-                                                   "publish_status": {**(v.get("publish_status") or {}), "failures": fails}})
-            event(msg, "error", "publish", channel_id=ch["id"], video_id=video_id)
-            raise PermanentError(msg) from e
-        db.update("videos", {"id": video_id}, {"publish_status": {**(v.get("publish_status") or {}), "failures": fails}})
+        _count_publish_failure(v, ch, e)
         raise
-    except BaseException:
-        if pid is None:          # nothing reached TikTok → safe to try again later
+    except ServiceProblem:
+        if pid is None:          # a dependency is down: the job parks; this is not the video's fault
             db.update("videos", {"id": video_id}, {"status": prev, "stage_detail": None})
+        raise
+    except Exception as e:
+        if pid is None:          # nothing reached TikTok → safe to try again later, but only a few times
+            db.update("videos", {"id": video_id}, {"status": prev, "stage_detail": None})
+            _count_publish_failure(v, ch, e)
         raise
     enqueue("check_publish", {"video_id": video_id}, dedupe=f"check:{video_id}", run_after=now() + timedelta(seconds=45),
             channel_id=ch["id"], video_id=video_id)
     event(f"Uploaded to TikTok as {mode}: {v['title']}", "success", "publish", channel_id=ch["id"], video_id=video_id)
     return {"publish_id": pid, "mode": mode}
+
+
+def _count_publish_failure(v: dict, ch: dict, err: Exception) -> None:
+    """Count failed publish tries since the last approval; at the cap the video stops and the red bar says why."""
+    ps = dict(v.get("publish_status") or {})
+    since = v.get("approved_at")
+    fails = (int(ps.get("failures") or 0) if ps.get("since") == since else 0) + 1
+    ps.update(failures=fails, since=since)
+    if fails >= PUBLISH_MAX_FAILS:
+        msg = f"Publishing failed {fails} times (last: {err}). Check the TikTok account, then approve the video again."
+        db.update("videos", {"id": v["id"]}, {"status": "failed", "error": msg[:1000], "publish_status": ps})
+        event(msg, "error", "publish", channel_id=ch["id"], video_id=v["id"])
+        raise PermanentError(msg) from err
+    db.update("videos", {"id": v["id"]}, {"publish_status": ps})
 
 
 def check_publish(video_id: str, attempt: int = 0) -> dict:
