@@ -71,3 +71,33 @@ def test_history_is_included(world, monkeypatch):
     monkeypatch.setattr(llm, "structured", fake)
     assistant.reply(p["id"])
     assert "what is runpod balance" in seen["prompt"] and "and now?" in seen["prompt"]
+
+
+def test_post_time_without_offset_is_dropped_not_a_crash(world, monkeypatch):
+    p, _, fake = _ask(world, "kal 10 baje", {"reply": "Theek hai.", "actions": [
+        {"type": "set_post_time", "label": "Kal 10 baje", "video_id": world.v["id"], "when_iso": "2030-11-25T10:00"}]})
+    monkeypatch.setattr(llm, "structured", fake)
+    assistant.reply(p["id"])
+    row = world.select("assistant_messages", {"id": p["id"]}, single=True)
+    assert row["status"] == "done" and row["actions"] == []
+
+
+def test_a_broken_snapshot_still_finishes_the_row(world, monkeypatch):
+    p, _, fake = _ask(world, "hi", {"reply": "x", "actions": []})
+    monkeypatch.setattr(assistant, "snapshot", lambda: (_ for _ in ()).throw(RuntimeError("db down")))
+    assistant.reply(p["id"])
+    assert world.select("assistant_messages", {"id": p["id"]}, single=True)["status"] == "error"
+
+
+def test_button_title_is_built_from_the_real_target(world, monkeypatch):
+    p, _, fake = _ask(world, "approve", {"reply": "ok", "actions": [
+        {"type": "approve_video", "label": "Details dekhein", "video_id": world.v["id"]}]})
+    monkeypatch.setattr(llm, "structured", fake)
+    assistant.reply(p["id"])
+    a = world.select("assistant_messages", {"id": p["id"]}, single=True)["actions"][0]
+    assert a["title"] == "Approve video: Doorways"
+
+
+def test_snapshot_lists_upcoming_posts(world):
+    world.update("videos", {"id": world.v["id"]}, {"status": "scheduled", "scheduled_for": "2030-01-01T09:00:00+00:00"})
+    assert [u["title"] for u in assistant.snapshot()["upcoming"]] == ["Doorways"]

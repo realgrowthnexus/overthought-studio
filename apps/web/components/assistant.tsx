@@ -22,7 +22,8 @@ export function Assistant() {
   const [acting, setActing] = React.useState<string | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
-  const waiting = msgs.some((m) => m.status === "pending");
+  // a reply older than 3 minutes is treated as lost (the server marks it so on the next message)
+  const waiting = msgs.some((m) => m.status === "pending" && Date.now() - new Date(m.created_at).getTime() < 180_000);
 
   const refresh = React.useCallback(async () => {
     const r = await loadAssistant();
@@ -108,7 +109,7 @@ export function Assistant() {
               <div key={m.id} className={cn("max-w-[88%] rounded-[14px] px-3.5 py-2.5 text-[14px] leading-relaxed",
                 m.role === "user" ? "self-end bg-accent/15 text-ink" : "self-start bg-elev-2 text-ink",
                 m.status === "error" && "border border-bad/30")}>
-                {m.status === "pending" ? (
+                {m.status === "pending" && Date.now() - new Date(m.created_at).getTime() < 180_000 ? (
                   <span className="inline-flex items-center gap-2 text-ink-3"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Soch raha hoon…</span>
                 ) : (
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
@@ -116,10 +117,13 @@ export function Assistant() {
                 {m.role === "assistant" && m.actions?.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {m.actions.map((a, i) => (
-                      <Button key={i} size="sm" variant={a.done ? "ghost" : "primary"} disabled={Boolean(a.done)}
-                        loading={acting === `${m.id}:${i}`} onClick={() => act(m, i)}>
-                        {a.done === "ok" ? "✓ " : ""}{String(a.label ?? a.type)}
-                      </Button>
+                      <div key={i} className="flex flex-col items-start gap-0.5">
+                        <Button size="sm" variant={a.done ? "ghost" : "primary"} disabled={Boolean(a.done)}
+                          loading={acting === `${m.id}:${i}`} onClick={() => act(m, i)}>
+                          {a.done === "ok" ? "✓ " : ""}{String(a.title ?? a.type)}
+                        </Button>
+                        {a.label && a.label !== a.title ? <span className="px-1 text-[11px] text-ink-3">{String(a.label)}</span> : null}
+                      </div>
                     ))}
                   </div>
                 )}

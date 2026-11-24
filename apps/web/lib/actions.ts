@@ -118,10 +118,11 @@ export async function enqueueJob(input: {
 export async function retryJob(id: number): Promise<ActionResult> {
   return guard(async () => {
     z.number().int().positive().parse(id);
-    const { error } = await serviceClient().from("jobs")
+    const { data: rows, error } = await serviceClient().from("jobs")
       .update({ status: "queued", run_after: new Date().toISOString(), last_error: null, waiting_on: null, locked_by: null, locked_at: null, attempts: 0 })
-      .eq("id", id).in("status", ["failed", "cancelled", "waiting"]);
+      .eq("id", id).in("status", ["failed", "cancelled", "waiting"]).select("id");
     fail(error);
+    if (!rows?.length) return { ok: false, error: "That job isn't failed or waiting any more — nothing to retry." };
     revalidatePath("/logs");
     return { ok: true, message: "Job requeued." };
   });
@@ -130,10 +131,11 @@ export async function retryJob(id: number): Promise<ActionResult> {
 export async function cancelJob(id: number): Promise<ActionResult> {
   return guard(async () => {
     z.number().int().positive().parse(id);
-    const { error } = await serviceClient().from("jobs")
+    const { data: rows, error } = await serviceClient().from("jobs")
       .update({ status: "cancelled", finished_at: new Date().toISOString() })
-      .eq("id", id).in("status", ["queued", "waiting"]);
+      .eq("id", id).in("status", ["queued", "waiting"]).select("id");
     fail(error);
+    if (!rows?.length) return { ok: false, error: "That job already started or finished — it can't be cancelled now." };
     revalidatePath("/logs");
     return { ok: true, message: "Job cancelled." };
   });
@@ -507,10 +509,16 @@ export async function setCover(id: string, ms: number): Promise<ActionResult> {
 
 /* ---------------- Assistant ---------------- */
 
+const STALE_MS = 3 * 60_000;
+
 export async function sendAssistantMessage(text: string): Promise<ActionResult> {
   return guard(async () => {
     const t = z.string().trim().min(1, "Type a question").max(2000).parse(text);
     const db = serviceClient();
+    const stale = new Date(Date.now() - STALE_MS).toISOString();
+    // an answer that never came (worker restart) must not lock the chat: give up on it after 3 minutes
+    await db.from("assistant_messages").update({ status: "error", content: "No answer came back — please ask again." })
+      .eq("status", "pending").lt("created_at", stale);
     const { data: busy } = await db.from("assistant_messages").select("id").eq("status", "pending").limit(1);
     if (busy?.length) return { ok: false, error: "Still answering your last message — one moment." };
     const { error: e1 } = await db.from("assistant_messages").insert({ role: "user", content: t, status: "done" });
@@ -527,7 +535,10 @@ export async function sendAssistantMessage(text: string): Promise<ActionResult> 
 
 export async function clearAssistant(): Promise<ActionResult> {
   return guard(async () => {
-    const { error } = await serviceClient().from("assistant_messages").delete().neq("status", "pending");
+    const stale = new Date(Date.now() - STALE_MS).toISOString();
+    const db = serviceClient();
+    const { error } = await db.from("assistant_messages").delete().neq("status", "pending");
+    await db.from("assistant_messages").delete().eq("status", "pending").lt("created_at", stale);
     fail(error);
     return { ok: true, message: "Conversation cleared." };
   });
@@ -565,7 +576,8 @@ export async function runAssistantAction(messageId: number, index: number): Prom
       case "set_post_time": r = await scheduleVideo(a.video_id!, a.when_iso!); break;
       case "clear_post_time": r = await scheduleVideo(a.video_id!, null); break;
     }
-    const note = r.ok ? `✓ ${a.label}${r.message ? ` — ${r.message}` : ""}` : `✗ ${a.label} — ${r.error}`;
+    const name = String(stored.title ?? a.label);
+    const note = r.ok ? `✓ ${name}${r.message ? ` — ${r.message}` : ""}` : `✗ ${name} — ${r.error}`;
     list[index] = { ...stored, done: r.ok ? "ok" : "failed" };
     await db.from("assistant_messages").update({ actions: list }).eq("id", messageId);
     await db.from("assistant_messages").insert({ role: "assistant", content: note, status: "done" });

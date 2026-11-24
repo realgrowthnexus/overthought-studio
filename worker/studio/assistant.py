@@ -76,6 +76,9 @@ def snapshot() -> dict:
     videos = [{k: v.get(k) for k in ("id", "channel_id", "title", "status", "error", "stage_detail", "duration_s",
                                      "cost_usd", "approval", "scheduled_for", "posted_at", "created_at")}
               for v in db.select("videos", order="created_at.desc", limit=20)]
+    upcoming = sorted([{k: v.get(k) for k in ("id", "channel_id", "title", "scheduled_for", "schedule_locked")}
+                       for v in db.select("videos", {"status": "scheduled"}, order="scheduled_for.asc", limit=10)],
+                      key=lambda v: v.get("scheduled_for") or "")
     events = [{k: e.get(k) for k in ("level", "message", "created_at")}
               for e in db.select("events", order="created_at.desc", limit=30)]
     try:
@@ -87,15 +90,22 @@ def snapshot() -> dict:
     return {"now_utc": datetime.now(timezone.utc).isoformat(),
             "settings": {k: g.get(k) for k in ("paused", "auto_publish", "daily_budget_usd", "monthly_budget_usd",
                                                 "runpod_monthly_cap_usd", "api_fallback")},
-            "services": services, "channels": channels, "jobs": jobs, "videos": videos, "events": events,
+            "services": services, "channels": channels, "jobs": jobs, "videos": videos, "upcoming": upcoming,
+            "events": events,
             "spend": budget, "runpod": runpod}
 
 
-def _exists(table: str, id_) -> bool:
+def _row(table: str, id_, cols: str) -> dict | None:
     try:
-        return bool(db.select(table, {"id": id_}, single=True, columns="id"))
+        return db.select(table, {"id": id_}, single=True, columns=cols)
     except Exception:
-        return False
+        return None
+
+
+TITLE = {"pause_channel": "Pause channel", "resume_channel": "Resume channel", "make_video": "Make a video now for",
+         "pause_studio": "Pause the whole studio", "resume_studio": "Resume the studio", "retry_job": "Retry job",
+         "cancel_job": "Cancel job", "approve_video": "Approve video", "reject_video": "Reject video",
+         "publish_video": "Publish video now", "set_post_time": "Set post time for", "clear_post_time": "Clear post time for"}
 
 
 def validate_actions(actions: list[ProposedAction]) -> list[dict]:
@@ -105,17 +115,31 @@ def validate_actions(actions: list[ProposedAction]) -> list[dict]:
         if a.type not in NEEDS:
             continue
         need = NEEDS[a.type]
-        ok = (need is None
-              or (need == "channel" and a.channel_id and _exists("channels", a.channel_id))
-              or (need == "video" and a.video_id and _exists("videos", a.video_id))
-              or (need == "job" and a.job_id and _exists("jobs", a.job_id)))
+        target = None
+        if need == "channel" and a.channel_id:
+            r = _row("channels", a.channel_id, "id,name")
+            target = r and r.get("name")
+        elif need == "video" and a.video_id:
+            r = _row("videos", a.video_id, "id,title")
+            target = r and (r.get("title") or "untitled")
+        elif need == "job" and a.job_id:
+            r = _row("jobs", a.job_id, "id,type")
+            target = r and f"#{r['id']} ({r.get('type')})"
+        if need is not None and not target:
+            continue
         if a.type == "set_post_time":
             try:
-                ok = ok and datetime.fromisoformat(a.when_iso or "") > datetime.now(timezone.utc)
-            except ValueError:
-                ok = False
-        if ok:
-            out.append(a.model_dump(exclude_none=True))
+                when = datetime.fromisoformat(a.when_iso or "")
+                if when.tzinfo is None or when <= datetime.now(timezone.utc):
+                    continue
+            except (ValueError, TypeError):
+                continue
+        d = a.model_dump(exclude_none=True)
+        # the button text the owner reads is built here from the real action and target, never from the model
+        d["title"] = f"{TITLE[a.type]}: {target}" if target else TITLE[a.type]
+        if a.type == "set_post_time":
+            d["title"] += f" → {when:%a %d %b %H:%M %Z}".rstrip()
+        out.append(d)
     return out[:3]
 
 
@@ -127,13 +151,13 @@ def _history(pending_id) -> list[dict]:
 
 
 def reply(message_id) -> dict:
-    """Answer the owner's latest message into the pending assistant row `message_id`."""
-    hist = _history(message_id)
-    convo = "\n".join(f"{r['role'].upper()}: {r['content']}" for r in hist) or "(no earlier messages)"
+    """Answer the owner's latest message into the pending assistant row `message_id`. The row is always finished."""
     import json
-    prompt = (f"SNAPSHOT:\n{json.dumps(snapshot(), default=str)[:30000]}\n\nCONVERSATION (latest last):\n{convo}\n\n"
-              "Answer the owner's LAST message.")
     try:
+        hist = _history(message_id)
+        convo = "\n".join(f"{r['role'].upper()}: {r['content']}" for r in hist) or "(no earlier messages)"
+        prompt = (f"SNAPSHOT:\n{json.dumps(snapshot(), default=str)[:30000]}\n\nCONVERSATION (latest last):\n"
+                  f"{convo}\n\nAnswer the owner's LAST message.")
         out, _ = llm.structured(AssistantReply, SYSTEM, prompt, purpose="assistant", max_tokens=3000,
                                 allow_fallback=False)
         vals = {"content": out.reply.strip(), "actions": validate_actions(out.actions), "status": "done"}
