@@ -83,19 +83,18 @@ continues keeps the same quality bar and understanding, and works from the spec,
   model read-only. CLI 2.1.329 supports `--effort` (verified).
 - [x] P1 Task 2: migration `0005_phase1.sql` written. **NOT applied yet.** It is applied in Task 7 with the
   Supabase connector.
-- [~] P1 Task 3: lean research (about 3–4 searches) and one-pass script with `self_review`, plus
-  `content.word_range` / `script_problems` / `keep_found_sources`. The label is `→ Researcher · Year`; fakes now use
-  2.1 w/s. Code is written, its own tests pass, and the full e2e run was in progress.
-  - Ruling: a bad scene id is auto-fixed, not blocking.
-- [ ] P1 Tasks 4–7: `stop_after` hook + A1; breaker / no-ideas (A3, A4) + the Resume button; idea release / sweeper
-  / startup reset (A2, A5); deploy:
-  1. apply 0005;
-  2. set global `paused=true` so normal videos don't hit the old fact-check before Phase 2;
-  3. push to main;
-  4. wait for "Worker started (v1.1.0)";
-  5. 3× `plan_channel {force:true, stop_after:"script"}`;
-  6. check timings and scripts;
-  7. update the owner.
+- [x] P1 Tasks 3–6 done (TDD, ledger). Worker suite 109 passed. Rulings: a bad scene id is auto-fixed; the pacing
+  test fixture now seeds ideas.
+- [x] 2026-11-24 09:35 UTC: migration 0005 APPLIED. Global `paused=true` set by Claude (event logged), so only test
+  jobs run. **Unpause after Phase 2 is live.** The 3 ideas from the failed videos were returned to `new`
+  (`fail_count` 1).
+- [ ] P1 Task 7: Opus whole-branch review (was interrupted by the 5-h limit, resumed) → fix pass → merge to main →
+  VPS shows v1.1.0 → 3× `plan_channel {force:true, stop_after:"script"}` for channel `callaletheia`
+  (id a6bd1c58-b288-4988-b9a9-956fed387c40, the only active one; its slug was renamed from overthought) → check
+  timings and scripts → owner update.
+- Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
+  `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
+  was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.
 - [ ] Phase 2, Phase 3, Features (each: plan → TDD → VPS verify).
 
 **Working rules for this session:**
