@@ -194,7 +194,8 @@ def publish_video(video_id: str) -> dict:
     try:
         from . import pipeline
         data = pipeline.final_video(v, ch)
-        pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True)
+        pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True,
+                                cover_ms=int(v.get("cover_ms") or 0))
         db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
                                                "publish_status": {"mode": mode}})
     except tiktok.TikTokError as e:
@@ -238,6 +239,40 @@ def _count_publish_failure(v: dict, ch: dict, err: Exception) -> None:
         event(msg, "error", "publish", channel_id=ch["id"], video_id=v["id"])
         raise PermanentError(msg) from err
     db.update("videos", {"id": v["id"]}, {"publish_status": ps})
+
+
+def _cover_source(video: dict):
+    """The best local file to take a cover frame from: the full-quality library copy, else the preview."""
+    from . import pipeline
+    lib = pipeline.library_path(video["id"])
+    if lib.exists():
+        return lib
+    tmp = config.WORK / "covers" / f"{video['id']}.mp4"
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_bytes(db.download("videos", video["video_path"]))
+    return tmp
+
+
+def make_thumb(video_id: str) -> dict:
+    """The owner picked a cover frame: save that frame as the video's thumbnail (TikTok gets cover_ms on direct post)."""
+    import subprocess
+    v = db.select("videos", {"id": video_id}, single=True)
+    ch = db.select("channels", {"id": v["channel_id"]}, single=True)
+    src = _cover_source(v)
+    out = config.WORK / "covers" / f"{video_id}.jpg"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ms = max(0, int(v.get("cover_ms") or 0))
+    p = subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{ms / 1000:.3f}", "-i", str(src), "-frames:v", "1",
+                        "-q:v", "3", str(out)], capture_output=True, text=True)
+    if p.returncode != 0 or not out.exists():
+        raise RuntimeError("Could not take the cover frame: " + p.stderr[-300:])
+    path = f"{ch['slug']}/{video_id}/thumb.jpg"
+    db.upload("videos", path, out.read_bytes(), "image/jpeg")
+    db.update("videos", {"id": video_id}, {"thumb_path": path})
+    out.unlink(missing_ok=True)
+    event(f"Cover updated: {v.get('title') or 'video'} (frame at {ms / 1000:.1f}s)", "success", "publish",
+          channel_id=ch["id"], video_id=video_id)
+    return {"thumb": path, "cover_ms": ms}
 
 
 def check_publish(video_id: str, attempt: int = 0) -> dict:

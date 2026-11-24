@@ -31,6 +31,10 @@ def slots(ch: dict, days: int, pacing: bool = False) -> list[datetime]:
     return out
 
 
+def _label(iso: str, tz: ZoneInfo) -> str:
+    return f"Scheduled for {datetime.fromisoformat(iso).astimezone(tz):%a %b %d, %I:%M %p %Z}"
+
+
 def tick() -> None:
     g = settings.get()
     t = now()
@@ -83,15 +87,20 @@ def _channel(ch: dict, t: datetime, pacing: bool = False, floor: int | None = No
     upcoming = slots(ch, int(ch.get("buffer_days") or 1), pacing=pacing)
     vids = db.select("videos", {"channel_id": ch["id"],
                                 "status": ("in", IN_PRODUCTION + ["ready", "approved", "scheduled"])})
+    tz = ZoneInfo(ch.get("timezone") or "America/New_York")
     scheduled = sorted([v for v in vids if v["status"] == "scheduled" and v.get("scheduled_for")],
                        key=lambda v: v["scheduled_for"])
     taken = {v["scheduled_for"][:16] for v in scheduled}
-    # 1) give approved videos the earliest free slot
+    # 1) approved videos: a time the owner set is kept as it is; the rest get the earliest free slot
     approved = sorted([v for v in vids if v["status"] == "approved"], key=lambda v: v["created_at"])
+    for v in [v for v in approved if v.get("schedule_locked") and v.get("scheduled_for")]:
+        db.update("videos", {"id": v["id"]}, {"status": "scheduled", "stage_detail": _label(v["scheduled_for"], tz)})
+        taken.add(v["scheduled_for"][:16])
+    approved = [v for v in approved if not (v.get("schedule_locked") and v.get("scheduled_for"))]
     free = [s for s in upcoming if s.isoformat()[:16] not in taken]
     for v, s in zip(approved, free):
         db.update("videos", {"id": v["id"]}, {"status": "scheduled", "scheduled_for": s.isoformat(),
-                                              "stage_detail": f"Scheduled for {s.astimezone(ZoneInfo(ch['timezone'])):%a %b %d, %I:%M %p} ET"})
+                                              "stage_detail": _label(s.isoformat(), tz)})
         taken.add(s.isoformat()[:16])
     # 2) publish whose time has come — at most ONE per channel per tick (no burst after downtime)
     due = [v for v in scheduled if datetime.fromisoformat(v["scheduled_for"]) <= t]
@@ -100,8 +109,10 @@ def _channel(ch: dict, t: datetime, pacing: bool = False, floor: int | None = No
         enqueue("publish_video", {"video_id": v["id"]}, dedupe=f"publish:{v['id']}", priority=2,
                 channel_id=ch["id"], video_id=v["id"])
         later = [s for s in upcoming if s.isoformat()[:16] not in taken]
-        for v2, slot in zip(due[1:], later):          # overdue extras move to the next free slots
-            db.update("videos", {"id": v2["id"]}, {"scheduled_for": slot.isoformat()})
+        movable = [v2 for v2 in due[1:] if not v2.get("schedule_locked")]   # owner-set times are never moved
+        for v2, slot in zip(movable, later):          # overdue extras move to the next free slots
+            db.update("videos", {"id": v2["id"]}, {"scheduled_for": slot.isoformat(),
+                                                   "stage_detail": _label(slot.isoformat(), tz)})
             taken.add(slot.isoformat()[:16])
     # 3) circuit breaker: 3 production failures in 24h → stop planning for this channel. Only pressing Start/Resume
     #    (which writes failures_forgiven_at) forgives earlier failures; other row updates never do.

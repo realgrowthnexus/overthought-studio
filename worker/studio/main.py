@@ -15,7 +15,7 @@ from .log import event, log
 from .services import LimitReached, PermanentError, ServiceProblem, local_time, report_problem
 
 HEAVY = ["produce_video"]
-LIGHT = ["plan_channel", "research_ideas", "publish_video", "check_publish", "sync_stats", "import_stats",
+LIGHT = ["make_thumb", "plan_channel", "research_ideas", "publish_video", "check_publish", "sync_stats", "import_stats",
          "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage"]
 BUDGET_GATED = {"produce_video", "plan_channel", "research_ideas", "weekly_review"}
 STOP = threading.Event()
@@ -30,6 +30,8 @@ def handle(job: dict) -> dict | None:
             db.update("jobs", {"id": job["id"]}, {"payload": rest})
         return {"video": pipeline.produce(p["video_id"], p.get("from_stage"), stop_after=p.get("stop_after"),
                                           on_cleared=cleared)["id"]}
+    if t == "make_thumb":
+        return ops.make_thumb(p["video_id"])
     if t == "plan_channel":
         return ops.plan_channel(p["channel_id"], bool(p.get("force")), stop_after=p.get("stop_after"))
     if t == "research_ideas":
