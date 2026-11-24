@@ -442,6 +442,16 @@ def _beat_times(script: content.Script, words: list[list]) -> list[tuple[float, 
     return out
 
 
+RENDER_TIMEOUT_S = 1500
+
+
+def _check_probe(pr: dict) -> None:
+    if pr["duration"] < HARD_MIN_SECONDS:
+        raise RuntimeError(f"Rendered video is {pr['duration']:.1f}s (< 61s)")
+    if not pr.get("acodec"):
+        raise RuntimeError("Rendered video has no audio track")
+
+
 def _render(video: dict, ch: dict, work: Path) -> dict:
     script = content.Script.model_validate(video["script"])
     sdir = work / "scenes"
@@ -484,14 +494,13 @@ def _render(video: dict, ch: dict, work: Path) -> dict:
     proc = subprocess.Popen([sys.executable, "-m", "studio.render.run", str(spec_path)], cwd=str(config.ROOT),
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
     try:
-        stdout, stderr = proc.communicate(timeout=3600)
+        stdout, stderr = proc.communicate(timeout=RENDER_TIMEOUT_S)
     except subprocess.TimeoutExpired:
         os.killpg(proc.pid, signal.SIGKILL)          # kill the pool workers and ffmpeg children too
         proc.communicate()
-        raise RuntimeError("Render took longer than 60 minutes and was stopped")
+        raise RuntimeError(f"Render took longer than {RENDER_TIMEOUT_S // 60} minutes and was stopped")
     if proc.returncode != 0:
         raise RuntimeError("Render failed: " + (stderr or stdout)[-800:])
     pr = json.loads(stdout.strip().splitlines()[-1])
-    if pr["duration"] < HARD_MIN_SECONDS:
-        raise RuntimeError(f"Rendered video is {pr['duration']:.1f}s (< 61s)")
+    _check_probe(pr)
     return {"path": out, "thumb": thumb, "probe": pr}

@@ -319,6 +319,16 @@ def _render_segment(args: tuple[int, int, str]) -> str:
     return path
 
 
+def _run_segments(fn, jobs: list, procs: int) -> list:
+    """Render segments in forked workers. Unlike multiprocessing.Pool, a worker killed by the OOM killer raises
+    BrokenProcessPool at once instead of hanging the render forever."""
+    if procs <= 1:
+        return [fn(j) for j in jobs]
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(max_workers=procs, mp_context=mp.get_context("fork")) as pool:
+        return list(pool.map(fn, jobs))
+
+
 def render_video(spec: Spec, procs: int | None = None) -> dict:
     global _PLAN, _FRAME0
     _PLAN = Plan(spec)
@@ -333,12 +343,7 @@ def render_video(spec: Spec, procs: int | None = None) -> dict:
         bounds = np.linspace(0, total, procs + 1).astype(int)
         jobs = [(int(bounds[i]), int(bounds[i + 1]), str(tmp / f"seg{i:02d}.mp4")) for i in range(procs)
                 if bounds[i + 1] > bounds[i]]
-        if procs > 1:
-            ctx = mp.get_context("fork")
-            with ctx.Pool(procs) as pool:
-                segs = pool.map(_render_segment, jobs)
-        else:
-            segs = [_render_segment(j) for j in jobs]
+        segs = _run_segments(_render_segment, jobs, procs)
         lst = tmp / "list.txt"
         lst.write_text("".join(f"file '{s}'\n" for s in segs))
         silent = tmp / "video.mp4"
