@@ -312,7 +312,7 @@ export async function setChannelStatus(id: string, status: "active" | "paused"):
     uuid.parse(id);
     z.enum(["active", "paused"]).parse(status);
     const { data: ch, error } = await serviceClient().from("channels")
-      .update({ status, ...(status === "active" ? { blocked_reason: null } : {}) })
+      .update({ status, ...(status === "active" ? { blocked_reason: null, failures_forgiven_at: new Date().toISOString() } : {}) })
       .eq("id", id).select("name").single();
     fail(error);
     await logEvent(status === "active" ? `Channel started: ${ch?.name}` : `Channel paused: ${ch?.name}`, { channel_id: id, level: status === "active" ? "success" : "warn" });

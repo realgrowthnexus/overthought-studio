@@ -28,6 +28,7 @@ def world(monkeypatch, tmp_path):
     w.tables["channels"].append(b)
     for ch in (a, b):
         w.update("channels", {"id": ch["id"]}, {**CH, "buffer_days": 1})
+        w.insert("ideas", {"channel_id": ch["id"], "title": "idea", "status": "new", "score": 5})
     w.a, w.b = a, b
     monkeypatch.setattr(usage, "pacing_on", lambda: False)
     return w

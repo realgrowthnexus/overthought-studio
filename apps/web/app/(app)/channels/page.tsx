@@ -69,7 +69,7 @@ export default async function ChannelsPage() {
                   </div>
                   <div className="relative z-[1] flex items-center gap-3">
                     {c.blocked_reason ? <Badge tone={holdTone(c.blocked_reason)} dot>On hold</Badge> : c.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
-                    <ChannelToggle id={c.id} status={c.status} />
+                    <ChannelToggle id={c.id} status={c.status} blockedReason={c.blocked_reason} />
                   </div>
                 </li>
               );
