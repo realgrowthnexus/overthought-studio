@@ -19,8 +19,9 @@ from .services import LimitReached, NotConfigured, ServiceDown
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 TIMEOUT = 900
 _STRIP_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_OAUTH_TOKEN")
-_LIMIT = re.compile(r"usage limit reached|hit your (session|weekly|opus|sonnet)? ?limit|limit reached|"
-                    r"(session|weekly) limit", re.I)
+# plan limits in all the wordings Claude Code uses ("hit your 5-hour limit", "reached your usage limit", …)
+_LIMIT = re.compile(r"usage limit|(hit|reached) your [\w\s-]{0,24}limit|limit reached|"
+                    r"(session|weekly|5-hour|5 hour) limit", re.I)
 _AUTH = re.compile(r"/login|invalid api key|oauth token|not logged in|authentication|unauthori[sz]ed|\b401\b", re.I)
 _EPOCH = re.compile(r"\|(\d{10})\b")
 _CLOCK = re.compile(r"resets\s+(\d{1,2})(?::(\d\d))?\s*([ap]m)\s*\(([^)]+)\)", re.I)

@@ -112,3 +112,11 @@ def test_parse_reset_clock_rolls_to_tomorrow_when_past():
     assert t == datetime(2026, 11, 21, 15, 0, tzinfo=timezone.utc)
     assert claude_cli.parse_reset("resets 9:30am (America/New_York)", now).hour == 14
     assert claude_cli.parse_reset("no time here", now) is None
+
+
+@pytest.mark.parametrize("text", ["Claude Code failed: You've hit your 5-hour limit · resets 1:50pm (UTC)",
+                                  "You've hit your 5 hour limit · resets 2pm (UTC)",
+                                  "You've reached your usage limit · resets 9pm (UTC)"])
+def test_real_limit_wordings_are_limits(text):
+    assert claude_cli._LIMIT.search(text)
+    assert claude_cli.parse_reset(text) is not None
