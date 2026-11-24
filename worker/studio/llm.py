@@ -202,13 +202,17 @@ def _check_stop(resp: Any, purpose: str) -> None:
 
 
 def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effort: str | None = None,
-               max_tokens: int = 16000, channel_id=None, video_id=None) -> tuple[T, float]:
-    """One call that returns a validated Pydantic object."""
-    if backend() == "subscription":
+               max_tokens: int = 16000, channel_id=None, video_id=None,
+               allow_fallback: bool = True) -> tuple[T, float]:
+    """One call that returns a validated Pydantic object. allow_fallback=False never spends on the API key
+    (the plan's limit is raised as LimitReached instead)."""
+    if backend() == "subscription" or not allow_fallback:
         try:
             out = _sub_run(prompt, system=system, schema=schema.model_json_schema(), tools=[], purpose=purpose,
                            channel_id=channel_id, video_id=video_id)
         except LimitReached as p:
+            if not allow_fallback:
+                raise
             _fallback_or_raise(p, purpose, channel_id, video_id)
         else:
             if out.get("structured") is None:
