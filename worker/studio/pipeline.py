@@ -227,6 +227,8 @@ def _stop_test(video: dict, ch: dict, stage: str, secs: dict) -> dict:
     video.update(_upd(video["id"], status="rejected", approval="rejected", progress=PROGRESS[stage],
                       rejection_note=f"Test run: stopped after {stage}", stage_detail=f"Test stopped after {stage}",
                       error=None))
+    from .ops import release_idea              # lazy: ops imports pipeline
+    release_idea(video["id"], failed=False)
     event(f"Test run stopped after {stage}: " + ", ".join(f"{k} {v:.0f}s" for k, v in secs.items()), "info",
           "pipeline", channel_id=ch["id"], video_id=video["id"], data={"seconds": secs})
     return video

@@ -69,6 +69,47 @@ def plan_channel(channel_id: str, force: bool = False, stop_after: str | None = 
     raise PermanentError("Every available idea already has a video in progress")
 
 
+def release_idea(video_id: str, failed: bool) -> None:
+    """A video that didn't make it gives its idea back to the bank; after 2 failed videos the idea is retired."""
+    v = db.select("videos", {"id": video_id}, single=True, columns="idea_id")
+    if not v or not v.get("idea_id"):
+        return
+    idea = db.select("ideas", {"id": v["idea_id"]}, single=True)
+    if not idea:
+        return
+    if not failed:
+        db.update("ideas", {"id": idea["id"]}, {"status": "new"})
+        return
+    n = int(idea.get("fail_count") or 0) + 1
+    db.update("ideas", {"id": idea["id"]}, {"fail_count": n, "status": "retired" if n >= 2 else "new"})
+
+
+_SWEEP = ["queued", "researching", "scripting", "fact_checking", "visuals", "voice", "rendering"]
+ORPHAN_ERROR = "Production stopped unexpectedly (the worker restarted mid-job). Press Make again."
+
+
+def sweep_stuck_videos(t: datetime) -> int:
+    """Videos left in a production status with no live job (worker killed) are failed, so they stop blocking
+    the channel's production slots."""
+    cutoff = (t - timedelta(minutes=15)).isoformat()
+    stale = db.select("videos", {"status": ("in", _SWEEP), "updated_at": ("lt", cutoff)}, columns="id,channel_id,title")
+    if not stale:
+        return 0
+    live = {j["video_id"] for j in db.select("jobs", {"type": "produce_video",
+                                                       "status": ("in", ["queued", "running", "waiting"])},
+                                              columns="video_id")}
+    n = 0
+    for v in stale:
+        if v["id"] in live:
+            continue
+        db.update("videos", {"id": v["id"]}, {"status": "failed", "error": ORPHAN_ERROR, "stage_detail": None})
+        release_idea(v["id"], failed=True)
+        event(f"{v.get('title') or 'Video'}: {ORPHAN_ERROR}", "error", "jobs", channel_id=v["channel_id"],
+              video_id=v["id"])
+        n += 1
+    return n
+
+
 def research_ideas(channel_id: str, count: int = 12) -> dict:
     ch = db.select("channels", {"id": channel_id}, single=True)
     existing = [r["title"] for r in db.select("ideas", {"channel_id": channel_id}, columns="title", limit=1000)]

@@ -100,6 +100,7 @@ def run_one(job: dict) -> None:
             _finish(job, status="failed", last_error=f"Gave up after waiting ~24h: {p}")
             if vid and prod:
                 db.update("videos", {"id": vid}, {"status": "failed", "error": f"Waited 24h for {p.service}: {p.message}"})
+                ops.release_idea(vid, failed=True)
             event(f"'{job['type']}' gave up after 24h waiting for {p.service}", "error", "services", channel_id=cid,
                   video_id=vid)
             return
@@ -120,6 +121,7 @@ def run_one(job: dict) -> None:
             _finish(job, status="failed", last_error=str(e)[:2000])
             if vid and prod:
                 db.update("videos", {"id": vid}, {"status": "failed", "error": str(e)[:1000], "stage_detail": None})
+                ops.release_idea(vid, failed=True)
                 _cleanup_work(vid)
             elif vid and job["type"] == "check_publish":
                 # never mark a possibly-live video failed because a status poll errored; re-check later
@@ -188,15 +190,27 @@ def heartbeat_and_schedule() -> None:
         STOP.wait(60)
 
 
+def reset_stale_jobs() -> None:
+    """Jobs this worker was running when it last stopped go back to the queue — unless they already used all
+    their attempts (a crash loop must not retry forever)."""
+    for j in db.select("jobs", {"status": "running", "locked_by": ("like", f"{config.WORKER_ID}:*")}):
+        if int(j.get("attempts") or 0) >= int(j.get("max_attempts") or 3):
+            _finish(j, status="failed", last_error="Stopped mid-job too many times (worker restarts)")
+            if j.get("video_id") and j["type"] in PRODUCTION:
+                db.update("videos", {"id": j["video_id"]}, {"status": "failed", "error": ops.ORPHAN_ERROR,
+                                                            "stage_detail": None})
+                ops.release_idea(j["video_id"], failed=True)
+            continue
+        db.update("jobs", {"id": j["id"]}, {"status": "queued", "locked_by": None, "locked_at": None})
+
+
 def main() -> None:
     if not config.SUPABASE_KEY:
         log.warning("SUPABASE_SERVICE_ROLE_KEY not set (ok only behind the dev proxy)")
     signal.signal(signal.SIGTERM, lambda *_: STOP.set())
     signal.signal(signal.SIGINT, lambda *_: STOP.set())
-    # jobs this worker was running when it last stopped go back to the queue
     try:
-        for j in db.select("jobs", {"status": "running", "locked_by": ("like", f"{config.WORKER_ID}:*")}):
-            db.update("jobs", {"id": j["id"]}, {"status": "queued", "locked_by": None, "locked_at": None})
+        reset_stale_jobs()
     except Exception as e:
         log.warning(f"startup reset: {e}")
     event(f"Worker {config.WORKER_ID} started (v{__version__})", "info", "worker")
