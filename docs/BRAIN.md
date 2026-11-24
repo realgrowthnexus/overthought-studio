@@ -88,14 +88,23 @@ continues keeps the same quality bar and understanding, and works from the spec,
 - [x] 2026-11-24 09:35 UTC: migration 0005 APPLIED. Global `paused=true` set by Claude (event logged), so only test
   jobs run. **Unpause after Phase 2 is live.** The 3 ideas from the failed videos were returned to `new`
   (`fail_count` 1).
-- [ ] P1 Task 7: Opus whole-branch review (was interrupted by the 5-h limit, resumed) → fix pass → merge to main →
-  VPS shows v1.1.0 → 3× `plan_channel {force:true, stop_after:"script"}` for channel `callaletheia`
-  (id a6bd1c58-b288-4988-b9a9-956fed387c40, the only active one; its slug was renamed from overthought) → check
-  timings and scripts → owner update.
+- [x] **PHASE 1 VERIFIED ON THE VPS (2026-11-24 10:10 UTC, worker v1.1.0, main = 9889def).**
+  - Opus review: no Critical findings, and the 4 Important ones were fixed: idea release now waits 6 h unless the
+    idea is in use; parks keep their attempts; the sweeper is race-safe; `stop_after` is validated.
+  - 114 tests pass.
+  - 3 test runs (doorway, cocktail party, hypnic jerk), research + script time: **83 s, 80 s, 74 s** (was 8–10 min).
+  - 169–174 words (range 150–176), 9–11 beats, 5–6 scenes, sources only from research URLs, self-score 7.5–8.1.
+  - The test videos are `rejected` ("Test stopped after script"); their ideas went back to `new`.
+  - Deferred minors:
+    - a cancelled job counts as a failure;
+    - `keep_found_sources` edge cases (dx.doi.org, empty URL);
+    - the breaker message flickers;
+    - the orphan text says "worker restarted" even after a cancel.
+  - Possible tuning later: scripts still carry some soft hedges ("It's a theory, not proven").
+- [ ] NEXT: **Phase 2 plan** (new check + visuals + A6/A7), then Phase 3, then Features.
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
   was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.
-- [ ] Phase 2, Phase 3, Features (each: plan → TDD → VPS verify).
 
 **Working rules for this session:**
 - Develop on branch `claude/quirky-franklin-tiqm5r`. Merge to `main` only at a verified phase boundary: `main`
