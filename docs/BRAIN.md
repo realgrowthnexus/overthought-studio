@@ -110,14 +110,20 @@ continues keeps the same quality bar and understanding, and works from the spec,
     - RunPod $0.072 per video (6 images).
   - I could NOT view the PNGs from the sandbox (storage download needs a key). Sizes are normal (150–260 KB); the
     owner sees them on the dashboard.
-- [~] **Phase 3** (plan `docs/superpowers/plans/2026-11-24-phase3-voice-render.md`, owner: "GOAHEAD AND FINISH
-  PHASE 3"):
-  - Code done, worker v1.3.0:
-    - calibrated `wps` (learned per channel) + speed nudge 0.92–1.10; a rewrite only as the fallback;
-    - render via `ProcessPoolExecutor`, 25 min cap, audio required;
-    - publish: a rate limit moves the post 3 h later; 3 failures since the last approval → `failed`.
-  - Opus review: 2 Important fixed. Suite 139 passed.
-  - Next: merge → v1.3.0 → 3 full videos → owner preview → unpause.
+- [x] **PHASE 3 VERIFIED ON THE VPS (2026-11-24 11:43 UTC, v1.3.0). The FIRST Claude-made videos ever finished end
+  to end.**
+  - Doorway: 79.1 s, $0.06, 171 words. Stages: research 45 s, script 30 s, check 5 s, 5 scenes 57 s, voice 28 s,
+    render 96 s (~4.3 min in all).
+  - Cocktail party: 87.9 s, $0.06, 176 words (~4.6 min).
+  - Both are `ready`, waiting for the owner's approval. No speed nudge or rewrite was needed. The learned
+    `voice.wps` is 2.08 (n=2).
+  - The 3rd (hypnic jerk) hit the Claude Pro **5-hour limit** (resets 13:50 UTC). **Bug found:** the wording "hit
+    your 5-hour limit" wasn't matched as a limit, so it was retried as an error.
+    - Fixed in 8b9c0f5 (regex + tests).
+    - I moved job 24428 to `run_after` 13:55 so it doesn't fail meanwhile.
+  - Pro limit reality: about 8 test runs plus 2 full videos used one 5-hour window, together with the owner's own
+    chats. Tell the owner honestly: Pro is roughly 4–6 videos per 5 h.
+- [ ] After the 8b9c0f5 deploy: **unpause the studio** (approval stays ON) and tell the owner.
 - [ ] Then Features (video edits, channels grid, assistant).
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
