@@ -16,7 +16,7 @@ from PIL import Image
 from . import secrets, spend
 from .services import NotConfigured, OutOfCredits, ServiceDown, set_status
 
-ENDPOINT = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/runsync"
+ENDPOINT = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/run"       # async: we always hold the job id
 STATUS = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/status/"
 CANCEL = "https://api.runpod.ai/v2/black-forest-labs-flux-1-dev/cancel/"
 DEFAULT_FIGURE = ("classic stick figure made of single thin white lines: circle head, one straight line body, "
@@ -42,6 +42,15 @@ def _fail(r: httpx.Response) -> Exception:
     return ServiceDown("runpod", f"RunPod error {r.status_code}")
 
 
+WAIT_S = 300
+
+
+def _ok(r: httpx.Response) -> httpx.Response:
+    if r.status_code >= 400:
+        raise _fail(r)
+    return r
+
+
 def generate(description: str, *, seed: int = 7, figure_prompt: str | None = None, channel_id=None,
              video_id=None) -> tuple[Image.Image, float]:
     with spend.runpod_slot():                 # hard monthly cap (Settings) — raises BudgetReached
@@ -53,33 +62,30 @@ def _generate(description: str, *, seed: int, figure_prompt: str | None, channel
     prompt = (figure_prompt or DEFAULT_FIGURE) + description
     body = {"input": {"prompt": prompt, "num_inference_steps": 28, "guidance": 3.5, "seed": int(seed),
                       "width": 1024, "height": 1024}}
-    with httpx.Client(timeout=300) as c:
+    with httpx.Client(timeout=60) as c:
         try:
-            r = c.post(ENDPOINT, json=body, headers=_headers())
+            d = _ok(c.post(ENDPOINT, json=body, headers=_headers())).json()
+            job = d.get("id")
+            t0 = time.time()
+            while d.get("status") in ("IN_QUEUE", "IN_PROGRESS") and time.time() - t0 < WAIT_S:
+                time.sleep(2)
+                d = _ok(c.get(STATUS + job, headers=_headers())).json()
+            if d.get("status") in ("IN_QUEUE", "IN_PROGRESS"):
+                try:   # stop paying for a job we no longer wait for
+                    c.post(CANCEL + job, headers=_headers())
+                except httpx.HTTPError:
+                    pass
+                raise RuntimeError("RunPod image took longer than 5 minutes (cold start?) — will retry")
+            if d.get("status") != "COMPLETED":
+                raise RuntimeError(f"RunPod image job ended with status {d.get('status')}: {str(d.get('error'))[:200]}")
+            out = d["output"]
+            url = out.get("result") or out.get("image_url") or (out.get("images") or [None])[0]
+            r = c.get(url)
+            if r.status_code >= 400:
+                raise ServiceDown("runpod", f"Could not download the image ({r.status_code})")
+            img = Image.open(io.BytesIO(r.content)).convert("RGB")
         except httpx.TransportError as e:
             raise ServiceDown("runpod", f"Cannot reach RunPod: {e}") from e
-        if r.status_code >= 400:
-            raise _fail(r)
-        d = r.json()
-        # runsync may return IN_QUEUE/IN_PROGRESS when cold; poll the status endpoint
-        t0 = time.time()
-        while d.get("status") in ("IN_QUEUE", "IN_PROGRESS") and time.time() - t0 < 300:
-            time.sleep(3)
-            r = c.get(STATUS + d["id"], headers=_headers())
-            if r.status_code >= 400:
-                raise _fail(r)
-            d = r.json()
-        if d.get("status") in ("IN_QUEUE", "IN_PROGRESS"):
-            try:   # stop paying for a job we no longer wait for
-                c.post(CANCEL + d["id"], headers=_headers())
-            except httpx.HTTPError:
-                pass
-            raise RuntimeError("RunPod image took longer than 5 minutes (cold start?) — will retry")
-        if d.get("status") != "COMPLETED":
-            raise RuntimeError(f"RunPod image job ended with status {d.get('status')}: {str(d.get('error'))[:200]}")
-        out = d["output"]
-        url = out.get("result") or out.get("image_url") or (out.get("images") or [None])[0]
-        img = Image.open(io.BytesIO(c.get(url).content)).convert("RGB")
     cost = float(out.get("cost") or COST_FALLBACK)
     spend.record("runpod", cost, units=1, unit="image", detail="flux scene", channel_id=channel_id, video_id=video_id)
     set_status("runpod", "ok", None)
