@@ -123,7 +123,8 @@ continues keeps the same quality bar and understanding, and works from the spec,
     - I moved job 24428 to `run_after` 13:55 so it doesn't fail meanwhile.
   - Pro limit reality: about 8 test runs plus 2 full videos used one 5-hour window, together with the owner's own
     chats. Tell the owner honestly: Pro is roughly 4–6 videos per 5 h.
-- [ ] After the 8b9c0f5 deploy: **unpause the studio** (approval stays ON) and tell the owner.
+- [x] 12:03 UTC: the studio is UNPAUSED (approval stays ON). Channel `callaletheia` breaker forgiven
+  (`failures_forgiven_at` = now), because the old failures came from the removed fact-check.
 - [ ] Then Features (video edits, channels grid, assistant).
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
