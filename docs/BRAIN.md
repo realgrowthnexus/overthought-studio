@@ -125,7 +125,21 @@ continues keeps the same quality bar and understanding, and works from the spec,
     chats. Tell the owner honestly: Pro is roughly 4–6 videos per 5 h.
 - [x] 12:03 UTC: the studio is UNPAUSED (approval stays ON). Channel `callaletheia` breaker forgiven
   (`failures_forgiven_at` = now), because the old failures came from the removed fact-check.
-- [ ] Then Features (video edits, channels grid, assistant).
+- [~] **Features** (plan `docs/superpowers/plans/2026-11-24-features.md`):
+  - Code done on the branch (not on main yet):
+    - migration `0006_features.sql` (`videos.cover_ms`, `videos.schedule_locked`, table `assistant_messages`);
+    - the scheduler keeps owner-set times, with labels in the channel's timezone;
+    - `make_thumb` job;
+    - video page: title, post time ("Approve and schedule"), cover frame picker, Copy caption + a draft note;
+    - channels page: 3-column card grid with Edit;
+    - assistant: `worker/studio/assistant.py` on its own chat lane, plus `components/assistant.tsx` bottom-left.
+      Buttons are titled by the server from the real target, and nothing runs without a click.
+  - Opus review: 4 Important fixed; deferred minors are in the ledger list (no "not signed in" state, no 200-message
+    trim, double-click race, CoverPicker iOS re-seek, desktop button overlap).
+  - **BLOCKER:** applying 0006 with the Supabase connector timed out because the connector asked the owner an
+    approval question and got no answer. Merge to main ONLY after 0006 is applied: the web needs the new
+    columns/table.
+  - The local UI check was impossible (Docker registry "Data limit exceeded").
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
   was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.
