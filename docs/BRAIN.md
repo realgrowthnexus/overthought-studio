@@ -101,20 +101,24 @@ continues keeps the same quality bar and understanding, and works from the spec,
     - the breaker message flickers;
     - the orphan text says "worker restarted" even after a cancel.
   - Possible tuning later: scripts still carry some soft hedges ("It's a theory, not proven").
-- [~] **Phase 2** (plan `docs/superpowers/plans/2026-11-24-phase2-check-visuals.md`, owner: "GOAHEAD AND FINISH PHASE 2"):
-  - Code done, worker v1.2.0:
-    - light check replaces the fact-check;
-    - parallel scenes;
-    - a redo deletes old files (A6);
-    - RunPod uses `/run` + polling, and network errors park the job (A7).
-  - Next:
-    1. Opus review → fixes;
-    2. merge to main;
-    3. VPS shows v1.2.0;
-    4. 2× `plan_channel {force, stop_after:"visuals"}`;
-    5. check the images.
-  - The studio STAYS paused until Phase 3 is verified.
-- [ ] Then Phase 3 (voice length fit + render + publish bugs A8–A10), then Features.
+- [x] **PHASE 2 VERIFIED ON THE VPS (2026-11-24 11:21 UTC, v1.2.0).**
+  - Opus review: 5 Important fixed (no stale scenes after a failed delete, the poll retries the same RunPod job,
+    61 s floor, only listed problems block, service errors win over plain errors).
+  - 2 test runs (doorway, cocktail party):
+    - check 10 s / 12 s, both "passed" with no nitpicks;
+    - 6 scenes drawn in parallel in 48 s / 56 s;
+    - RunPod $0.072 per video (6 images).
+  - I could NOT view the PNGs from the sandbox (storage download needs a key). Sizes are normal (150–260 KB); the
+    owner sees them on the dashboard.
+- [~] **Phase 3** (plan `docs/superpowers/plans/2026-11-24-phase3-voice-render.md`, owner: "GOAHEAD AND FINISH
+  PHASE 3"):
+  - Code done, worker v1.3.0:
+    - calibrated `wps` (learned per channel) + speed nudge 0.92–1.10; a rewrite only as the fallback;
+    - render via `ProcessPoolExecutor`, 25 min cap, audio required;
+    - publish: a rate limit moves the post 3 h later; 3 failures since the last approval → `failed`.
+  - Opus review: 2 Important fixed. Suite 139 passed.
+  - Next: merge → v1.3.0 → 3 full videos → owner preview → unpause.
+- [ ] Then Features (video edits, channels grid, assistant).
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
   was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.
