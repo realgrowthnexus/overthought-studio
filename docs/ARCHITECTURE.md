@@ -61,7 +61,8 @@ Production rules (session 6):
 - `from_stage` is removed from the job payload once applied, so a retry never redoes it.
 - Planner breaker: 3 failed videos after `max(now-24h, channels.failures_forgiven_at)`. Only Start/Resume writes
   `failures_forgiven_at`. The breaker clears itself once the count drops.
-- Failed videos give their idea back (`ideas.fail_count`; the idea is retired after 2). Orphaned production videos
+- Failed videos give their idea back 6 h later, unless a redo or another video is using it (`ops.release_failed_ideas`;
+  `ideas.fail_count`, the idea is retired after 2). A park does not use up a job attempt. Orphaned production videos
   (no live job, quiet for 15 min) are failed by `ops.sweep_stuck_videos`.
 
 `posting_mode`: `draft` = inbox upload (user taps Publish in TikTok), `private` = direct post SELF_ONLY,

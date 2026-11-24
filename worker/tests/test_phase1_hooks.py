@@ -52,3 +52,11 @@ def test_from_stage_is_applied_once(world):
     assert after_first > before                                   # the script was rewritten once
     main.run_one(j)
     assert world.calls["claude"] == after_first                   # resume does not rewrite it again
+
+
+def test_unknown_stop_after_is_refused(world):
+    from studio.services import PermanentError
+    v = seed_video(world, world.ch)
+    with pytest.raises(PermanentError):
+        pipeline.produce(v["id"], stop_after="scrpt")
+    assert dict(world.calls) == {}

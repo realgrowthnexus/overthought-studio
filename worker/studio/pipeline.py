@@ -71,6 +71,8 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
             on_cleared: Callable[[], None] | None = None) -> dict:
     """Run the line for one video. `stop_after` (test runs) ends after that stage without counting as a failure.
     `on_cleared` is called once the redo of `from_stage` has wiped its outputs, so retries don't wipe again."""
+    if stop_after is not None and stop_after not in STAGES:
+        raise PermanentError(f"Unknown stop_after stage '{stop_after}' (use one of {', '.join(STAGES)})")
     video = db.select("videos", {"id": video_id}, single=True)
     if not video:
         raise RuntimeError(f"video {video_id} not found")

@@ -27,6 +27,8 @@ def _match(row: dict, where: dict | None) -> bool:
             op, val = v
             if op == "in":
                 ok = have in val
+            elif op == "not.in":
+                ok = have not in val
             elif op == "like":
                 ok = have is not None and fnmatch.fnmatch(str(have), str(val))
             elif op in ("gte", "gt", "lte", "lt"):

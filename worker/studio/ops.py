@@ -88,22 +88,47 @@ _SWEEP = ["queued", "researching", "scripting", "fact_checking", "visuals", "voi
 ORPHAN_ERROR = "Production stopped unexpectedly (the worker restarted mid-job). Press Make again."
 
 
+RELEASE_AFTER = timedelta(hours=6)
+
+
+def release_failed_ideas(t: datetime) -> int:
+    """Ideas of videos that failed > 6h ago go back to the bank (retired after 2 failures). Waiting first leaves
+    the owner time to press "Make again" on the failed video without the planner grabbing the same idea."""
+    old = db.select("videos", {"status": "failed", "updated_at": ("lt", (t - RELEASE_AFTER).isoformat()),
+                               "idea_id": ("not.is", "null")}, columns="id,idea_id", limit=200)
+    done = 0
+    for v in old:
+        idea = db.select("ideas", {"id": v["idea_id"], "status": "queued"}, single=True)
+        if not idea:
+            continue                                # already back in the bank, retired or used
+        active = db.select("videos", {"idea_id": v["idea_id"], "status": ("not.in", ["failed", "rejected"])},
+                           columns="id", limit=1)
+        if active:
+            continue                                # a redo or a new video is using it
+        n = int(idea.get("fail_count") or 0) + 1
+        db.update("ideas", {"id": idea["id"], "status": "queued"},
+                  {"fail_count": n, "status": "retired" if n >= 2 else "new"})
+        done += 1
+    return done
+
+
 def sweep_stuck_videos(t: datetime) -> int:
     """Videos left in a production status with no live job (worker killed) are failed, so they stop blocking
     the channel's production slots."""
     cutoff = (t - timedelta(minutes=15)).isoformat()
-    stale = db.select("videos", {"status": ("in", _SWEEP), "updated_at": ("lt", cutoff)}, columns="id,channel_id,title")
-    if not stale:
-        return 0
+    # jobs first: a job that finishes after this read leaves its video out of _SWEEP, and the guarded update skips it
     live = {j["video_id"] for j in db.select("jobs", {"type": "produce_video",
                                                        "status": ("in", ["queued", "running", "waiting"])},
                                               columns="video_id")}
+    stale = db.select("videos", {"status": ("in", _SWEEP), "updated_at": ("lt", cutoff)}, columns="id,channel_id,title")
     n = 0
     for v in stale:
         if v["id"] in live:
             continue
-        db.update("videos", {"id": v["id"]}, {"status": "failed", "error": ORPHAN_ERROR, "stage_detail": None})
-        release_idea(v["id"], failed=True)
+        rows = db.update("videos", {"id": v["id"], "status": ("in", _SWEEP), "updated_at": ("lt", cutoff)},
+                         {"status": "failed", "error": ORPHAN_ERROR, "stage_detail": None})
+        if not rows:
+            continue
         event(f"{v.get('title') or 'Video'}: {ORPHAN_ERROR}", "error", "jobs", channel_id=v["channel_id"],
               video_id=v["id"])
         n += 1

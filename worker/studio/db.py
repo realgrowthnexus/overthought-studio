@@ -58,7 +58,7 @@ def _filters(where: dict[str, Any] | None) -> dict[str, str]:
     for k, v in (where or {}).items():
         if isinstance(v, tuple):
             op, val = v
-            if op == "in":
+            if op in ("in", "not.in"):
                 val = "(" + ",".join(json.dumps(x) if not isinstance(x, str) else f'"{x}"' for x in val) + ")"
             params[k] = f"{op}.{val}"
         elif v is None:

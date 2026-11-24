@@ -36,8 +36,9 @@ def tick() -> None:
     t = now()
     _periodic(t)
     try:
-        from .ops import sweep_stuck_videos
+        from .ops import release_failed_ideas, sweep_stuck_videos
         sweep_stuck_videos(t)
+        release_failed_ideas(t)
     except Exception as e:
         log.warning(f"sweep: {e}")
     if g.get("paused"):
