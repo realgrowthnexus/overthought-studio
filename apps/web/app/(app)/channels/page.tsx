@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { getAccounts, getChannels, getLatestStats, getVideos } from "@/lib/data";
 import { PageHeader, Panel, Badge } from "@/components/ui/primitives";
 import { ButtonLink } from "@/components/ui/button";
@@ -39,43 +39,41 @@ export default async function ChannelsPage() {
           </EmptyState>
         </Panel>
       ) : (
-        <Panel as="div" className="overflow-hidden">
-          <ul className="divide-y divide-line">
-            {channels.map((c) => {
-              const account = accounts.find((a) => a.id === c.tiktok_account_id);
-              const last = posted.find((v) => v.channel_id === c.id);
-              const views = recent.filter((v) => v.channel_id === c.id).reduce((s, v) => s + (stats.get(v.id)?.views ?? 0), 0);
-              return (
-                <li key={c.id} className="group relative grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-3 px-5 py-4 transition-colors hover:bg-elev-2/40 md:grid-cols-[auto_minmax(0,1.6fr)_repeat(3,minmax(0,1fr))_auto]">
-                  <span className="h-10 w-1.5 rounded-full" style={{ background: c.color }} aria-hidden />
-                  <div className="min-w-0">
-                    <Link href={`/channels/${c.slug}`} className="text-[15px] font-semibold text-ink after:absolute after:inset-0 hover:underline">
-                      {c.name}
-                    </Link>
-                    <p className="truncate text-[13px] text-ink-3">{c.niche}</p>
-                    {c.blocked_reason && <p className={cn("mt-1 text-[12px]", holdTone(c.blocked_reason) === "bad" ? "text-bad" : "text-warn")}>On hold: {c.blocked_reason}</p>}
-                  </div>
-                  <div className="hidden text-[13px] md:block">
-                    <p className="text-ink">{account ? `@${account.username ?? account.display_name}` : <span className="text-ink-3">No account linked</span>}</p>
-                    <p className="text-ink-3">{MODE_LABEL[c.posting_mode]}</p>
-                  </div>
-                  <div className="hidden text-[13px] md:block">
-                    <p className="text-ink tabular">{c.posts_per_day}/day</p>
-                    <p className="text-ink-3">Last post {relTime(last?.posted_at)}</p>
-                  </div>
-                  <div className="hidden text-[13px] md:block">
-                    <p className="text-ink tabular">{num(views)}</p>
-                    <p className="text-ink-3">views, 7 days</p>
-                  </div>
-                  <div className="relative z-[1] flex items-center gap-3">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {channels.map((c) => {
+            const account = accounts.find((a) => a.id === c.tiktok_account_id);
+            const last = posted.find((v) => v.channel_id === c.id);
+            const views = recent.filter((v) => v.channel_id === c.id).reduce((s, v) => s + (stats.get(v.id)?.views ?? 0), 0);
+            return (
+              <li key={c.id}>
+                <Panel as="div" className="group relative flex h-full flex-col gap-4 overflow-hidden p-5 transition-colors hover:border-line-input">
+                  <span className="absolute inset-x-0 top-0 h-1" style={{ background: c.color }} aria-hidden />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/channels/${c.slug}`} className="text-[16px] font-semibold text-ink after:absolute after:inset-0 hover:underline">
+                        {c.name}
+                      </Link>
+                      <p className="mt-0.5 line-clamp-2 text-[13px] text-ink-3">{c.niche}</p>
+                    </div>
                     {c.blocked_reason ? <Badge tone={holdTone(c.blocked_reason)} dot>On hold</Badge> : c.status === "active" ? <Badge tone="good" dot live>Running</Badge> : <Badge dot>Paused</Badge>}
+                  </div>
+                  {c.blocked_reason && <p className={cn("text-[12px]", holdTone(c.blocked_reason) === "bad" ? "text-bad" : "text-warn")}>On hold: {c.blocked_reason}</p>}
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+                    <div className="min-w-0"><dt className="text-ink-3">Account</dt><dd className="truncate text-ink">{account ? `@${account.username ?? account.display_name}` : "Not linked"}</dd></div>
+                    <div className="min-w-0"><dt className="text-ink-3">Delivery</dt><dd className="truncate text-ink">{MODE_LABEL[c.posting_mode]}</dd></div>
+                    <div><dt className="text-ink-3">Per day</dt><dd className="text-ink tabular">{c.posts_per_day}</dd></div>
+                    <div><dt className="text-ink-3">Views, 7 days</dt><dd className="text-ink tabular">{num(views)}</dd></div>
+                    <div className="col-span-2"><dt className="text-ink-3">Last post</dt><dd className="text-ink">{relTime(last?.posted_at)}</dd></div>
+                  </dl>
+                  <div className="relative z-[1] mt-auto flex items-center justify-between gap-3 border-t border-line pt-4">
+                    <ButtonLink href={`/channels/${c.slug}/settings`} size="sm"><Pencil className="size-4" aria-hidden />Edit</ButtonLink>
                     <ChannelToggle id={c.id} status={c.status} blockedReason={c.blocked_reason} />
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Panel>
+                </Panel>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

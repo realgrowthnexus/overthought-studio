@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
-import { Check, RefreshCw, Send, X } from "lucide-react";
+import { Check, Copy, RefreshCw, Send, X } from "lucide-react";
+import { toast } from "sonner";
 import type { Video } from "@/lib/types";
 import { approveVideo, enqueueJob, rejectVideo, updateCaption } from "@/lib/actions";
 import { useAction } from "@/components/use-action";
@@ -81,7 +82,7 @@ export function VideoActions({ video }: { video: Video }) {
   );
 }
 
-export function CaptionEditor({ video }: { video: Video }) {
+export function CaptionEditor({ video, draft = false }: { video: Video; draft?: boolean }) {
   const { pending, run } = useAction();
   const [caption, setCaption] = React.useState(video.caption ?? "");
   const [tags, setTags] = React.useState((video.hashtags ?? []).join(" "));
@@ -99,7 +100,15 @@ export function CaptionEditor({ video }: { video: Video }) {
         <Field label="Hashtags" htmlFor="tags-input" hint="3–5, mixing niche and broad.">
           <Input id="tags-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#psychology #brainfacts #didyouknow" />
         </Field>
-        <div className="flex justify-end">
+        {draft && (
+          <p className="text-[12px] text-ink-3">TikTok drafts don&apos;t take a caption or cover from us. Tap <strong className="text-ink-2">Copy caption</strong> and paste it in the TikTok app before you post.</p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" disabled={!full.trim()} onClick={async () => {
+            try { await navigator.clipboard.writeText(full); toast.success("Caption copied."); } catch { toast.error("Couldn't copy — select the text instead."); }
+          }}>
+            <Copy className="size-4" aria-hidden />Copy caption
+          </Button>
           <Button size="sm" variant={dirty ? "primary" : "secondary"} disabled={!dirty} loading={pending} onClick={() => run(() => updateCaption(video.id, caption, tags.split(/\s+/)))}>
             Save caption
           </Button>

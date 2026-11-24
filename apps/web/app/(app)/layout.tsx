@@ -3,6 +3,7 @@ import { getServices, getSettings, getWorkers } from "@/lib/data";
 import { Sidebar, MobileNav } from "@/components/shell/nav";
 import { ServiceAlertBar } from "@/components/services";
 import { relTime } from "@/lib/format";
+import { Assistant } from "@/components/assistant";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileNav email={admin.email} />
         <ServiceAlertBar initial={services} paused={settings.paused} />
+        <Assistant />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1280px] flex-1 px-4 pt-6 pb-28 outline-none sm:px-8 sm:pt-8 lg:pb-12">{children}</main>
       </div>
     </div>

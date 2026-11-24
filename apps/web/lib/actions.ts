@@ -5,7 +5,9 @@ import { requireAdmin } from "@/lib/auth";
 import { serviceClient } from "@/lib/supabase/service";
 import { encrypt, hasMasterKey } from "@/lib/crypto";
 import { SECRET_KEYS, type GlobalSettings } from "@/lib/types";
-import { DEFAULT_SETTINGS } from "@/lib/data";
+import { DEFAULT_SETTINGS, getAssistantMessages, type AssistantMessage } from "@/lib/data";
+import { coverError, scheduleChange } from "@/lib/video-edits";
+import { parseAction } from "@/lib/assistant-actions";
 
 export type ActionResult<T = undefined> = { ok: true; data?: T; message?: string } | { ok: false; error: string };
 
@@ -38,7 +40,7 @@ function fail(error: { message: string } | null) {
 // check_publish is enqueued by the worker itself.
 const JOB_TYPES = [
   "plan_channel", "produce_video", "research_ideas", "publish_video", "sync_stats",
-  "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage",
+  "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage", "make_thumb",
 ] as const;
 type JobType = (typeof JOB_TYPES)[number];
 
@@ -47,6 +49,7 @@ const JOB_LABEL: Record<JobType, string> = {
   publish_video: "Publish queued", sync_stats: "Stats sync queued",
   weekly_review: "Weekly review queued", health_check: "Health check queued",
   refresh_tokens: "Token refresh queued", backup_db: "Backup queued", cleanup_storage: "Cleanup queued",
+  make_thumb: "Cover is being updated",
 };
 
 // Must match worker/studio/pipeline.py STAGES.
@@ -64,6 +67,7 @@ const JOB_SPEC: Record<JobType, { target: "channel" | "video" | "optional_channe
   refresh_tokens: { target: "none", payload: z.strictObject({}) },
   backup_db: { target: "none", payload: z.strictObject({}) },
   cleanup_storage: { target: "none", payload: z.strictObject({}) },
+  make_thumb: { target: "video", payload: z.strictObject({ video_id: uuid }) },
 };
 
 export async function enqueueJob(input: {
@@ -456,10 +460,117 @@ export async function scheduleVideo(id: string, whenIso: string | null): Promise
   return guard(async () => {
     uuid.parse(id);
     const when = whenIso ? z.string().datetime({ offset: true }).parse(whenIso) : null;
-    const { error } = await serviceClient().from("videos").update({ scheduled_for: when }).eq("id", id);
+    const db = serviceClient();
+    const { data: v } = await db.from("videos").select("id,status,channel_id,title").eq("id", id).maybeSingle();
+    if (!v) return { ok: false, error: "That video doesn't exist any more." };
+    const change = scheduleChange(v.status as string, when);
+    const { data: rows, error } = await db.from("videos").update(change).eq("id", id).eq("status", v.status as string).select("id");
+    fail(error);
+    if (!rows?.length) return { ok: false, error: "The video changed meanwhile — refresh and try again." };
+    await logEvent(when ? `Post time set by you: ${v.title}` : `Post time cleared: ${v.title}`,
+                   { video_id: id, channel_id: v.channel_id as string });
+    revalidatePath("/", "layout");
+    return { ok: true, message: when ? (change.approval ? "Approved and scheduled for that time." : "Post time saved. The studio won't move it.")
+                                     : "Post time cleared — it will take the next free slot." };
+  });
+}
+
+export async function updateVideoTitle(id: string, title: string): Promise<ActionResult> {
+  return guard(async () => {
+    uuid.parse(id);
+    const t = z.string().trim().min(1, "Give it a title").max(150).parse(title);
+    const { error } = await serviceClient().from("videos").update({ title: t }).eq("id", id);
     fail(error);
     revalidatePath(`/videos/${id}`);
-    return { ok: true, message: when ? "Post time set." : "Post time cleared — it will take the next free slot." };
+    return { ok: true, message: "Title saved." };
+  });
+}
+
+export async function setCover(id: string, ms: number): Promise<ActionResult> {
+  return guard(async () => {
+    uuid.parse(id);
+    const at = z.number().int().parse(Math.round(ms));
+    const db = serviceClient();
+    const { data: v } = await db.from("videos").select("id,channel_id,duration_s,video_path").eq("id", id).maybeSingle();
+    if (!v || !v.video_path) return { ok: false, error: "This video has no file yet." };
+    const err = coverError(at, v.duration_s as number | null);
+    if (err) return { ok: false, error: err };
+    const { error } = await db.from("videos").update({ cover_ms: at }).eq("id", id);
+    fail(error);
+    const { error: jerr } = await db.from("jobs").insert({ type: "make_thumb", payload: { video_id: id }, video_id: id,
+      channel_id: v.channel_id, priority: 3, dedupe_key: `make_thumb:${id}:manual` });
+    if (jerr && jerr.code !== "23505") fail(jerr);
+    revalidatePath(`/videos/${id}`);
+    return { ok: true, message: "Cover saved. The thumbnail updates in about a minute." };
+  });
+}
+
+/* ---------------- Assistant ---------------- */
+
+export async function sendAssistantMessage(text: string): Promise<ActionResult> {
+  return guard(async () => {
+    const t = z.string().trim().min(1, "Type a question").max(2000).parse(text);
+    const db = serviceClient();
+    const { data: busy } = await db.from("assistant_messages").select("id").eq("status", "pending").limit(1);
+    if (busy?.length) return { ok: false, error: "Still answering your last message — one moment." };
+    const { error: e1 } = await db.from("assistant_messages").insert({ role: "user", content: t, status: "done" });
+    fail(e1);
+    const { data: p, error: e2 } = await db.from("assistant_messages")
+      .insert({ role: "assistant", content: "", status: "pending" }).select("id").single();
+    fail(e2);
+    const { error: e3 } = await db.from("jobs").insert({ type: "assistant_reply", payload: { message_id: p!.id },
+      priority: 1, dedupe_key: `assistant:${p!.id}` });
+    fail(e3);
+    return { ok: true };
+  });
+}
+
+export async function clearAssistant(): Promise<ActionResult> {
+  return guard(async () => {
+    const { error } = await serviceClient().from("assistant_messages").delete().neq("status", "pending");
+    fail(error);
+    return { ok: true, message: "Conversation cleared." };
+  });
+}
+
+export async function loadAssistant(): Promise<ActionResult<AssistantMessage[]>> {
+  return guard(async () => ({ ok: true, data: await getAssistantMessages() }));
+}
+
+/** Run one button the assistant proposed. The action is re-checked here; each one maps to an existing action. */
+export async function runAssistantAction(messageId: number, index: number): Promise<ActionResult> {
+  return guard(async () => {
+    z.number().int().positive().parse(messageId);
+    z.number().int().min(0).max(9).parse(index);
+    const db = serviceClient();
+    const { data: m } = await db.from("assistant_messages").select("id,actions").eq("id", messageId).maybeSingle();
+    const list = (m?.actions ?? []) as Array<Record<string, unknown>>;
+    const stored = list[index];
+    if (!stored) return { ok: false, error: "That button is no longer available." };
+    if (stored.done) return { ok: false, error: "That was already done." };
+    const a = parseAction(stored);
+    if (!a) return { ok: false, error: "That action isn't allowed." };
+    let r: ActionResult;
+    switch (a.type) {
+      case "pause_channel": r = await setChannelStatus(a.channel_id!, "paused"); break;
+      case "resume_channel": r = await setChannelStatus(a.channel_id!, "active"); break;
+      case "pause_studio": r = await setGlobalPause(true); break;
+      case "resume_studio": r = await setGlobalPause(false); break;
+      case "make_video": r = await enqueueJob({ type: "plan_channel", payload: { channel_id: a.channel_id!, force: true } }); break;
+      case "retry_job": r = await retryJob(Number(a.job_id)); break;
+      case "cancel_job": r = await cancelJob(Number(a.job_id)); break;
+      case "approve_video": r = await approveVideo(a.video_id!); break;
+      case "reject_video": r = await rejectVideo(a.video_id!, "Rejected from the assistant"); break;
+      case "publish_video": r = await enqueueJob({ type: "publish_video", payload: { video_id: a.video_id! } }); break;
+      case "set_post_time": r = await scheduleVideo(a.video_id!, a.when_iso!); break;
+      case "clear_post_time": r = await scheduleVideo(a.video_id!, null); break;
+    }
+    const note = r.ok ? `✓ ${a.label}${r.message ? ` — ${r.message}` : ""}` : `✗ ${a.label} — ${r.error}`;
+    list[index] = { ...stored, done: r.ok ? "ok" : "failed" };
+    await db.from("assistant_messages").update({ actions: list }).eq("id", messageId);
+    await db.from("assistant_messages").insert({ role: "assistant", content: note, status: "done" });
+    await logEvent(`Assistant action by you: ${note}`, { level: r.ok ? "success" : "warn" });
+    return r;
   });
 }
 

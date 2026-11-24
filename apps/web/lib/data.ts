@@ -17,9 +17,19 @@ const ACCOUNT_COLS =
   "id,open_id,username,display_name,avatar_url,access_expires_at,refresh_expires_at,scopes,status,status_message,follower_count,following_count,likes_count,video_count,is_verified,creator_info,last_synced_at,created_at,updated_at";
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
-  paused: false, auto_publish: false, model: "claude-opus-5-5", effort: "high",
+  paused: false, auto_publish: false, model: "claude-sonnet-5-5", effort: "medium",
   daily_budget_usd: 15, monthly_budget_usd: 300, video_retention_days: 21, report_email: null,
 };
+
+export type AssistantMessage = {
+  id: number; role: "user" | "assistant"; content: string; status: "pending" | "done" | "error";
+  actions: Array<Record<string, unknown>>; created_at: string;
+};
+
+export async function getAssistantMessages(limit = 40): Promise<AssistantMessage[]> {
+  const { data } = await (await db()).from("assistant_messages").select("*").order("id", { ascending: false }).limit(limit);
+  return ((data ?? []) as AssistantMessage[]).reverse();
+}
 
 export const getSettings = cache(async (): Promise<GlobalSettings> => {
   const { data } = await (await db()).from("settings").select("value").eq("key", "global").maybeSingle();

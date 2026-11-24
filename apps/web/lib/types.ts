@@ -84,6 +84,7 @@ export interface Video {
   approval: "pending" | "approved" | "rejected" | null; approved_at: string | null; rejection_note: string | null;
   scheduled_for: string | null; posted_at: string | null; tiktok_publish_id: string | null;
   tiktok_video_id: string | null; tiktok_url: string | null; publish_status: Record<string, unknown> | null;
+  cover_ms?: number | null; schedule_locked?: boolean;
   created_at: string; updated_at: string;
 }
 
