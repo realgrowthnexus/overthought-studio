@@ -56,11 +56,22 @@ def test_structured_goes_through_cli_and_costs_nothing(sub):
     assert MARKS == [("before", "v1"), ("after", "v1")]      # each run is measured for its video
 
 
-def test_heavy_work_uses_the_plans_default_model(sub):
-    mp, calls, _, _, _ = sub
+def test_every_run_is_sonnet_medium(sub):
+    mp, calls, _, sets, _ = sub
+    sets.update(model="claude-opus-5-5", effort="max", subscription_model="opus")
     mp.setenv("FAKE_CLAUDE_STRUCTURED", json.dumps({"notes": "n", "sources": [{"url": "https://x.org"}]}))
-    llm.research("SYS", "find it", purpose="research")
-    assert "--model" not in calls()[-1]
+    llm.research("SYS", "find it", purpose="research", effort="high")
+    mp.setenv("FAKE_CLAUDE_STRUCTURED", json.dumps(SCORE))
+    llm.structured(content.Scorecard, "SYS", "score", purpose="script", effort="high")
+    for a in calls()[-2:]:
+        assert a[a.index("--model") + 1] == "sonnet"
+        assert a[a.index("--effort") + 1] == "medium"
+
+
+def test_api_model_is_fixed(sub):
+    _, _, _, sets, _ = sub
+    sets.update(model="claude-opus-5-5", effort="max")
+    assert llm.model_cfg() == ("claude-sonnet-5-5", "medium")
 
 
 def test_research_returns_notes_and_citations(sub):

@@ -6,7 +6,7 @@ import { deleteSecret, saveSecret, setAnthropicCredit, updateSettings } from "@/
 import { useAction } from "@/components/use-action";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Field, Input, Select } from "@/components/ui/primitives";
+import { Field, Input } from "@/components/ui/primitives";
 import { Switch } from "@/components/ui/switch";
 import { relTime } from "@/lib/format";
 
@@ -103,7 +103,7 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
       onSubmit={(e) => {
         e.preventDefault();
         run(() => updateSettings({
-          model: s.model, effort: s.effort as "high", daily_budget_usd: s.daily_budget_usd, monthly_budget_usd: s.monthly_budget_usd,
+          daily_budget_usd: s.daily_budget_usd, monthly_budget_usd: s.monthly_budget_usd,
           video_retention_days: s.video_retention_days, report_email: s.report_email ?? "", auto_publish: s.auto_publish,
           api_fallback: Boolean(s.api_fallback), api_fallback_daily_usd: Number(s.api_fallback_daily_usd ?? 2),
           runpod_monthly_cap_usd: Number(s.runpod_monthly_cap_usd ?? 100),
@@ -111,18 +111,8 @@ export function GlobalSettingsForm({ settings }: { settings: GlobalSettings }) {
       }}
     >
       <div className="grid grid-cols-1 [&>*]:min-w-0 gap-5 sm:grid-cols-2">
-        <Field label="Claude model" htmlFor="model" hint="Used for research, scripts and reviews.">
-          <Select id="model" value={s.model} onChange={(e) => set("model", e.target.value)}>
-            <option value="claude-opus-5-5">Opus 5.5 · best</option>
-            <option value="claude-sonnet-5-5">Sonnet 5.5 · half the cost</option>
-          </Select>
-        </Field>
-        <Field label="Thinking effort" htmlFor="effort" hint="Higher is more careful and costs more.">
-          <Select id="effort" value={s.effort} onChange={(e) => set("effort", e.target.value)}>
-            <option value="medium">Medium</option>
-            <option value="high">High (recommended)</option>
-            <option value="xhigh">Extra high</option>
-          </Select>
+        <Field label="Claude" htmlFor="model" hint="Same model for research, scripts, checks and the assistant.">
+          <Input id="model" value="Sonnet · medium effort (fixed)" readOnly aria-readonly="true" className="text-ink-2" />
         </Field>
         <Field label="Daily spend limit (USD)" htmlFor="daily" hint="New videos pause for the day once reached.">
           <Input id="daily" type="number" min={0} step="1" value={s.daily_budget_usd} onChange={(e) => set("daily_budget_usd", Number(e.target.value))} />

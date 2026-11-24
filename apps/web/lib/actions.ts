@@ -155,8 +155,6 @@ export async function setGlobalPause(paused: boolean): Promise<ActionResult> {
 }
 
 const settingsSchema = z.object({
-  model: z.string().trim().regex(/^claude-[a-z0-9.-]{2,56}$/, "Use a Claude model id like claude-opus-5-5"),
-  effort: z.enum(["low", "medium", "high", "xhigh", "max"]),
   daily_budget_usd: z.coerce.number().min(0).max(10000),
   monthly_budget_usd: z.coerce.number().min(0).max(100000),
   video_retention_days: z.coerce.number().int().min(3).max(365),
@@ -171,7 +169,8 @@ export async function updateSettings(input: z.input<typeof settingsSchema>): Pro
   return guard(async () => {
     const parsed = settingsSchema.parse(input);
     const prev = await readGlobal();
-    const value = { ...prev, ...parsed, report_email: parsed.report_email || null };
+    // The owner fixed Claude to Sonnet at medium effort; nothing in the dashboard can raise it.
+    const value = { ...prev, ...parsed, model: "claude-sonnet-5-5", effort: "medium", report_email: parsed.report_email || null };
     const { error } = await serviceClient().from("settings").upsert({ key: "global", value });
     fail(error);
     if (Boolean(prev.api_fallback) !== value.api_fallback) {

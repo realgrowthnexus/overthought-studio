@@ -3,7 +3,7 @@ import time
 
 from . import db
 
-DEFAULTS = {"paused": False, "auto_publish": False, "model": "claude-opus-5-5", "effort": "high",
+DEFAULTS = {"paused": False, "auto_publish": False, "model": "claude-sonnet-5-5", "effort": "medium",
             "daily_budget_usd": 15, "monthly_budget_usd": 300, "video_retention_days": 7, "report_email": None,
             "api_fallback": False, "api_fallback_daily_usd": 2, "runpod_monthly_cap_usd": 100}
 _cache: dict[str, tuple[float, dict]] = {}

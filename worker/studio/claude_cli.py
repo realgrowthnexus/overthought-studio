@@ -79,7 +79,7 @@ def _resume_at(text: str) -> datetime:
 
 
 def run(prompt: str, *, system: str, schema: dict | None, tools: list[str], model: str | None,
-        timeout: int = TIMEOUT, with_token: str | None = None) -> dict:
+        effort: str | None = None, timeout: int = TIMEOUT, with_token: str | None = None) -> dict:
     """One headless Claude Code turn. Returns {text, structured, usage, model}. `with_token` checks a new sign-in."""
     tok = with_token or token()
     if not tok:
@@ -87,6 +87,8 @@ def run(prompt: str, *, system: str, schema: dict | None, tools: list[str], mode
     argv = [CLAUDE_BIN, "-p", prompt, "--output-format", "json", "--system-prompt", system, "--tools", ",".join(tools), "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
     if model:                                         # None = the plan's default model
         argv += ["--model", model]
+    if effort:
+        argv += ["--effort", effort]
     if tools:
         argv += ["--allowedTools", ",".join(tools)]
     if schema is not None:

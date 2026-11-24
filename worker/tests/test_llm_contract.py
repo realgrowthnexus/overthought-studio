@@ -56,9 +56,9 @@ def test_structured_request_shape(api):
     a = api((200, _msg([{"type": "text", "text": json.dumps(SCORE)}])))
     card, usd = llm.structured(content.Scorecard, "SYSTEM", "score this", purpose="scorecard")
     b = a.body()
-    assert b["model"] == "claude-opus-5-5"
+    assert b["model"] == "claude-sonnet-5-5"
     assert b["thinking"] == {"type": "adaptive"}
-    assert b["output_config"]["effort"] == "high"
+    assert b["output_config"]["effort"] == "medium"
     assert b["output_config"]["format"]["type"] == "json_schema"
     assert b["fallbacks"] == "default"
     assert b["system"][0]["cache_control"] == {"type": "ephemeral"}

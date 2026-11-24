@@ -43,9 +43,10 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-# Subscription backend: heavy work runs on the plan's default model (whatever the Claude plan gives Claude Code);
-# light work runs on Sonnet to save limit. settings.subscription_model overrides the heavy model.
-LIGHT_PURPOSES = {"scorecard", "smoke"}
+# The owner's rule: Claude never runs above Sonnet, and always at medium effort, on every path (plan or API key).
+MODEL_ALIAS = "sonnet"
+API_MODEL = "claude-sonnet-5-5"
+EFFORT = "medium"
 
 
 def backend() -> str:
@@ -90,12 +91,6 @@ def _fallback_or_raise(p: LimitReached, purpose: str, channel_id, video_id) -> N
           "services", channel_id=channel_id, video_id=video_id)
 
 
-def _sub_model(purpose: str) -> str | None:
-    if purpose in LIGHT_PURPOSES:
-        return "sonnet"
-    return settings.get().get("subscription_model") or None
-
-
 def _sub_run(prompt: str, *, system: str, schema: dict, tools: list[str], purpose: str, channel_id, video_id) -> dict:
     """One subscription run, bracketed by limit readings so the cost of each video can be measured."""
     try:
@@ -103,7 +98,7 @@ def _sub_run(prompt: str, *, system: str, schema: dict, tools: list[str], purpos
     except Exception as ex:
         log.info(f"usage before-run skipped: {ex}")
     try:
-        out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=_sub_model(purpose))
+        out = claude_cli.run(prompt, system=system, schema=schema, tools=tools, model=MODEL_ALIAS, effort=EFFORT)
     except NotConfigured:
         _mark_auth(rejected=True)                   # health check must not flip back to "ok" on token presence alone
         raise
@@ -151,8 +146,8 @@ RESEARCH_SUFFIX = ("\n\nUse web search and fetch real pages. Put everything you 
 
 
 def model_cfg() -> tuple[str, str]:
-    s = settings.get()
-    return s.get("model") or "claude-opus-5-5", s.get("effort") or "high"
+    """Fixed by the owner: Sonnet at medium effort. Stored settings can't raise it."""
+    return API_MODEL, EFFORT
 
 
 def _cost(model: str, usage: Any) -> float:
@@ -226,7 +221,7 @@ def structured(schema: type[T], system: str, prompt: str, *, purpose: str, effor
             model=model, max_tokens=max_tokens,
             betas=[FALLBACK_BETA], fallbacks="default",
             thinking={"type": "adaptive"},
-            output_config={"effort": effort or default_effort},
+            output_config={"effort": default_effort},
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": prompt}],
             output_format=schema,
@@ -274,7 +269,7 @@ def research(system: str, prompt: str, *, purpose: str, max_searches: int = 8, e
         try:
             resp = client.beta.messages.create(
                 model=model, max_tokens=32000, betas=[FALLBACK_BETA], fallbacks="default",
-                thinking={"type": "adaptive"}, output_config={"effort": effort or default_effort},
+                thinking={"type": "adaptive"}, output_config={"effort": default_effort},
                 system=system, tools=tools, messages=messages,
             )
         except anthropic.APIError as e:
