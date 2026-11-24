@@ -79,31 +79,22 @@ class Script(BaseModel):
         "Your own honest scoring of the FINAL script (after you fixed its weak spots)"))
 
 
-class Claim(BaseModel):
-    claim: str
-    verdict: Literal["supported", "partly_supported", "unsupported", "contested"]
-    evidence: str
-    source_url: Optional[str] = None
-    fix: Optional[str] = Field(default=None, description="Exact rewrite needed, or null when fine")
+class PolicyProblem(BaseModel):
+    line: Optional[int] = Field(default=None, description="Index [n] of the narration line, or null")
+    issue: str = Field(description="What breaks the rule, in plain words")
+    fix: str = Field(description="The exact change that fixes it")
 
 
-class FactCheck(BaseModel):
-    claims: list[Claim]
-    citations_valid: bool = Field(description="Every on-screen source (researcher, institution, year) is real and correct")
-    passes: bool = Field(description="True only if nothing is unsupported and every partly_supported/contested claim is framed honestly")
-    required_changes: list[str]
-    blocking: list[str] = Field(default_factory=list, description=(
-        "ONLY issues that would leave a viewer believing something false or harmful: a wrong/invented number or finding, "
-        "a study that does not exist, a myth stated as fact, an over-claim that changes the meaning, or anything breaking "
-        "TikTok's rules (harmful misinformation, dangerous health/medical/financial advice). Each item = the exact fix."))
-    minor: list[str] = Field(default_factory=list, description=(
-        "Everything else: affiliation/institution details, paper-title wording, author-list formatting, small wording "
-        "that does not change the meaning, things that merely 'could be verified further'. These never block a video."))
+class PolicyCheck(BaseModel):
+    passed: bool = Field(description="True when there are no problems")
+    tone_ok: bool = Field(description="Fits the channel: educational / motivating, not mean, not fear-mongering")
+    graphic_ok: bool = Field(description="Nothing too graphic: no gore, injury detail, self-harm or sexual content")
+    policy_ok: bool = Field(description="Nothing against TikTok's Community Guidelines")
+    problems: list[PolicyProblem] = Field(default_factory=list)
     summary: str
 
     def ok(self) -> bool:
-        """A video may continue when nothing blocking is left (minor notes are fixed when cheap, never block)."""
-        return not self.blocking
+        return self.passed and not self.problems
 
 
 class Idea(BaseModel):
@@ -312,41 +303,43 @@ Script JSON:
                           channel_id=ch["id"], video_id=video_id, max_tokens=6000)
 
 
-def fact_check(ch: dict, script: Script, *, video_id=None) -> tuple[FactCheck, float]:
+CHECK_SYSTEM = ("You review short TikTok scripts before they are produced. You only check tone, graphic content and "
+                "TikTok's Community Guidelines. You do NOT fact-check: names, places, institutions, years, study "
+                "details and citations are out of scope and are never a problem.")
+
+
+def policy_check(ch: dict, script: Script, *, video_id=None) -> tuple[PolicyCheck, float]:
+    """One quick call, no web tools: tone, graphic content, TikTok rules. Facts and citations are not checked."""
     narration = "\n".join(f"[{i}] {b.narration}" for i, b in enumerate(script.beats))
-    srcs = "\n".join(f"({i}) {s.researcher} · {s.institution} · {s.year} — {s.finding} — {s.url} [{s.replication}]"
-                     for i, s in enumerate(script.sources))
-    prompt = f"""Fact-check this TikTok script line by line using web search. Verify every factual claim and every
-cited source (does the study exist, is the lead researcher/institution/year right, are numbers stated faithfully,
-is replication status honest). Flag rounding that changes meaning, myths, and over-claims.
+    onscreen = " | ".join(" ".join(p.text for p in b.onscreen) for b in script.beats)
+    prompt = f"""Channel: {ch['name']} — {ch.get('niche', '')}. Audience: US, 16-34.
+
+Report a problem ONLY for:
+1. Tone that doesn't fit an educational / motivating channel (mean, mocking a group, fear-mongering, preachy).
+2. Graphic content: gore, injury or death detail, self-harm, sexual content.
+3. TikTok Community Guidelines: dangerous acts or challenges, advice that could harm health or money (e.g. telling
+   people to stop medication, guaranteed returns), hate or harassment, content unsafe for minors, misleading claims
+   about elections or public health emergencies.
+Everyday psychology, studies, numbers and names are fine. If nothing is wrong, passed=true and problems=[].
 
 NARRATION:
 {narration}
 
-ON-SCREEN SOURCES:
-{srcs}
+ON SCREEN: {onscreen}
+CAPTION: {script.caption} {' '.join(script.hashtags)}"""
+    return llm.structured(PolicyCheck, CHECK_SYSTEM, prompt, purpose="check", channel_id=ch["id"], video_id=video_id,
+                          max_tokens=4000)
 
-Write your findings as a clear claim-by-claim review."""
-    text, cites, usd1 = llm.research("You are a meticulous science fact-checker for a popular-psychology channel.",
-                                     prompt, purpose="factcheck_research", max_searches=10, effort="high",
-                                     channel_id=ch["id"], video_id=video_id)
-    parse_prompt = f"""Convert this fact-check review into the structured verdict.
-Sort EVERY issue into exactly one list:
-- blocking: the viewer would come away believing something false or harmful (wrong or invented number/finding,
-  non-existent study, myth stated as fact, meaning-changing over-claim, or a TikTok rule problem such as harmful
-  misinformation or dangerous health/medical/financial advice).
-- minor: institution/affiliation details, paper titles, author-list formatting, tiny wording, "could verify further".
-passes=true when blocking is empty. required_changes = blocking + minor (exact fixes).
 
-REVIEW:
-{text[:16000]}
-
-SCRIPT NARRATION:
-{narration}"""
-    fc, usd2 = llm.structured(FactCheck, "You turn fact-check reviews into strict structured verdicts.", parse_prompt,
-                              purpose="factcheck", effort="medium", channel_id=ch["id"], video_id=video_id,
-                              max_tokens=8000)
-    return fc, usd1 + usd2
+def length_problem(script: Script, ch: dict) -> str | None:
+    """Estimated spoken length below the floor (Creator Rewards needs > 60 s)."""
+    wps = float((ch.get("voice") or {}).get("wps") or DEFAULT_WPS)
+    floor = max(HARD_FLOOR_S, float(ch.get("min_seconds") or 65))
+    est = word_count(script) / wps
+    if est < floor:
+        lo, _ = word_range(ch)
+        return f"The narration is about {est:.0f} seconds; it must be at least {floor:.0f} seconds (about {lo} words)."
+    return None
 
 
 def generate_ideas(ch: dict, existing: list[str], count: int = 12) -> tuple[list[Idea], float]:

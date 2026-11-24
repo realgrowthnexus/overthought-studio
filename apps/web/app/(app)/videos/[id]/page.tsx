@@ -62,6 +62,7 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
   const scorecard = (video.scorecard ?? {}) as Record<string, unknown>;
   const factcheck = (video.factcheck ?? {}) as Record<string, unknown>;
   const claims = (Array.isArray(factcheck.claims) ? factcheck.claims : []) as Record<string, unknown>[];
+  const problems = (Array.isArray(factcheck.problems) ? factcheck.problems : []) as Record<string, unknown>[];
   const fcPassed = factcheck.passed ?? factcheck.pass ?? (typeof factcheck.verdict === "string" ? /pass/i.test(factcheck.verdict as string) : undefined);
   const inProgress = IN_PROGRESS.includes(video.status);
   const costs = Object.entries(video.cost_breakdown ?? {}).filter(([, v]) => Number(v) > 0);
@@ -193,10 +194,20 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             </Panel>
             <Panel>
               <PanelHeader
-                title="Fact-check"
+                title="Content check"
+                description="Tone, graphic content, TikTok rules and length. Facts are not re-checked."
                 action={fcPassed === undefined ? null : fcPassed ? <Badge tone="good" dot>Passed</Badge> : <Badge tone="bad" dot>Failed</Badge>}
               />
-              {claims.length ? (
+              {problems.length ? (
+                <ul className="flex flex-col divide-y divide-line px-5 pb-4">
+                  {problems.map((p, i) => (
+                    <li key={i} className="py-2.5 text-[13px]">
+                      <p className="text-ink">{String(p.issue ?? "")}</p>
+                      {p.fix ? <p className="mt-0.5 text-ink-3">Fix: {String(p.fix)}</p> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : claims.length ? (
                 <ul className="flex flex-col divide-y divide-line px-5 pb-4">
                   {claims.map((c, i) => {
                     const ok = c.ok ?? c.supported ?? (typeof c.verdict === "string" ? /support|pass|ok|true/i.test(c.verdict as string) : undefined);

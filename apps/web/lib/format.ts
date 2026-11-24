@@ -59,7 +59,7 @@ export const PIPELINE: { key: VideoStatus; label: string }[] = [
   { key: "queued", label: "Queued" },
   { key: "researching", label: "Research" },
   { key: "scripting", label: "Script" },
-  { key: "fact_checking", label: "Fact-check" },
+  { key: "fact_checking", label: "Check" },
   { key: "visuals", label: "Visuals" },
   { key: "voice", label: "Voice" },
   { key: "rendering", label: "Render" },
@@ -67,7 +67,7 @@ export const PIPELINE: { key: VideoStatus; label: string }[] = [
 ];
 
 export const STATUS_LABEL: Record<VideoStatus, string> = {
-  queued: "Queued", researching: "Researching", scripting: "Writing script", fact_checking: "Fact-checking",
+  queued: "Queued", researching: "Researching", scripting: "Writing script", fact_checking: "Checking",
   visuals: "Drawing scenes", voice: "Recording voice", rendering: "Rendering", ready: "Ready for review",
   approved: "Approved", scheduled: "Scheduled", uploading: "Uploading", sent_to_drafts: "In TikTok drafts",
   posted: "Posted", rejected: "Rejected", failed: "Failed", blocked: "Blocked",
@@ -94,7 +94,7 @@ export const SERVICE_LABEL: Record<ServiceName, string> = {
 };
 
 export const SERVICE_ROLE: Record<ServiceName, string> = {
-  anthropic: "Research, scripts and fact-checks",
+  anthropic: "Research, scripts and content checks",
   voice: "Voiceover (free, on your server)",
   runpod: "Scene images",
   tiktok: "Posting and stats",

@@ -58,8 +58,9 @@ class FakeWorld:
     calls: collections.Counter = field(default_factory=collections.Counter)
     fail_next: dict[str, Exception] = field(default_factory=dict)
     script_factory: object = None          # (ch, idea) -> content.Script
-    factcheck_passes: bool = True
-    factcheck_minor: tuple = ()
+    check_blocks: int = 0                  # how many content checks in a row report a problem
+    voice_seconds: list = field(default_factory=list)   # forced durations for the next syntheses
+    schemas: list = field(default_factory=list)
 
     # ------------------------------------------------------------- db
     def select(self, table, where=None, *, columns="*", order=None, limit=None, single=False):
@@ -127,6 +128,7 @@ class FakeWorld:
     def structured(self, schema, system, prompt, *, purpose, effort=None, max_tokens=16000, channel_id=None,
                    video_id=None):
         self.calls["claude"] += 1
+        self.schemas.append(schema.__name__)
         self._maybe_fail("anthropic")
         if schema is content.Script:
             return (self.script_factory or clean_script)(), 0.05
@@ -134,12 +136,12 @@ class FakeWorld:
             return content.Scorecard(hook=9, curiosity_gap=9, viewer_question=8, emotional_connection=8, clarity=9,
                                      pacing=8, accuracy_framing=9, loop=8, originality=8, overall=8.6,
                                      biggest_risk="none", fixes=[]), 0.01
-        if schema is content.FactCheck:
-            ok = self.factcheck_passes
-            return content.FactCheck(claims=[], citations_valid=ok, passes=ok,
-                                     required_changes=[] if ok else ["The 25% figure is not in the paper"],
-                                     blocking=[] if ok else ["The 25% figure is not in the paper"],
-                                     minor=list(self.factcheck_minor), summary="fake"), 0.01
+        if schema is content.PolicyCheck:
+            bad = self.check_blocks > 0
+            self.check_blocks -= 1
+            probs = [content.PolicyProblem(line=3, issue="Tells viewers to stop taking medication", fix="Remove it")] if bad else []
+            return content.PolicyCheck(passed=not bad, tone_ok=True, graphic_ok=True, policy_ok=not bad,
+                                       problems=probs, summary="fake"), 0.0
         raise NotImplementedError(schema)
 
     def research(self, system, prompt, *, purpose, max_searches=8, effort=None, channel_id=None, video_id=None):
@@ -166,9 +168,12 @@ class FakeWorld:
         self.calls["voice"] += 1
         self._maybe_fail("voice")
         words, t = [], 0.0
+        step = 1 / WORDS_PER_SECOND
+        if self.voice_seconds:
+            step = self.voice_seconds.pop(0) / max(1, len(text.split()))
         for w in text.split():
             words.append(Word(w, round(t, 3), round(t + 0.3, 3)))
-            t += 1 / WORDS_PER_SECOND
+            t += step
         dur = words[-1].end + 0.7
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "v.mp3"
