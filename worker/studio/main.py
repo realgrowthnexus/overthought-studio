@@ -10,13 +10,14 @@ import time
 import traceback
 from datetime import datetime, timedelta, timezone
 
-from . import __version__, config, db, ops, pipeline, scheduler, spend
+from . import __version__, assistant, config, db, ops, pipeline, scheduler, spend
 from .log import event, log
 from .services import LimitReached, PermanentError, ServiceProblem, local_time, report_problem
 
 HEAVY = ["produce_video"]
 LIGHT = ["plan_channel", "research_ideas", "publish_video", "check_publish", "sync_stats", "import_stats",
          "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage", "make_thumb"]
+CHAT = ["assistant_reply"]                          # own lane: the owner never waits behind a backup or a stats sync
 BUDGET_GATED = {"produce_video", "plan_channel", "research_ideas", "weekly_review"}
 STOP = threading.Event()
 
@@ -52,6 +53,8 @@ def handle(job: dict) -> dict | None:
         return ops.backup_db()
     if t == "cleanup_storage":
         return ops.cleanup_storage()
+    if t == "assistant_reply":
+        return assistant.answer(int(p["reply_id"]))
     if t == "make_thumb":
         return pipeline.make_thumb(p["video_id"])
     raise RuntimeError(f"unknown job type {t}")
@@ -217,7 +220,8 @@ def main() -> None:
     except Exception as e:
         log.warning(f"startup reset: {e}")
     event(f"Worker {config.WORKER_ID} started (v{__version__})", "info", "worker")
-    lanes = [threading.Thread(target=lane, args=("heavy", HEAVY), name="heavy")]
+    lanes = [threading.Thread(target=lane, args=("heavy", HEAVY), name="heavy"),
+             threading.Thread(target=lane, args=("chat", CHAT), name="chat")]
     for i in range(max(1, config.CONCURRENCY)):
         lanes.append(threading.Thread(target=lane, args=(f"light{i}", LIGHT), name=f"light{i}"))
     helpers = [threading.Thread(target=heartbeat_and_schedule, daemon=True, name="sched"),

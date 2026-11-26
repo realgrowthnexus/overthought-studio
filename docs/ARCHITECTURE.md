@@ -39,6 +39,19 @@ Worker falls back to env vars `ANTHROPIC_API_KEY`, `RUNPOD_API_KEY`, … if a se
 | `refresh_tokens` | `{}` | scheduler hourly |
 | `backup_db` | `{}` | scheduler daily 04:00 UTC |
 | `cleanup_storage` | `{}` | scheduler daily |
+| `make_thumb` | `{video_id}` | dashboard cover picker (rebuilds `thumb.jpg` from `videos.cover_ms`) |
+| `assistant_reply` | `{reply_id}` | dashboard assistant; runs on its own `chat` lane |
+
+Owner features (migration 0006):
+- `videos.schedule_locked`: a post time the owner set by hand. The scheduler never moves it; it reserves the nearest
+  regular slot (±3 h); overdue locked videos go out one per channel per tick. Setting a time on a `ready` video also
+  approves it. Clearing it unlocks the video (back to `approved`, next free slot).
+- `videos.cover_ms`: the cover frame. Passed to TikTok as `video_cover_timestamp_ms` on Direct Post; drafts ignore it.
+- `assistant_messages`: the assistant chat. The dashboard inserts the question + a `pending` reply row and enqueues
+  `assistant_reply`; the worker (`studio/assistant.py`) builds a live snapshot (no secrets, no account ids), calls
+  Sonnet with `allow_fallback=False`, and saves `{reply, actions[]}`. Actions are whitelisted and their ids checked;
+  a button runs only when the owner clicks it (`runAssistantAction` reads the action from the DB and calls the normal
+  admin-checked server action). Last 200 messages kept.
 
 `jobs.status='waiting'` + `waiting_on='runpod'` means the job is parked because that service is out of credits
 or down; the worker re-queues it automatically when `services.status` returns to `ok`.

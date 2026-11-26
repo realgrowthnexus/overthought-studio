@@ -29,7 +29,7 @@ Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Nex
 |---|---|
 | `/` | Overview: pause switch, KPIs, live production line, up next, activity, services |
 | `/channels`, `/channels/new`, `/channels/[slug]` (+ `/videos`, `/ideas`, `/strategy`, `/settings`) | Channel management |
-| `/videos`, `/videos/[id]` | All videos; detail with player, script, sources, fact-check, caption, actions |
+| `/videos`, `/videos/[id]` | All videos; detail with player, script, sources, content check, caption (+ Copy caption), title, post time (approve and schedule, locked), cover frame picker, actions |
 | `/analytics` | Trend chart, performance vs channel median, TikTok Studio CSV import |
 | `/reports` | Weekly reports |
 | `/accounts` | TikTok accounts, connect/disconnect, app setup guide |
@@ -56,6 +56,8 @@ Deployed by `infra/install.sh` on the VPS as the `web` container (standalone Nex
 ## How it talks to the worker
 Only through Supabase: buttons insert rows into `jobs` (deduped per target), edits write `channels`/`settings`/`secrets`,
 approvals update `videos`. Pages re-render live from Realtime on `videos`, `jobs`, `events`, `channels`, `services`.
+The assistant (bottom-left on every page, `components/assistant.tsx`) writes `assistant_messages` and listens to it
+live; its buttons go through `lib/assistant-actions.ts` → the existing server actions.
 
 ## Security notes
 - **AuthZ in depth**: middleware only refreshes the session and redirects. The real gate is server-side:
