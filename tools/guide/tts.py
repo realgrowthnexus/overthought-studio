@@ -107,6 +107,6 @@ def build_all(script_path: Path, out_dir: Path) -> Path:
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["build"]:
-        p = build_all(HERE / "script.yaml", OUT)
+        p = build_all(HERE / os.environ.get("GUIDE_SCRIPT", "script.yaml"), OUT)
         total = sum(v["duration"] for v in json.loads(p.read_text()).values())
         print(f"total narration {total / 60:.1f} min → {p}")

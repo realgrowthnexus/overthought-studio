@@ -15,7 +15,7 @@ const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : nu
 
 const script = JSON.parse(execFileSync('python3', ['-c',
   'import json,sys,yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1], encoding="utf-8"))))',
-  path.join(__dirname, 'script.yaml')]).toString());
+  path.join(__dirname, process.env.GUIDE_SCRIPT || 'script.yaml')]).toString());
 const narration = JSON.parse(fs.readFileSync(path.join(OUT, 'narration.json'), 'utf8'));
 const redbar = (on) => execFileSync('python3', [path.join(ROOT, 'tools/demo/seed_demo.py'), 'red-bar', on ? 'on' : 'off']);
 
@@ -82,6 +82,7 @@ async function recordScene(b, scene, ids) {
   fs.rmSync(dir, { recursive: true, force: true });
   execFileSync('python3', [path.join(ROOT, 'tools/demo/seed_demo.py'), 'heartbeat']);   // sidebar says 'Worker online'
   if (scene.redbar) redbar(true);
+  for (const cmd of scene.prep || []) execFileSync('python3', [path.join(ROOT, 'tools/demo/seed_demo.py'), ...cmd.split(' ')]);
   const ctx = await b.newContext({
     viewport: vp, deviceScaleFactor: dsf, recordVideo: { dir, size },
     storageState: scene.fresh ? undefined : path.join(ROOT, 'tools/demo/.state.json'),
@@ -122,6 +123,7 @@ async function recordScene(b, scene, ids) {
   const raw = await page.video().path();
   await ctx.close();
   if (scene.redbar) redbar(false);
+  for (const cmd of scene.after || []) execFileSync('python3', [path.join(ROOT, 'tools/demo/seed_demo.py'), ...cmd.split(' ')]);
 
   const clip = path.join(OUT, 'clips', `${scene.id}.mp4`);
   fs.mkdirSync(path.dirname(clip), { recursive: true });

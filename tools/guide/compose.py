@@ -6,6 +6,7 @@ burned-in Roman Urdu subtitles. Writes the master MP4, the full SRT and the chap
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -96,7 +97,7 @@ def render_scene(seg: dict, narration: dict, out: Path) -> None:
 
 
 def main(only_chapter: int | None = None) -> Path:
-    script = check_script.load(HERE / "script.yaml")
+    script = check_script.load(HERE / os.environ.get("GUIDE_SCRIPT", "script.yaml"))
     if only_chapter:
         script = {"chapters": [c for c in script["chapters"] if c["id"] == only_chapter]}
     narration = json.loads((OUT / "narration.json").read_text())
@@ -111,12 +112,12 @@ def main(only_chapter: int | None = None) -> Path:
         print(f"rendered {f.name}", flush=True)
     lst = parts / "list.txt"
     lst.write_text("".join(f"file '{f}'\n" for f in files))
-    name = f"chapter-{only_chapter}.mp4" if only_chapter else "overthought-guide-ur-master.mp4"
+    name = f"chapter-{only_chapter}.mp4" if only_chapter else os.environ.get("GUIDE_NAME", "overthought-guide-ur") + "-master.mp4"
     out = OUT / name
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
                     "-c", "copy", "-movflags", "+faststart", str(out)], check=True)
     if not only_chapter:
-        (OUT / "overthought-guide-ur.srt").write_text(srt.to_srt(cues), encoding="utf-8")
+        (OUT / (os.environ.get("GUIDE_NAME", "overthought-guide-ur") + ".srt")).write_text(srt.to_srt(cues), encoding="utf-8")
         (OUT / "chapters.txt").write_text(chapter_lines(chapters), encoding="utf-8")
     return out
 

@@ -51,7 +51,13 @@ def render(out: Path) -> None:
     from studio import pipeline
     mp = MonkeyPatch()
     w = fakes.install(mp, out / "work")
-    # the test suite's clean script: it fits the session-6 length rules (the old doorway fixture is too long)
+    # the hand-written doorway script, so the demo video shows real captions; it is longer than the session-6
+    # word range, so the length check is switched off for this offline demo render only
+    import json
+    from studio import content
+    w.script_factory = lambda: content.Script.model_validate(
+        json.loads((ROOT / "worker" / "fixtures" / "doorway_script.json").read_text()))
+    mp.setattr(content, "script_problems", lambda *a, **k: [])
     ch = fakes.seed_channel(w)
     v = fakes.seed_video(w, ch)
     pipeline.produce(v["id"])
@@ -79,12 +85,14 @@ POSTED = [
 ]
 
 
+DEMO_SECONDS = 74.2      # replaced by the real length of the rendered demo file in run()
+
+
 def _video(ch: dict, title: str, status: str, **extra) -> dict:
     row = {"channel_id": ch["id"], "title": title, "status": status, "experiment": {**DEMO, "hook_style": "you-callout"},
-           "video_path": VIDEO_PATH, "thumb_path": THUMB_PATH, "duration_s": 74.2, "progress": 100,
+           "video_path": VIDEO_PATH, "thumb_path": THUMB_PATH, "duration_s": DEMO_SECONDS, "progress": 100,
            "caption": f"{title} #psychology", "hashtags": ["#psychology", "#brainfacts", "#overthinking"],
-           "cost_usd": 0.84, "cost_breakdown": {"research": 0.21, "script": 0.18, "factcheck": 0.12, "images": 0.08,
-                                                "voice": 0.25}}
+           "cost_usd": 0.072, "cost_breakdown": {"images": 0.072}}     # session 6: Claude on the plan, free voice
     row.update(extra)
     return db.insert("videos", row)[0]
 
@@ -108,11 +116,56 @@ def clear() -> None:
     db.delete("jobs", {"id": ("gte", 0)})
     db.delete("reports", {"data->>demo": "true"})
     db.delete("spend", {"detail": "demo"})
+    db.delete("assistant_messages", {"id": ("gte", 0)})
+    tiktok(False)
+
+
+DEMO_OPEN_ID = "demo-open-id-overthought"
+
+
+def tiktok(on: bool) -> None:
+    """Demo only: pretend the TikTok developer app is set up and one account is connected (for the guide video)."""
+    from studio import crypto
+    if on:
+        for key in ("tiktok_client_key", "tiktok_client_secret"):
+            fake = f"demo-not-real-{key[-6:]}"
+            db.insert("secrets", {"key": key, "ciphertext": crypto.encrypt(fake), "hint": fake[-4:]},
+                      upsert=True, on_conflict="key")
+        acct = db.insert("tiktok_accounts", {
+            "open_id": DEMO_OPEN_ID, "username": "overthought.studio", "display_name": "Overthought",
+            "scopes": ["user.info.basic", "user.info.profile", "user.info.stats", "video.list", "video.upload"],
+            "status": "connected", "follower_count": 1240, "likes_count": 18300, "video_count": 6,
+            "access_expires_at": iso(NOW + timedelta(hours=20)), "refresh_expires_at": iso(NOW + timedelta(days=300)),
+            "last_synced_at": iso(NOW - timedelta(minutes=30))}, upsert=True, on_conflict="open_id")[0]
+        db.update("channels", {"slug": "overthought"}, {"tiktok_account_id": acct["id"]})
+    else:
+        db.update("channels", {"slug": "overthought"}, {"tiktok_account_id": None})
+        db.delete("tiktok_accounts", {"open_id": DEMO_OPEN_ID})
+        db.delete("secrets", {"key": ("in", ["tiktok_client_key", "tiktok_client_secret"])})
+
+
+def assistant_demo() -> None:
+    """Demo only: one example conversation with a button, for the guide video."""
+    db.delete("assistant_messages", {"id": ("gte", 0)})
+    ready = db.select("videos", {"title": "Why you forget why you walked into a room"}, single=True, columns="id")
+    db.insert("assistant_messages", {"role": "user", "content": "Studio ka haal batao. Koi video ruki hui hai?",
+                                     "status": "done"})
+    db.insert("assistant_messages", {
+        "role": "assistant", "status": "done",
+        "content": "Studio theek chal raha hai. Worker online hai aur saari services ok hain.\n\n"
+                   "- Ek video aap ki approval ka intezar kar rahi hai: \"Why you forget why you walked into a room\".\n"
+                   "- Ek video abhi ban rahi hai (awaaz record ho rahi hai).\n"
+                   "- Is mahine ka kharcha $2.02 hai, RunPod ki hadd $100.\n\nChahein to neeche button se approve kar dein.",
+        "actions": [{"type": "approve_video", "label": "Approve karo", "video_id": ready["id"]}] if ready else []})
 
 
 def services_ok() -> None:
     vals = {
-        "anthropic": dict(message="Estimated $18.40 left", balance=18.4, balance_unit="usd", balance_limit=25),
+        "anthropic": dict(message="Signed in with the Claude plan", balance=None, balance_unit=None, balance_limit=None,
+                          details={"backend": "subscription", "source": "reported",
+                                   "five_hour": {"pct": 22, "resets_at": iso(NOW + timedelta(hours=3, minutes=10))},
+                                   "seven_day": {"pct": 31, "resets_at": iso(NOW + timedelta(days=4))},
+                                   "week_videos": 9, "videos_left": 18}),
         "voice": dict(message=None, balance=12, balance_unit="voices"),
         "runpod": dict(message=None, balance=12.3, balance_unit="usd"),
         "tiktok": dict(message="1 account connected"),
@@ -143,6 +196,10 @@ def run(render_dir: Path) -> dict[str, int]:
     if not db.select("channels", {"slug": "overthought"}, single=True):
         seed.run()
     ensure_media(Path(render_dir))
+    global DEMO_SECONDS
+    DEMO_SECONDS = round(float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                                               "csv=p=0", str(Path(render_dir) / "final.mp4")],
+                                              capture_output=True, text=True).stdout or 74.2), 1)
     clear()
     ch = db.update("channels", {"slug": "overthought"}, {
         "status": "active", "posting_mode": "draft", "require_approval": True,
@@ -178,11 +235,10 @@ def run(render_dir: Path) -> dict[str, int]:
     db.insert("video_stats", stats)
     failed = _video(ch, "Do we really use only 10% of our brain?", "failed", video_path=None, thumb_path=None,
                     created_at=ago(hours=2),
-                    duration_s=None, progress=40, cost_usd=0.41,
-                    error="Fact-check failed after 2 rewrites: the '10% of the brain' claim has no supporting study; "
-                          "rewrite as a myth-bust.")
+                    duration_s=None, progress=40, cost_usd=0.0,
+                    error="Content check: the script was under 60 seconds after two tries. Press Make again.")
     voice = _video(ch, "Why you say 'you too' when the waiter says enjoy your meal", "voice", video_path=None,
-                   thumb_path=None, created_at=ago(minutes=12), duration_s=None, progress=70, stage_detail="Recording the voiceover", cost_usd=0.52)
+                   thumb_path=None, created_at=ago(minutes=12), duration_s=None, progress=70, stage_detail="Recording the voiceover", cost_usd=0.072)
     _video(ch, "Why you can't tickle yourself", "rejected", approval="rejected", created_at=ago(days=2),
            rejection_note="Hook is too slow; the study is from 1998, find a newer one.")
 
@@ -197,7 +253,7 @@ def run(render_dir: Path) -> dict[str, int]:
          "finished_at": iso(NOW - timedelta(minutes=8))},
     ]:
         db.insert("jobs", job)        # rows have different keys: PostgREST bulk insert needs matching keys
-    ev = [("success", "pipeline", f"Ready: {ready['title']} (74.2s, $0.84) — waiting for your approval", ready, 25),
+    ev = [("success", "pipeline", f"Ready: {ready['title']} ({DEMO_SECONDS}s, $0.07) — waiting for your approval", ready, 25),
           ("info", "pipeline", f"{voice['title']}: Recording the voiceover", voice, 6),
           ("error", "jobs", f"produce_video failed permanently: {failed['error'][:120]}", failed, 95),
           ("success", "publish", f"Sent to TikTok drafts: {POSTED[0][0]}", None, 60 * 24 * 6),
@@ -218,7 +274,7 @@ def run(render_dir: Path) -> dict[str, int]:
                           "changes": [{"what": "hook weights", "from": "even", "to": "you-callout 1.3"}]})
     db.insert("spend", [{"service": s, "amount_usd": a, "detail": "demo", "channel_id": ch["id"],
                          "created_at": iso(NOW - timedelta(days=d))}
-                        for d in range(1, 15) for s, a in (("anthropic", 0.48), ("runpod", 0.08))])
+                        for d in range(1, 15) for s, a in (("anthropic", 0.0), ("runpod", 0.144))])
     from studio import crypto
     for key in ("anthropic_api_key", "runpod_api_key"):   # fake keys so Settings looks set up
         fake = f"sk-demo-not-a-real-key-{key[:4]}"
@@ -243,5 +299,9 @@ if __name__ == "__main__":
         set_red_bar(sys.argv[2] == "on")
     elif cmd == "heartbeat":
         heartbeat()
+    elif cmd == "tiktok":
+        tiktok(sys.argv[2] == "on")
+    elif cmd == "assistant-demo":
+        assistant_demo()
     else:
         print(run(HERE / ".renders"))

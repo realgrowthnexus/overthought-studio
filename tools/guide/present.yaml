@@ -1,0 +1,424 @@
+# Presentation video: a full overview of Overthought Studio for the owner to show their sir (2026-11-26).
+# Same format as script.yaml: the voice reads `urdu`, the screen shows `roman` (same count, same order).
+# Extra scene keys: prep / after = tools/demo/seed_demo.py commands run before / after recording the scene.
+#   GUIDE_SCRIPT=present.yaml GUIDE_NAME=overthought-overview python tools/guide/tts.py build   (etc.)
+chapters:
+  - id: 1
+    title_roman: "Overthought Studio kya hai"
+    scenes:
+      - id: "1.1"
+        route: /
+        highlight: "main h1"
+        actions:
+          - {do: wait, ms: 800}
+          - {do: hover, target: "main >> text=Production line"}
+        roman:
+          - "Assalam-o-alaikum. Yeh Overthought Studio hai."
+          - "Yeh ek khudkaar studio hai jo TikTok ke liye videos banata hai."
+          - "Maqsad: paanch American TikTok channels, Creator Rewards program ke liye."
+          - "Har video ek minute se lambi hoti hai, kyunke Creator Rewards ki yehi shart hai."
+          - "Topic, research, script, tasveerein, awaaz aur editing, sab studio khud karta hai."
+          - "Insaan ka kaam sirf do hai: video approve karna, aur TikTok par Post dabana."
+        urdu:
+          - "السلام علیکم، یہ اوور تھاٹ اسٹوڈیو ہے۔"
+          - "یہ ایک خودکار اسٹوڈیو ہے جو ٹک ٹاک کے لیے ویڈیوز بناتا ہے۔"
+          - "مقصد، پانچ امریکی ٹک ٹاک چینلز، کریئیٹر ریوارڈز پروگرام کے لیے۔"
+          - "ہر ویڈیو ایک منٹ سے لمبی ہوتی ہے، کیونکہ کریئیٹر ریوارڈز کی یہی شرط ہے۔"
+          - "موضوع، تحقیق، اسکرپٹ، تصویریں، آواز اور ایڈیٹنگ، سب اسٹوڈیو خود کرتا ہے۔"
+          - "انسان کا کام صرف دو ہیں، ویڈیو منظور کرنا، اور ٹک ٹاک پر پوسٹ دبانا۔"
+      - id: "1.2"
+        route: /
+        highlight: null
+        actions:
+          - {do: wait, ms: 600}
+        roman:
+          - "Yeh sab ek apne VPS server par chalta hai, jo hum pehle se kiraye par lete hain."
+          - "Script aur research ke liye Claude AI use hota hai, hamare Claude plan par."
+          - "Tasveerein RunPod par banti hain, aur awaaz bilkul muft hai."
+          - "Ek video ka kharcha taqreeban saat cent hai."
+        urdu:
+          - "یہ سب ہمارے اپنے وی پی ایس سرور پر چلتا ہے، جو ہم پہلے سے کرائے پر لیتے ہیں۔"
+          - "اسکرپٹ اور تحقیق کے لیے کلاڈ اے آئی استعمال ہوتا ہے، ہمارے کلاڈ پلان پر۔"
+          - "تصویریں رن پوڈ پر بنتی ہیں، اور آواز بالکل مفت ہے۔"
+          - "ایک ویڈیو کا خرچہ تقریباً سات سینٹ ہے۔"
+
+  - id: 2
+    title_roman: "Dashboard: Overview"
+    scenes:
+      - id: "2.1"
+        route: /
+        highlight: "main section:first-of-type"
+        actions:
+          - {do: hover, target: "main >> text=Views, last 7 days"}
+          - {do: hover, target: "main >> text=Waiting for review"}
+          - {do: hover, target: "main >> text=Spend this month"}
+          - {do: hover, target: "main >> text=Studio running"}
+        roman:
+          - "Login karte hi yeh pehla safha khulta hai: Overview."
+          - "Upar chaar dabbe: hafte ke views, followers, review, aur mahine ka kharcha."
+          - "Daayein taraf ek switch hai. Isse poora studio ek click mein rok sakte hain."
+        urdu:
+          - "لاگ اِن کرتے ہی یہ پہلا صفحہ کھلتا ہے، اوورویو۔"
+          - "اوپر چار ڈبے، پچھلے ہفتے کے ویوز، فالوورز، ریویو، اور اس مہینے کا خرچہ۔"
+          - "دائیں طرف ایک سوئچ ہے، اس سے پورا اسٹوڈیو ایک کلک میں روک سکتے ہیں۔"
+      - id: "2.2"
+        route: /
+        highlight: 'section:has(h2:text-is("Production line"))'
+        actions:
+          - {do: scroll, px: 250}
+          - {do: hover, target: "main >> text=Voice"}
+          - {do: hover, target: "main >> text=Ready"}
+        roman:
+          - "Yeh production line hai. Har video baayein se daayein chalti hai."
+          - "Queued, research, script, check, tasveerein, awaaz, render, aur aakhir mein Ready."
+          - "Yeh sab live hai. Worker jaise hi ek qadam poora karta hai, card aage barh jata hai."
+        urdu:
+          - "یہ پروڈکشن لائن ہے، ہر ویڈیو بائیں سے دائیں چلتی ہے۔"
+          - "قطار، تحقیق، اسکرپٹ، چیک، تصویریں، آواز، رینڈر، اور آخر میں ریڈی۔"
+          - "یہ سب لائیو ہے، ورکر جیسے ہی ایک قدم پورا کرتا ہے، کارڈ آگے بڑھ جاتا ہے۔"
+      - id: "2.3"
+        route: /
+        highlight: 'section:has(h2:text-is("Up next"))'
+        actions:
+          - {do: scroll, px: 650}
+          - {do: hover, target: "main >> text=Recent activity"}
+          - {do: scroll, px: 600}
+        roman:
+          - "Neeche 'Up next' hai: kaunsi video kab post hogi."
+          - "Saath mein 'Recent activity', yaani studio ne abhi kya kiya."
+          - "Aur sab se neeche har service ki sehat: Claude, RunPod, TikTok aur storage."
+        urdu:
+          - "نیچے اپ نیکسٹ ہے، کونسی ویڈیو کب پوسٹ ہوگی۔"
+          - "ساتھ میں ریسنٹ ایکٹیویٹی، یعنی اسٹوڈیو نے ابھی کیا کیا۔"
+          - "اور سب سے نیچے ہر سروس کی صحت، کلاڈ، رن پوڈ، ٹک ٹاک اور اسٹوریج۔"
+
+  - id: 3
+    title_roman: "Ek video kaise banti hai"
+    scenes:
+      - id: "3.1"
+        route: /
+        highlight: 'section:has(h2:text-is("Production line"))'
+        actions:
+          - {do: scroll, px: 250}
+          - {do: wait, ms: 600}
+        roman:
+          - "Ab dekhte hain ek video kaise banti hai."
+          - "Pehle Claude internet par asli research dhoondta hai, asli studies."
+          - "Phir script: pehle second mein hook, beech mein kahani, aakhir mein sabaq."
+          - "Phir ek halka check: content achha ho, TikTok ke qawaneen ke mutabiq ho."
+          - "Phir chhe scenes ki tasveerein ek saath banti hain, aur awaaz record hoti hai."
+          - "Aakhir mein video edit hoti hai: likhai, animation aur music ke saath."
+          - "Yeh poora kaam taqreeban paanch minute mein ho jata hai."
+        urdu:
+          - "اب دیکھتے ہیں ایک ویڈیو کیسے بنتی ہے۔"
+          - "پہلے کلاڈ انٹرنیٹ پر اصلی تحقیق ڈھونڈتا ہے، اصلی اسٹڈیز۔"
+          - "پھر وہ ایک اسکرپٹ لکھتا ہے، پہلے سیکنڈ میں ہُک، بیچ میں کہانی، آخر میں سبق۔"
+          - "پھر ایک ہلکا چیک، مواد اچھا ہو، ٹک ٹاک کے قوانین کے مطابق ہو۔"
+          - "پھر چھ مناظر کی تصویریں ایک ساتھ بنتی ہیں، اور آواز ریکارڈ ہوتی ہے۔"
+          - "آخر میں ویڈیو ایڈٹ ہوتی ہے، لکھائی، اینیمیشن اور میوزک کے ساتھ۔"
+          - "یہ پورا کام تقریباً پانچ منٹ میں ہو جاتا ہے۔"
+      - id: "3.2"
+        route: "/videos/@ready"
+        highlight: 'section:has(h2:text-is("Script"))'
+        actions:
+          - {do: scroll, px: 700}
+          - {do: wait, ms: 800}
+          - {do: scroll, px: 900}
+          - {do: hover, target: "main >> text=Sources"}
+        roman:
+          - "Har video ke safhe par uska poora script dikhta hai, line ba line."
+          - "Neeche woh sources hain jin se maloomat li gayi, asli research ke links ke saath."
+          - "Aur har video ka kharcha bhi, sent tak."
+        urdu:
+          - "ہر ویڈیو کے صفحے پر اس کا پورا اسکرپٹ دکھتا ہے، لائن بہ لائن۔"
+          - "نیچے وہ سورسز ہیں جن سے معلومات لی گئی، اصلی تحقیق کے لنکس کے ساتھ۔"
+          - "اور ہر ویڈیو کا خرچہ بھی، سینٹ تک۔"
+
+  - id: 4
+    title_roman: "Channels"
+    scenes:
+      - id: "4.1"
+        route: /channels
+        highlight: "main ul li:first-child"
+        actions:
+          - {do: wait, ms: 600}
+          - {do: hover, target: "main >> text=Running"}
+          - {do: hover, target: "main ul li:first-child >> text=Edit"}
+        roman:
+          - "Yeh Channels ka safha hai. Har card ek TikTok account hai."
+          - "Card par topic, posting ka tareeqa, din ki videos, aur pichle hafte ke views."
+          - "On aur off ka switch, aur 'Edit' ka button jis se channel ki settings badalti hain."
+          - "Abhi ek channel chal raha hai. Baqi chaar tayyar hain, jab chahein chalu karein."
+        urdu:
+          - "یہ چینلز کا صفحہ ہے، ہر کارڈ ایک ٹک ٹاک اکاؤنٹ ہے۔"
+          - "کارڈ پر موضوع، پوسٹنگ کا طریقہ، دن میں کتنی ویڈیوز، اور پچھلے ہفتے کے ویوز۔"
+          - "آن اور آف کا سوئچ، اور ایڈٹ کا بٹن جس سے چینل کی سیٹنگز بدلتی ہیں۔"
+          - "ابھی ایک چینل چل رہا ہے، باقی چار تیار ہیں، جب چاہیں چالو کر سکتے ہیں۔"
+      - id: "4.2"
+        route: /channels/overthought
+        highlight: "main >> text=Make a video now"
+        actions:
+          - {do: hover, target: "main >> text=Make a video now"}
+          - {do: wait, ms: 600}
+          - {do: click, target: "main a[href$='/ideas']"}
+          - {do: scroll, px: 300}
+        roman:
+          - "Channel ke andar 'Make a video now' ka button hai, foran nayi video ke liye."
+          - "Har channel ke paas ideas ka bank hai. Studio khud naye ideas dhoondta rehta hai."
+          - "Har Monday weekly review dekhta hai kya chala, aur agla hafta behtar karta hai."
+        urdu:
+          - "چینل کے اندر میک اے ویڈیو ناؤ کا بٹن ہے، فوراً نئی ویڈیو کے لیے۔"
+          - "ہر چینل کے پاس آئیڈیاز کا بینک ہے، اسٹوڈیو خود نئے آئیڈیاز ڈھونڈتا رہتا ہے۔"
+          - "ہر پیر ہفتہ وار جائزہ دیکھتا ہے کیا چلا، اور اگلا ہفتہ بہتر کرتا ہے۔"
+
+  - id: 5
+    title_roman: "Video approve aur schedule"
+    scenes:
+      - id: "5.1"
+        route: "/videos/@ready"
+        highlight: "main video"
+        actions:
+          - {do: play, target: "main video"}
+          - {do: wait, ms: 1500}
+          - {do: hover, target: "main >> role=button[name='Approve']"}
+        roman:
+          - "Jab video tayyar ho jati hai, to yahan aa jati hai: 'Ready for review'."
+          - "Aap video chala kar dekhte hain. Pasand aaye to peela 'Approve' ka button."
+          - "Pasand na aaye to 'Reject', aur ek note. Woh note agli script ko behtar banata hai."
+        urdu:
+          - "جب ویڈیو تیار ہو جاتی ہے، تو یہاں آ جاتی ہے، ریڈی فار ریویو۔"
+          - "آپ ویڈیو چلا کر دیکھتے ہیں، پسند آئے تو پیلا اپروو کا بٹن۔"
+          - "پسند نہ آئے تو ریجیکٹ، اور ایک نوٹ، وہ نوٹ اگلی اسکرپٹ کو بہتر بناتا ہے۔"
+      - id: "5.2"
+        route: "/videos/@ready"
+        highlight: 'section:has(h2:text-is("Title and post time"))'
+        actions:
+          - {do: hover, target: "#video-title"}
+          - {do: hover, target: "#post-time"}
+          - {do: hover, target: "main >> text=Approve and schedule"}
+        roman:
+          - "Yahan video ka naam aur post ka waqt badal sakte hain."
+          - "Waqt chun kar 'Approve and schedule' dabayein: approve bhi, aur usi waqt post bhi."
+          - "Waqt na chunein to studio khud agla khali waqt de deta hai."
+        urdu:
+          - "یہاں ویڈیو کا نام اور پوسٹ کا وقت بدل سکتے ہیں۔"
+          - "وقت چن کر اپروو اینڈ شیڈول دبائیں، ویڈیو منظور بھی، اور اسی وقت پوسٹ بھی۔"
+          - "وقت نہ چنیں تو اسٹوڈیو خود اگلا خالی وقت دے دیتا ہے۔"
+      - id: "5.3"
+        route: "/videos/@ready"
+        highlight: 'section:has(h2:text-is("Cover"))'
+        actions:
+          - {do: scroll, px: 450}
+          - {do: hover, target: "#cover-ms"}
+          - {do: click, target: "#cover-ms"}
+          - {do: hover, target: "main >> text=Copy caption"}
+        roman:
+          - "Cover ke liye video ka koi bhi frame chun sakte hain."
+          - "Caption aur hashtags bhi yahin hain, aur 'Copy caption' ka button."
+        urdu:
+          - "کور کے لیے ویڈیو کا کوئی بھی فریم چن سکتے ہیں۔"
+          - "کیپشن اور ہیش ٹیگز بھی یہیں ہیں، اور کاپی کیپشن کا بٹن۔"
+
+  - id: 6
+    title_roman: "TikTok account connect karna"
+    scenes:
+      - id: "6.1"
+        route: /accounts
+        prep: ["tiktok off"]
+        highlight: 'section:has(h2:text-is("Set up your TikTok developer app first"))'
+        actions:
+          - {do: wait, ms: 600}
+          - {do: scroll, px: 200}
+          - {do: hover, target: "main >> text=Redirect URI"}
+        roman:
+          - "Ab sab se zaroori hissa: TikTok account kaise connect hota hai."
+          - "Pehle ek dafa TikTok ki developer website par ek app banti hai."
+          - "Is safhe par paanch qadam likhe hain, aur zaroori links copy karne ke button."
+          - "App se do keys milti hain, jo Settings mein daal di jati hain."
+          - "Phir TikTok is app ko review karta hai. Yeh sirf ek dafa ka kaam hai."
+        urdu:
+          - "اب سب سے ضروری حصہ، ٹک ٹاک اکاؤنٹ کیسے کنیکٹ ہوتا ہے۔"
+          - "پہلے ایک دفعہ ٹک ٹاک کی ڈویلپر ویب سائٹ پر ایک ایپ بنتی ہے۔"
+          - "اس صفحے پر پانچ قدم لکھے ہیں، اور ضروری لنکس کاپی کرنے کے بٹن۔"
+          - "ایپ سے دو کیز ملتی ہیں، جو سیٹنگز میں ڈال دی جاتی ہیں۔"
+          - "پھر ٹک ٹاک اس ایپ کا جائزہ لیتا ہے، یہ صرف ایک دفعہ کا کام ہے۔"
+      - id: "6.2"
+        route: /accounts
+        prep: ["tiktok on"]
+        highlight: "main >> text=Connect account"
+        actions:
+          - {do: hover, target: "main >> text=Connect account"}
+          - {do: wait, ms: 1200}
+          - {do: hover, target: "main >> text=@overthought.studio"}
+        roman:
+          - "Uske baad 'Connect account' ka button aa jata hai."
+          - "Isse dabane par TikTok ka apna login safha khulta hai."
+          - "Wahan TikTok account se login karte hain, aur 'Allow' dabate hain."
+          - "Bas. Account yahan aa jata hai, aur 'Connected' likha hota hai."
+          - "Hum kabhi TikTok ka password nahi dekhte. Yeh TikTok ka official tareeqa hai."
+        urdu:
+          - "اس کے بعد کنیکٹ اکاؤنٹ کا بٹن آ جاتا ہے۔"
+          - "اسے دبانے پر ٹک ٹاک کا اپنا لاگ اِن صفحہ کھلتا ہے۔"
+          - "وہاں ٹک ٹاک اکاؤنٹ سے لاگ اِن کرتے ہیں، اور الاؤ دباتے ہیں۔"
+          - "بس، اکاؤنٹ یہاں آ جاتا ہے، اور کنیکٹڈ لکھا ہوتا ہے۔"
+          - "ہم کبھی ٹک ٹاک کا پاس ورڈ نہیں دیکھتے، یہ ٹک ٹاک کا آفیشل طریقہ ہے۔"
+      - id: "6.3"
+        route: /accounts
+        highlight: 'section:has(h2:text-is("Connected accounts"))'
+        actions:
+          - {do: scroll, px: 250}
+          - {do: hover, target: "main >> text=Channel: "}
+        roman:
+          - "Har account ko ek channel ke saath jorte hain."
+          - "Login har kuch ghante baad khud refresh hota hai, hamein kuch nahi karna padta."
+          - "Paanch channels, paanch accounts. Har ek ke liye yahi qadam."
+        urdu:
+          - "ہر اکاؤنٹ کو ایک چینل کے ساتھ جوڑتے ہیں۔"
+          - "لاگ اِن ہر کچھ گھنٹے بعد خود ریفریش ہوتا ہے، ہمیں کچھ نہیں کرنا پڑتا۔"
+          - "پانچ چینلز، پانچ اکاؤنٹس، ہر ایک کے لیے یہی قدم۔"
+
+  - id: 7
+    title_roman: "Post kaise hoti hai"
+    scenes:
+      - id: "7.1"
+        route: /videos
+        highlight: "main table"
+        actions:
+          - {do: wait, ms: 800}
+          - {do: hover, target: "main table td >> text=\"Scheduled\""}
+          - {do: scroll, px: 300}
+          - {do: hover, target: "main table td >> text=/^Posted/"}
+        roman:
+          - "Jab post ka waqt aata hai, studio video khud TikTok ko bhej deta hai."
+          - "Abhi video TikTok ke drafts mein jati hai, yaani inbox mein."
+          - "TikTok app kholein, caption paste karein, cover chunein, aur Post dabayein."
+          - "Jab TikTok hamari app ka audit pass kar dega, to post bhi khud ho jaya karegi."
+        urdu:
+          - "جب پوسٹ کا وقت آتا ہے، اسٹوڈیو ویڈیو خود ٹک ٹاک کو بھیج دیتا ہے۔"
+          - "ابھی ویڈیو ٹک ٹاک کے ڈرافٹس میں جاتی ہے، یعنی اِن باکس میں۔"
+          - "فون پر ٹک ٹاک ایپ کھولیں، کیپشن پیسٹ کریں، کور چنیں، اور پوسٹ دبائیں۔"
+          - "جب ٹک ٹاک ہماری ایپ کا آڈٹ پاس کر دے گا، تو پوسٹ بھی خود ہو جایا کرے گی۔"
+
+  - id: 8
+    title_roman: "Analytics aur weekly report"
+    scenes:
+      - id: "8.1"
+        route: /analytics
+        highlight: "main section:first-of-type"
+        actions:
+          - {do: wait, ms: 800}
+          - {do: scroll, px: 500}
+        roman:
+          - "Analytics mein har video ke views, likes, shares aur poori dekhi gayi ka hisaab."
+          - "Har video ko channel ki aam karkardagi se compare kiya jata hai."
+        urdu:
+          - "اینالیٹکس میں ہر ویڈیو کے ویوز، لائکس، شیئرز اور پوری دیکھی گئی کا حساب۔"
+          - "ہر ویڈیو کو چینل کی عام کارکردگی سے موازنہ کیا جاتا ہے۔"
+      - id: "8.2"
+        route: /reports
+        highlight: "main >> text=week in review"
+        actions:
+          - {do: wait, ms: 600}
+          - {do: scroll, px: 200}
+        roman:
+          - "Har hafte ek report banti hai: kaunsi video sab se achhi chali, aur kyun."
+          - "Isi report se studio agle hafte ka plan khud badalta hai."
+        urdu:
+          - "ہر ہفتے ایک رپورٹ بنتی ہے، کونسی ویڈیو سب سے اچھی چلی، اور کیوں۔"
+          - "اسی رپورٹ سے اسٹوڈیو اگلے ہفتے کا پلان خود بدلتا ہے۔"
+
+  - id: 9
+    title_roman: "Settings aur hifazat"
+    scenes:
+      - id: "9.1"
+        route: /settings
+        highlight: "#claude"
+        actions:
+          - {do: wait, ms: 600}
+          - {do: hover, target: "#claude"}
+          - {do: hover, target: "#keys"}
+        roman:
+          - "Settings mein Claude ka card hai: kitni limit use hui, aur kab reset hogi."
+          - "Limit poori ho to studio bas ruk jata hai, aur reset par khud dobara chalta hai."
+          - "Saari keys yahan encrypted rakhi jati hain. Koi key screen par nahi dikhti."
+        urdu:
+          - "سیٹنگز میں کلاڈ کا کارڈ ہے، کتنی حد استعمال ہوئی، اور کب ری سیٹ ہوگی۔"
+          - "حد پوری ہو جائے تو اسٹوڈیو بس رک جاتا ہے، اور ری سیٹ پر خود دوبارہ چلتا ہے۔"
+          - "ساری کیز یہاں انکرپٹڈ رکھی جاتی ہیں، کوئی کی اسکرین پر نہیں دکھتی۔"
+      - id: "9.2"
+        route: /settings
+        highlight: 'section:has(h2:text-is("Studio settings"))'
+        actions:
+          - {do: scroll, px: 500}
+          - {do: hover, target: "main >> text=RunPod"}
+        roman:
+          - "Kharche ki hadd bhi yahin hai: rozana, mahana, aur RunPod ki pakki hadd sau dollar."
+          - "Is hadd se zyada kabhi kharcha nahi hota. Studio wahin ruk jata hai."
+        urdu:
+          - "خرچے کی حد بھی یہیں ہے، روزانہ، ماہانہ، اور رن پوڈ کی پکی حد سو ڈالر۔"
+          - "اس حد سے زیادہ کبھی خرچہ نہیں ہوتا، اسٹوڈیو وہیں رک جاتا ہے۔"
+      - id: "9.3"
+        route: /
+        redbar: true
+        highlight: "[role=alert]"
+        actions:
+          - {do: wait, ms: 1200}
+        roman:
+          - "Agar kabhi kuch ruk jaye, to upar ek laal patti aati hai."
+          - "Woh saaf batati hai kya hua, aur theek kaise karna hai."
+          - "Masla hal hote hi kaam khud dobara shuru ho jata hai."
+        urdu:
+          - "اگر کبھی کچھ رک جائے، تو اوپر ایک لال پٹی آتی ہے۔"
+          - "وہ صاف بتاتی ہے کیا ہوا، اور ٹھیک کیسے کرنا ہے۔"
+          - "مسئلہ حل ہوتے ہی کام خود دوبارہ شروع ہو جاتا ہے۔"
+
+  - id: 10
+    title_roman: "AI Assistant"
+    scenes:
+      - id: "10.1"
+        route: /
+        prep: ["assistant-demo"]
+        highlight: "#assistant-panel"
+        highlight_after: true
+        actions:
+          - {do: hover, target: "role=button[name='Open assistant']"}
+          - {do: click, target: "role=button[name='Open assistant']"}
+          - {do: wait, ms: 1500}
+          - {do: hover, target: "#assistant-panel >> text=Approve karo"}
+        roman:
+          - "Har safhe par neeche daayein kone mein yeh muskurata chehra hai: AI assistant."
+          - "Isse Roman Urdu mein kuch bhi poochein: koi video kyun ruki, kharcha kitna hua."
+          - "Woh studio ki asli, live haalat dekh kar jawab deta hai."
+          - "Agar kuch karna ho, to woh ek button deta hai, jaise 'Approve karo'."
+          - "Lekin jab tak hum khud click na karein, woh kuch nahi badalta."
+        urdu:
+          - "ہر صفحے پر نیچے دائیں کونے میں یہ مسکراتا چہرہ ہے، اے آئی اسسٹنٹ۔"
+          - "اس سے رومن اردو میں کچھ بھی پوچھیں، کوئی ویڈیو کیوں رکی، خرچہ کتنا ہوا۔"
+          - "وہ اسٹوڈیو کی اصلی، لائیو حالت دیکھ کر جواب دیتا ہے۔"
+          - "اگر کچھ کرنا ہو، تو وہ ایک بٹن دیتا ہے، جیسے اپروو کرو۔"
+          - "لیکن جب تک ہم خود کلک نہ کریں، وہ کچھ نہیں بدلتا۔"
+
+  - id: 11
+    title_roman: "Khulasa"
+    scenes:
+      - id: "11.1"
+        route: /
+        highlight: null
+        actions:
+          - {do: wait, ms: 800}
+        roman:
+          - "To khulasa yeh hai."
+          - "Studio roz khud videos banata hai: research se le kar editing tak."
+          - "Hamara kaam: din mein ek dafa dashboard dekhna, videos approve karna."
+          - "Aur TikTok app mein Post dabana, jab tak TikTok ka audit poora nahi hota."
+          - "Kharcha bahut kam hai, aur har cheez ki hadd mukarrar hai."
+          - "Agla qadam: TikTok app ka review, aur baqi chaar channels chalu karna."
+          - "Shukriya."
+        urdu:
+          - "تو خلاصہ یہ ہے۔"
+          - "اسٹوڈیو روز خود ویڈیوز بناتا ہے، تحقیق سے لے کر ایڈیٹنگ تک۔"
+          - "ہمارا کام، دن میں ایک دفعہ ڈیش بورڈ دیکھنا، ویڈیوز منظور کرنا۔"
+          - "اور ٹک ٹاک ایپ میں پوسٹ دبانا، جب تک ٹک ٹاک کا آڈٹ پورا نہیں ہوتا۔"
+          - "خرچہ بہت کم ہے، اور ہر چیز کی حد مقرر ہے۔"
+          - "اگلا قدم، ٹک ٹاک ایپ کا ریویو، اور باقی چار چینلز چالو کرنا۔"
+          - "شکریہ۔"

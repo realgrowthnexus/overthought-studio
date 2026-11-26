@@ -47,6 +47,14 @@ Owner said "Features shuru" (the 3 features from §0.00000). All three are built
 - Known minors: a second cover pick while a `make_thumb` job is running is deduped (the running job may use the
   older frame; pick again); the assistant's snapshot times are UTC/PKT/channel tz mixed (Claude converts).
 
+- **Presentation video (2026-11-26):** owner asked for a full dashboard overview video to present to their sir.
+  Script `tools/guide/present.yaml` (11 chapters, Urdu voice + Roman Urdu subtitles, 7:39), built with
+  `GUIDE_SCRIPT=present.yaml GUIDE_NAME=overthought-overview GUIDE_OUT=<dir>` + `tts.py build`, `record.cjs`,
+  `compose.py`. Scene keys `prep`/`after` run `seed_demo.py` commands (`tiktok on|off`, `assistant-demo`). For the
+  TikTok setup scene, `APP_URL` in `tools/demo/demo.env` was set to the real domain while recording. The demo
+  seeder now shows real per-video costs ($0.07, Claude on the plan), the Claude plan card and the real doorway
+  captions. Delivered 1080p + 720p + SRT.
+
 ### 0.00000 SESSION 6 (2026-11-24): phases 1-3 (done).
 The owner handed the project over completely ("tum main ho meri jagah pe, take charge, take responsibility"). They
 want the production line 100% working and ready to use. The owner may switch Claude accounts mid-work. Whoever
