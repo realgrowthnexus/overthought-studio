@@ -452,14 +452,76 @@ export async function updateCaption(id: string, caption: string, hashtags: strin
   });
 }
 
+export async function updateTitle(id: string, title: string): Promise<ActionResult> {
+  return guard(async () => {
+    uuid.parse(id);
+    const t = z.string().trim().min(3, "Give it at least 3 characters").max(150).parse(title);
+    const { error } = await serviceClient().from("videos").update({ title: t }).eq("id", id);
+    fail(error);
+    revalidatePath("/", "layout");
+    return { ok: true, message: "Title saved." };
+  });
+}
+
+const SCHEDULABLE = ["ready", "approved", "scheduled"];
+
+/** Owner-set post time. Setting one on a `ready` video also approves it. The time is locked: the scheduler never
+ *  moves it. Clearing it unlocks the video and it takes the next free slot. */
 export async function scheduleVideo(id: string, whenIso: string | null): Promise<ActionResult> {
   return guard(async () => {
     uuid.parse(id);
     const when = whenIso ? z.string().datetime({ offset: true }).parse(whenIso) : null;
-    const { error } = await serviceClient().from("videos").update({ scheduled_for: when }).eq("id", id);
+    const db = serviceClient();
+    const { data: v } = await db.from("videos").select("id,status,title,channel_id,video_path").eq("id", id).maybeSingle();
+    if (!v) return { ok: false, error: "That video doesn't exist any more." };
+    if (!SCHEDULABLE.includes(v.status as string)) return { ok: false, error: "Only finished videos that haven't posted yet can be scheduled." };
+    if (!when) {
+      const { error } = await db.from("videos")
+        .update({ schedule_locked: false, scheduled_for: null, stage_detail: null, ...(v.status === "scheduled" ? { status: "approved" } : {}) })
+        .eq("id", id).in("status", SCHEDULABLE);
+      fail(error);
+      await logEvent(`Post time cleared: ${v.title}`, { video_id: id, channel_id: v.channel_id as string });
+      revalidatePath("/", "layout");
+      return { ok: true, message: "Post time cleared. It will take the next free slot." };
+    }
+    if (!v.video_path) return { ok: false, error: "The video file isn't ready yet." };
+    const at = new Date(when);
+    if (at.getTime() < Date.now() + 2 * 60_000) return { ok: false, error: "Pick a time at least a few minutes from now." };
+    if (at.getTime() > Date.now() + 60 * 86_400_000) return { ok: false, error: "Pick a time within the next 60 days." };
+    const { data: ch } = await db.from("channels").select("timezone").eq("id", v.channel_id as string).maybeSingle();
+    const tz = (ch?.timezone as string) || "America/New_York";
+    const label = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: tz, timeZoneName: "short" }).format(at);
+    const approving = v.status === "ready";
+    const { error } = await db.from("videos").update({
+      status: "scheduled", scheduled_for: at.toISOString(), schedule_locked: true, stage_detail: `Scheduled for ${label}`,
+      ...(approving ? { approval: "approved", approved_at: new Date().toISOString(), rejection_note: null } : {}),
+    }).eq("id", id).in("status", SCHEDULABLE);
     fail(error);
+    await logEvent(`${approving ? "Approved and scheduled" : "Post time set"}: ${v.title} (${label})`, { video_id: id, channel_id: v.channel_id as string, level: "success" });
+    revalidatePath("/", "layout");
+    return { ok: true, message: approving ? `Approved. It posts ${label}.` : `It posts ${label}.` };
+  });
+}
+
+/** Cover = one frame of the video. Saves the time and asks the worker to rebuild the thumbnail from that frame. */
+export async function setCover(id: string, ms: number): Promise<ActionResult> {
+  return guard(async () => {
+    uuid.parse(id);
+    const at = z.number().int().min(0).max(600_000).parse(Math.round(ms));
+    const db = serviceClient();
+    const { data: v } = await db.from("videos").select("id,channel_id,duration_s,video_path,status").eq("id", id).maybeSingle();
+    if (!v) return { ok: false, error: "That video doesn't exist any more." };
+    if (!v.video_path) return { ok: false, error: "The video file isn't ready yet." };
+    if (["uploading", "sent_to_drafts", "posted"].includes(v.status as string)) return { ok: false, error: "It's already on TikTok, so the cover can't change here." };
+    if (v.duration_s && at > Number(v.duration_s) * 1000) return { ok: false, error: "That frame is past the end of the video." };
+    const { error } = await db.from("videos").update({ cover_ms: at }).eq("id", id);
+    fail(error);
+    const { error: jobErr } = await db.from("jobs").insert({
+      type: "make_thumb", payload: { video_id: id }, video_id: id, channel_id: v.channel_id, priority: 2, dedupe_key: `make_thumb:${id}`,
+    });
+    if (jobErr && jobErr.code !== "23505") fail(jobErr);
     revalidatePath(`/videos/${id}`);
-    return { ok: true, message: when ? "Post time set." : "Post time cleared — it will take the next free slot." };
+    return { ok: true, message: "Cover saved. The thumbnail updates in a few seconds." };
   });
 }
 

@@ -16,7 +16,7 @@ from .services import LimitReached, PermanentError, ServiceProblem, local_time, 
 
 HEAVY = ["produce_video"]
 LIGHT = ["plan_channel", "research_ideas", "publish_video", "check_publish", "sync_stats", "import_stats",
-         "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage"]
+         "weekly_review", "health_check", "refresh_tokens", "backup_db", "cleanup_storage", "make_thumb"]
 BUDGET_GATED = {"produce_video", "plan_channel", "research_ideas", "weekly_review"}
 STOP = threading.Event()
 
@@ -52,6 +52,8 @@ def handle(job: dict) -> dict | None:
         return ops.backup_db()
     if t == "cleanup_storage":
         return ops.cleanup_storage()
+    if t == "make_thumb":
+        return pipeline.make_thumb(p["video_id"])
     raise RuntimeError(f"unknown job type {t}")
 
 

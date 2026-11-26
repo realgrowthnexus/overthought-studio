@@ -82,7 +82,8 @@ export interface Video {
   video_path: string | null; thumb_path: string | null; audio_path: string | null; file_size: number | null;
   cost_usd: number; cost_breakdown: Record<string, number>; experiment: Record<string, unknown> | null;
   approval: "pending" | "approved" | "rejected" | null; approved_at: string | null; rejection_note: string | null;
-  scheduled_for: string | null; posted_at: string | null; tiktok_publish_id: string | null;
+  scheduled_for: string | null; schedule_locked?: boolean; cover_ms?: number | null;
+  posted_at: string | null; tiktok_publish_id: string | null;
   tiktok_video_id: string | null; tiktok_url: string | null; publish_status: Record<string, unknown> | null;
   created_at: string; updated_at: string;
 }

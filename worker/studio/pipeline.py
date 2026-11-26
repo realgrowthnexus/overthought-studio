@@ -199,6 +199,11 @@ def produce(video_id: str, from_stage: str | None = None, *, stop_after: str | N
         elif name == "render":
             _stage(video, name, "Animating and editing the video")
             out = _render(video, ch, work)
+            if video.get("cover_ms") is not None:       # keep the cover the owner picked across a re-render
+                try:
+                    cover_frame(Path(out["path"]), int(video["cover_ms"]), Path(out["thumb"]))
+                except RuntimeError as e:
+                    log.warning(f"cover frame: {e}")
             _upd(video_id, progress=94, stage_detail="Saving the video and uploading a preview")
             base = f"{ch['slug']}/{video_id}"
             # Full-quality file stays on the VPS disk (free, and publishing reads it without Supabase egress);
@@ -262,6 +267,48 @@ def make_preview(src: Path, dst: Path) -> None:
                        capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError("Preview encode failed: " + p.stderr[-400:])
+
+
+def cover_frame(src: Path, ms: int, dst: Path) -> None:
+    """One frame at `ms` as a 1080-wide JPEG: the cover the owner picked."""
+    p = subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{max(0, ms) / 1000:.3f}", "-i", str(src),
+                        "-frames:v", "1", "-vf", "scale=1080:-2", "-q:v", "3", str(dst)],
+                       capture_output=True, text=True)
+    if p.returncode != 0 or not dst.exists() or dst.stat().st_size == 0:
+        raise RuntimeError("Could not grab the cover frame: " + (p.stderr or "no frame at that time")[-300:])
+
+
+def make_thumb(video_id: str) -> dict:
+    """Rebuild thumb.jpg from the frame the owner picked (videos.cover_ms). Reads the full-quality disk copy, or the
+    dashboard preview when the disk copy is gone."""
+    v = db.select("videos", {"id": video_id}, single=True)
+    if not v:
+        raise PermanentError("That video doesn't exist any more")
+    if v.get("cover_ms") is None:
+        return {"skipped": "no cover picked"}
+    ch = db.select("channels", {"id": v["channel_id"]}, single=True)
+    ms = int(v["cover_ms"])
+    if v.get("duration_s"):
+        ms = min(ms, max(0, int(float(v["duration_s"]) * 1000) - 200))
+    work = config.WORK / "thumbs" / video_id
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        src = library_path(video_id)
+        if not src.exists():
+            if not v.get("video_path"):
+                raise PermanentError("This video has no file yet, so there is no frame to pick")
+            src = work / "src.mp4"
+            src.write_bytes(db.download("videos", v["video_path"]))
+        out = work / "thumb.jpg"
+        cover_frame(src, ms, out)
+        path = f"{ch['slug']}/{video_id}/thumb.jpg"
+        db.upload("videos", path, out.read_bytes(), "image/jpeg")
+        _upd(video_id, thumb_path=path)
+        event(f"Cover updated: {v.get('title') or 'video'} (frame at {ms / 1000:.1f}s)", "success", "dashboard",
+              channel_id=ch["id"], video_id=video_id)
+        return {"thumb": path, "ms": ms}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def final_video(video: dict, ch: dict) -> bytes:

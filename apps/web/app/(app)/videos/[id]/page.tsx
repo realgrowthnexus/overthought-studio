@@ -9,6 +9,7 @@ import { Badge, KV, PageHeader, Panel, PanelHeader, Progress } from "@/component
 import { EventFeed } from "@/components/event-feed";
 import { LiveRefresh } from "@/components/live";
 import { VideoActions, CaptionEditor } from "@/components/video-actions";
+import { CoverPicker, PublishingPanel } from "@/components/video-editor";
 import { MarginNote } from "@/components/brand";
 import { IN_PROGRESS, SERVICE_LABEL, dateTime, duration, num, pct, usd, videoStatusLabel, videoTone } from "@/lib/format";
 import type { ScriptBeat, ServiceName, Source } from "@/lib/types";
@@ -116,6 +117,10 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
           <VideoActions video={video} />
+          <Panel>
+            <PanelHeader title="Cover" description="Pick a frame from the video." />
+            <CoverPicker video={video} videoUrl={videoUrl} draft={(channel?.posting_mode ?? "draft") === "draft"} />
+          </Panel>
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
@@ -134,7 +139,9 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
             </Panel>
           )}
 
-          <CaptionEditor video={video} />
+          <PublishingPanel video={video} timezone={channel?.timezone ?? "America/New_York"} />
+
+          <CaptionEditor video={video} draft={(channel?.posting_mode ?? "draft") === "draft"} />
 
           <Panel>
             <PanelHeader title="Script" description={video.script?.hook || beats.length ? undefined : "Appears once the writer finishes."} />

@@ -7,6 +7,7 @@ import { useAction } from "@/components/use-action";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Panel, PanelHeader, Select, Textarea, Input } from "@/components/ui/primitives";
+import { CopyCaption } from "@/components/video-editor";
 
 const STAGES = [
   { value: "research", label: "From the start (new research)" },
@@ -81,7 +82,7 @@ export function VideoActions({ video }: { video: Video }) {
   );
 }
 
-export function CaptionEditor({ video }: { video: Video }) {
+export function CaptionEditor({ video, draft = false }: { video: Video; draft?: boolean }) {
   const { pending, run } = useAction();
   const [caption, setCaption] = React.useState(video.caption ?? "");
   const [tags, setTags] = React.useState((video.hashtags ?? []).join(" "));
@@ -99,7 +100,13 @@ export function CaptionEditor({ video }: { video: Video }) {
         <Field label="Hashtags" htmlFor="tags-input" hint="3–5, mixing niche and broad.">
           <Input id="tags-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#psychology #brainfacts #didyouknow" />
         </Field>
-        <div className="flex justify-end">
+        {draft && (
+          <p className="rounded-[10px] border border-line bg-bg px-3 py-2 text-[12px] text-ink-2">
+            TikTok drafts don&apos;t take a caption or cover from us. Tap <strong className="font-medium text-ink">Copy caption</strong> and paste it in the TikTok app when you post.
+          </p>
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          <CopyCaption text={full} />
           <Button size="sm" variant={dirty ? "primary" : "secondary"} disabled={!dirty} loading={pending} onClick={() => run(() => updateCaption(video.id, caption, tags.split(/\s+/)))}>
             Save caption
           </Button>

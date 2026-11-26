@@ -194,7 +194,8 @@ def publish_video(video_id: str) -> dict:
     try:
         from . import pipeline
         data = pipeline.final_video(v, ch)
-        pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True)
+        pid = tiktok.post_video(ch["tiktok_account_id"], data, mode=mode, title=title, aigc=True,
+                                 cover_ms=int(v.get("cover_ms") or 0))
         db.update("videos", {"id": video_id}, {"tiktok_publish_id": pid, "stage_detail": "TikTok is processing the upload",
                                                "publish_status": {"mode": mode}})
     except tiktok.TikTokError as e:
