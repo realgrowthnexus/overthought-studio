@@ -37,8 +37,12 @@ Owner said "Features shuru" (the 3 features from §0.00000). All three are built
   hover-check 578 controls 0 problems, flow-check and ui-check all pass. `tools/demo/seed_demo.py` now renders
   the test suite's clean script (the old doorway fixture is too long for the session-6 rules). The demo needs
   `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io` when public.ecr.aws says "Data limit exceeded".
-- **Still to do:** after the VPS picks up main (v1.4.0), send one real assistant question from the DB (insert user
-  + pending row + job) and check the reply; check a `make_thumb` run. Then tell the owner in Roman Urdu.
+- **LIVE + VERIFIED on the VPS (2026-11-26 05:46 UTC, v1.4.0, main = 2534813):** a real assistant question
+  answered in ~10 s, correct Roman Urdu, 3 valid approve buttons (nothing ran). The owner had already asked one
+  question themselves at 05:36 (answered in 8 s). My test rows (ids 3, 4) were deleted. `make_thumb` has not run
+  live yet (it needs a cover pick on the dashboard); it is covered by tests and the demo flow.
+- Next: nothing open from the owner's feature list. Waiting for the owner. Their own to-dos are still §0.0000
+  (TikTok demo + app review, RunPod auto-pay off) and §0.2.
 - Known minors: a second cover pick while a `make_thumb` job is running is deduped (the running job may use the
   older frame; pick again); the assistant's snapshot times are UTC/PKT/channel tz mixed (Claude converts).
 
