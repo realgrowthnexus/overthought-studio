@@ -104,7 +104,8 @@ def _channel(ch: dict, t: datetime, pacing: bool = False, floor: int | None = No
                                 "status": ("in", IN_PRODUCTION + ["ready", "approved", "scheduled"])})
     # an approved video that already carries a time the owner set keeps it (never re-slotted)
     for v in vids:
-        if v["status"] == "approved" and v.get("schedule_locked") and v.get("scheduled_for"):
+        if v["status"] == "approved" and v.get("schedule_locked") and v.get("scheduled_for") \
+                and datetime.fromisoformat(v["scheduled_for"]) > t:
             db.update("videos", {"id": v["id"]}, {"status": "scheduled",
                                                   "stage_detail": _label(datetime.fromisoformat(v["scheduled_for"]), ch)})
             v["status"] = "scheduled"

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from . import db, llm, settings, spend
 from .log import event, log
-from .services import LimitReached, NotConfigured, ServiceProblem, limit_active, local_time
+from .services import LimitReached, NotConfigured, ServiceProblem, limit_active, local_time, report_problem
 
 KEEP = 200                 # messages kept in the chat history
 HISTORY = 12               # messages sent to Claude
@@ -246,6 +246,10 @@ def answer(reply_id: int) -> dict:
         _save(reply_id, out.reply.strip()[:4000], actions)
         return {"actions": len(actions)}
     except LimitReached as p:
+        try:
+            report_problem(p)                 # the dashboard shows the limit and pauses other Claude work calmly
+        except Exception as e:
+            log.warning(f"assistant limit report: {e}")
         _save(reply_id, "Claude ki limit abhi poori ho chuki hai. Claude "
                         f"{local_time(p.resume_at)} (New York time) wapas aa jayega, phir dobara poochiye.")
         return {"limited": True}

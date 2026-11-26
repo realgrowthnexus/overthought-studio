@@ -44,16 +44,14 @@ def iso(dt: datetime) -> str:
 
 # ------------------------------------------------------------------ the demo video file
 def render(out: Path) -> None:
-    """Runs the real pipeline with faked services (worker/tests/fakes.py) on the hand-written doorway script."""
-    import json
+    """Runs the real pipeline with faked services (worker/tests/fakes.py)."""
     from _pytest.monkeypatch import MonkeyPatch
     sys.path.insert(0, str(ROOT / "worker" / "tests"))
     import fakes
-    from studio import content, pipeline
+    from studio import pipeline
     mp = MonkeyPatch()
     w = fakes.install(mp, out / "work")
-    w.script_factory = lambda: content.Script.model_validate(
-        json.loads((ROOT / "worker" / "fixtures" / "doorway_script.json").read_text()))
+    # the test suite's clean script: it fits the session-6 length rules (the old doorway fixture is too long)
     ch = fakes.seed_channel(w)
     v = fakes.seed_video(w, ch)
     pipeline.produce(v["id"])

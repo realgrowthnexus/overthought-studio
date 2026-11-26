@@ -34,9 +34,11 @@ export function TitleEditor({ video }: { video: Video }) {
       className="flex flex-col gap-2 sm:flex-row sm:items-end"
       onSubmit={(e) => { e.preventDefault(); if (dirty) run(() => updateTitle(video.id, title)); }}
     >
-      <Field label="Title" htmlFor="video-title" hint="Only for the dashboard. TikTok uses the caption." >
+      <div className="min-w-0 flex-1">
+      <Field label="Title" htmlFor="video-title" hint="Only for the dashboard. TikTok uses the caption.">
         <Input id="video-title" value={title} maxLength={150} onChange={(e) => setTitle(e.target.value)} />
       </Field>
+      </div>
       <Button type="submit" size="sm" variant={dirty ? "primary" : "secondary"} disabled={!dirty} loading={pending} className="sm:mb-[22px]">
         Save title
       </Button>

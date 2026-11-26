@@ -410,7 +410,7 @@ export async function approveVideo(id: string): Promise<ActionResult> {
   return guard(async () => {
     uuid.parse(id);
     const { data, error } = await serviceClient().from("videos")
-      .update({ approval: "approved", approved_at: new Date().toISOString(), status: "approved", rejection_note: null })
+      .update({ approval: "approved", approved_at: new Date().toISOString(), status: "approved", rejection_note: null, schedule_locked: false, scheduled_for: null })
       .eq("id", id).in("status", ["ready", "rejected", "failed"]).select("channel_id,title").single();
     if (error?.code === "PGRST116") return { ok: false, error: "Only videos that are ready for review can be approved." };
     fail(error);

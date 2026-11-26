@@ -3,7 +3,7 @@
 > This is Claude's working memory for this project. The owner switches Claude accounts and sessions; whoever takes over
 > continues with the same ownership and quality bar, and the owner should not notice a change.
 > **Update this file after every significant step.** Never put secret values here.
-> Last updated: 2026-11-24, session 6. Read §0.00000 (current work) first, then the older sections.
+> Last updated: 2026-11-26, session 7. Read §0.000000 (current work) first, then §0.00000 and the older sections.
 
 ## 0. START HERE (next Claude)
 1. Read this whole file, then `docs/ARCHITECTURE.md`. Skim `docs/WEB.md`, `docs/SETUP.md`, `docs/tiktok-api-notes.md`.
@@ -11,7 +11,38 @@
 3. A paste-ready prompt for a new session is in `docs/HANDOFF.md`. Do not start new feature work unprompted. Check §0.2 (what the owner still has to do), help them through it, then
    follow §6.
 
-### 0.00000 SESSION 6 (2026-11-24): THE CURRENT WORK. Read this first.
+### 0.000000 SESSION 7 (2026-11-26): FEATURES. Read this first.
+Owner said "Features shuru" (the 3 features from §0.00000). All three are built, tested, and the migration is live.
+- **Migration `0006_features.sql` APPLIED** 2026-11-26 ~05:15 UTC via the Supabase connector (additive):
+  `videos.cover_ms`, `videos.schedule_locked`, table `assistant_messages` (RLS admin, realtime on).
+- **F1 video page** (`components/video-editor.tsx`): title edit (`updateTitle`), post time
+  (`scheduleVideo`: on a `ready` video = "Approve and schedule"; sets `schedule_locked`; must be 2 min–60 days
+  ahead; Clear = back to `approved`, next free slot), cover frame picker (`setCover` → light job `make_thumb` →
+  `pipeline.make_thumb` grabs that frame from the library copy or the preview; a re-render keeps it; publish passes
+  `cover_ms` to TikTok, drafts ignore it), Copy caption + a draft-mode note. `approveVideo` clears an old locked
+  time.
+- **Scheduler A11** (`scheduler.py`): locked times are never moved, reserve the nearest regular slot (±3 h), overdue
+  locked ones go out one per tick; a stale (past) locked time on a re-approved video is dropped. Label uses the
+  channel timezone abbreviation.
+- **F2 channels page**: 1/2/3-column cards with Edit (→ `/channels/[slug]/settings`) and the on/off switch.
+- **F3 assistant**: `components/assistant.tsx` (round button bottom-left; panel/sheet; Esc; reduced motion; 15 s
+  poll + realtime), `lib/assistant-actions.ts` (`askAssistant`, `loadAssistant`, `runAssistantAction`: the action is
+  read from the DB row, then the normal admin-checked server action runs it). Worker `studio/assistant.py`, job
+  `assistant_reply` on its own `chat` lane; snapshot (services, spend, RunPod meter, channels without account ids,
+  jobs, schedule, videos, events); Sonnet medium via `llm.structured(..., allow_fallback=False)`; whitelist of 12
+  action types, ids checked; Devanagari reply is asked again once; limit = calm reply (and `report_problem`); 200
+  messages kept. Worker version **1.4.0**.
+- Verified: worker pytest 159 passed, web tsc/lint, demo copy: flow script 12/12 PASS (title, schedule lock +
+  clear, cover job, assistant question → pending → reply → button runs only after click → marked done),
+  hover-check 578 controls 0 problems, flow-check and ui-check all pass. `tools/demo/seed_demo.py` now renders
+  the test suite's clean script (the old doorway fixture is too long for the session-6 rules). The demo needs
+  `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io` when public.ecr.aws says "Data limit exceeded".
+- **Still to do:** after the VPS picks up main (v1.4.0), send one real assistant question from the DB (insert user
+  + pending row + job) and check the reply; check a `make_thumb` run. Then tell the owner in Roman Urdu.
+- Known minors: a second cover pick while a `make_thumb` job is running is deduped (the running job may use the
+  older frame; pick again); the assistant's snapshot times are UTC/PKT/channel tz mixed (Claude converts).
+
+### 0.00000 SESSION 6 (2026-11-24): phases 1-3 (done).
 The owner handed the project over completely ("tum main ho meri jagah pe, take charge, take responsibility"). They
 want the production line 100% working and ready to use. The owner may switch Claude accounts mid-work. Whoever
 continues keeps the same quality bar and understanding, and works from the spec, the plan and this section.
@@ -125,7 +156,7 @@ continues keeps the same quality bar and understanding, and works from the spec,
     chats. Tell the owner honestly: Pro is roughly 4–6 videos per 5 h.
 - [x] 12:03 UTC: the studio is UNPAUSED (approval stays ON). Channel `callaletheia` breaker forgiven
   (`failures_forgiven_at` = now), because the old failures came from the removed fact-check.
-- [ ] Then Features (video edits, channels grid, assistant).
+- [x] Features (video edits, channels grid, assistant): session 7, §0.000000.
 - Note: the Supabase connector sometimes points at the owner's OTHER Supabase account (Pak SMM). If
   `list_projects` doesn't show xkbgusqmdeocjwxaknjx, ask the owner to switch it back. A proxy secret for that host
   was also saved, but it returned "Invalid API key" (the key may be wrong); don't rely on it.

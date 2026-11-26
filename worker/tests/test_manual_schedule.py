@@ -85,3 +85,11 @@ def test_make_thumb_without_a_cover_does_nothing(world):
     from studio import pipeline
     v = _vid(world, status="ready")
     assert pipeline.make_thumb(v["id"]) == {"skipped": "no cover picked"}
+
+
+def test_stale_locked_time_on_reapproved_video_is_not_reused(world):
+    v = _vid(world, scheduled_for=(T - timedelta(hours=2)).isoformat(), schedule_locked=True)
+    scheduler._channel(world.ch, T)
+    assert not [j for j in world.tables["jobs"] if j["type"] == "publish_video"]
+    got = _get(world, v)
+    assert got["schedule_locked"] is False and datetime.fromisoformat(got["scheduled_for"]) > T
