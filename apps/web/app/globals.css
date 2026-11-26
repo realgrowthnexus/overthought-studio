@@ -340,3 +340,8 @@ body::before {
     animation: none;
   }
 }
+
+/* Assistant face: a quick blink every few seconds (off for reduced motion). */
+@keyframes face-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+.face-blink { animation: face-blink 4.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .face-blink { animation: none; } }

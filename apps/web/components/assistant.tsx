@@ -3,7 +3,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, MessageCircle, SendHorizontal, Sparkles, X } from "lucide-react";
+import { Check, SendHorizontal, X } from "lucide-react";
 import { toast } from "sonner";
 import { browserClient } from "@/lib/supabase/browser";
 import { askAssistant, loadAssistant, runAssistantAction, type AssistantState } from "@/lib/assistant-actions";
@@ -15,6 +15,26 @@ const SUGGESTIONS = [
   "Agli video kab post hogi?",
   "Is mahine RunPod pe kitna kharcha hua?",
 ];
+
+/** The assistant's face, drawn in code so it looks the same on every phone (an emoji font would not).
+ *  It blinks now and then; while a reply is on its way the mouth turns into a little "o". */
+function Face({ size = 48, thinking = false, still = false }: { size?: number; thinking?: boolean; still?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden className="block">
+      <circle cx="24" cy="24" r="23" fill="var(--accent)" />
+      <circle cx="24" cy="24" r="22.25" fill="none" stroke="var(--accent-ink)" strokeOpacity="0.18" strokeWidth="1.5" />
+      <g className={still ? undefined : "face-blink"} style={{ transformOrigin: "24px 19px" }}>
+        <ellipse cx="17" cy="19" rx="2.6" ry="3.4" fill="var(--accent-ink)" />
+        <ellipse cx="31" cy="19" rx="2.6" ry="3.4" fill="var(--accent-ink)" />
+      </g>
+      <circle cx="12.5" cy="27" r="2.8" fill="#ff7a59" fillOpacity="0.45" />
+      <circle cx="35.5" cy="27" r="2.8" fill="#ff7a59" fillOpacity="0.45" />
+      {thinking
+        ? <ellipse cx="24" cy="32" rx="3" ry="3.4" fill="var(--accent-ink)" />
+        : <path d="M15.5 29.5 Q24 38 32.5 29.5" fill="none" stroke="var(--accent-ink)" strokeWidth="2.8" strokeLinecap="round" />}
+    </svg>
+  );
+}
 
 export function Assistant() {
   const [open, setOpen] = React.useState(false);
@@ -108,11 +128,16 @@ export function Assistant() {
         aria-controls="assistant-panel"
         aria-label={open ? "Close assistant" : "Open assistant"}
         className={cn(
-          "fixed z-40 flex size-12 items-center justify-center rounded-full bg-accent text-accent-ink shadow-[var(--shadow)] transition-[transform,background-color] hover:bg-accent-hover active:scale-95",
-          "left-4 bottom-[calc(env(safe-area-inset-bottom)+76px)] lg:bottom-6 lg:left-[248px]",
+          "fixed z-40 flex size-14 items-center justify-center rounded-full shadow-[var(--shadow)] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 motion-reduce:transition-none motion-reduce:hover:transform-none",
+          "right-4 bottom-[calc(env(safe-area-inset-bottom)+76px)] lg:right-6 lg:bottom-6",
         )}
       >
-        {open ? <X className="size-5" aria-hidden /> : <MessageCircle className="size-5" aria-hidden />}
+        <Face size={56} thinking={waiting} still={Boolean(reduce)} />
+        {open && (
+          <span className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border border-line bg-elev text-ink shadow-[var(--shadow)]">
+            <X className="size-3.5" aria-hidden />
+          </span>
+        )}
       </button>
 
       <AnimatePresence>
@@ -136,12 +161,12 @@ export function Assistant() {
               className={cn(
                 "fixed z-50 flex flex-col overflow-hidden border border-line bg-elev shadow-[var(--shadow)]",
                 "inset-x-0 bottom-0 h-[85dvh] rounded-t-[20px] pb-[env(safe-area-inset-bottom)]",
-                "lg:inset-x-auto lg:bottom-20 lg:left-[248px] lg:h-[min(620px,calc(100dvh-120px))] lg:w-[400px] lg:rounded-[18px] lg:pb-0",
+                "lg:inset-x-auto lg:bottom-24 lg:right-6 lg:h-[min(620px,calc(100dvh-120px))] lg:w-[400px] lg:rounded-[18px] lg:pb-0",
               )}
             >
               <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Sparkles className="size-4 text-accent-text" aria-hidden />
+                  <Face size={26} thinking={waiting} still />
                   <h2 id={titleId} className="truncate text-[15px] font-semibold text-ink">Assistant</h2>
                 </div>
                 <button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="tap flex size-9 items-center justify-center rounded-[9px] text-ink-3 transition-colors hover:bg-elev-2 hover:text-ink">

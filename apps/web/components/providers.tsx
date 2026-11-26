@@ -8,7 +8,7 @@ function ThemedToaster() {
   return (
     <Toaster
       theme={resolvedTheme === "dark" ? "dark" : "light"}
-      position="bottom-right"
+      position="top-right"
       toastOptions={{
         style: {
           background: "var(--bg-elev)",

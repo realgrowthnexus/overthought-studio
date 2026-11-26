@@ -25,7 +25,8 @@ Owner said "Features shuru" (the 3 features from §0.00000). All three are built
   locked ones go out one per tick; a stale (past) locked time on a re-approved video is dropped. Label uses the
   channel timezone abbreviation.
 - **F2 channels page**: 1/2/3-column cards with Edit (→ `/channels/[slug]/settings`) and the on/off switch.
-- **F3 assistant**: `components/assistant.tsx` (round button bottom-left; panel/sheet; Esc; reduced motion; 15 s
+- **F3 assistant**: `components/assistant.tsx` (owner asked 2026-11-26: button moved to the BOTTOM-RIGHT and drawn as a
+  smiling face (SVG `Face`, blinks, "o" mouth while answering); toasts moved to top-right so they don't collide; panel/sheet; Esc; reduced motion; 15 s
   poll + realtime), `lib/assistant-actions.ts` (`askAssistant`, `loadAssistant`, `runAssistantAction`: the action is
   read from the DB row, then the normal admin-checked server action runs it). Worker `studio/assistant.py`, job
   `assistant_reply` on its own `chat` lane; snapshot (services, spend, RunPod meter, channels without account ids,
